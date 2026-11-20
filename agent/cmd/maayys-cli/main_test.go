@@ -322,6 +322,32 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 			t.Fatal("failed to match NetEase truncated email lishennanus300@163.c... in stored account ROI {460, 280, 370, 50}")
 		}
 	}
+
+	agreeModalShot := `D:\projs\game-desk-next\.data\screenshots\13ab5319-940a-4590-8f2e-866fca85e783.png`
+	if img, err := loadPNG(agreeModalShot); err == nil {
+		btnReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{420, 340, 470, 200}),
+			Expected: []string{"^(同意|同意并继续|同意并登录)$"},
+		}, img).Wait()
+		btnDetail, _ := btnReco.GetDetail()
+		if btnDetail == nil || len(btnDetail.NodeDetails) == 0 || btnDetail.NodeDetails[0].Recognition == nil || !btnDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 同意并登录 in ROI {420, 340, 470, 200}")
+		}
+		bb := btnDetail.NodeDetails[0].Recognition.Box
+		bx, by := bb.X()+bb.Width()/2, bb.Y()+bb.Height()/2
+		if bx < 658 || bx > 864 || by < 456 || by > 518 {
+			t.Fatalf("同意并登录 click center (%d, %d) outside button [658..864, 456..518] (box=%v)", bx, by, bb)
+		}
+
+		titleReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{450, 170, 380, 95}),
+			Expected: []string{"用户协议及隐私保护"},
+		}, img).Wait()
+		titleDetail, _ := titleReco.GetDetail()
+		if titleDetail == nil || len(titleDetail.NodeDetails) == 0 || titleDetail.NodeDetails[0].Recognition == nil || !titleDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 用户协议及隐私保护 title in ROI {450, 170, 380, 95}")
+		}
+	}
 }
 
 func loadPNG(path string) (image.Image, error) {

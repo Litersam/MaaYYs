@@ -453,10 +453,10 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 			}
 			continue
 		}
-		if a.clickOCR(ctx, ctrl, img, maa.Rect{420, 350, 440, 170}, "^(同意|同意并继续)$", time.Second) {
+		if a.acceptAgreementModal(ctx, ctrl, img) {
 			continue
 		}
-		if !passwordRetried && (a.isPasswordPrompt(ctx, img) || a.isLoginMethodChooser(ctx, img)) {
+		if !passwordRetried && (a.isPasswordPrompt(ctx, img) || a.isLoginMethodChooser(ctx, img) || a.hasAgreementModal(ctx, img)) {
 			passwordRetried = true
 			if err := a.passwordFallback(ctx, ctrl, hook, p); err != nil {
 				return err
@@ -479,8 +479,8 @@ func (a *SwitchAccount) selectStoredAccount(ctx *maa.Context, ctrl *maa.Controll
 		if err != nil {
 			return false, false, err
 		}
-		// Never blind-click [850, 320, 30, 25] on the 4-tile login-method chooser (where 扫码登录 sits at [658, 314, 224, 62]).
-		if a.isLoginMethodChooser(ctx, img) || a.isPasswordPrompt(ctx, img) {
+		// Never blind-click [850, 320, 30, 25] on the 4-tile login-method chooser or foreground agreement modal.
+		if a.hasAgreementModal(ctx, img) || a.isLoginMethodChooser(ctx, img) || a.isPasswordPrompt(ctx, img) {
 			return false, true, nil
 		}
 		// Self-heal if a prior click opened the QR scan subpage: click top-left "<" back arrow to return to 4-tile chooser.
@@ -561,6 +561,11 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 			return err
 		}
 	}
+	if a.acceptAgreementModal(ctx, ctrl, img) {
+		if img, err = a.snap(ctx, ctrl); err != nil {
+			return err
+		}
+	}
 	// Handle NetEase 4-tile login-method chooser idempotently so we never uncheck an already-checked agreement box.
 	if a.isLoginMethodChooser(ctx, img) {
 		clickEmailTile := func(frame image.Image) {
@@ -573,8 +578,11 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 		if img, err = a.snap(ctx, ctrl); err != nil {
 			return err
 		}
-		if a.isLoginMethodChooser(ctx, img) ||
-			a.findOCRBox(ctx, img, maa.Rect{320, 540, 420, 90}, "请先勾选同意") != nil {
+		if a.acceptAgreementModal(ctx, ctrl, img) {
+			if img, err = a.snap(ctx, ctrl); err != nil {
+				return err
+			}
+		} else if a.isLoginMethodChooser(ctx, img) {
 			ctrl.PostClick(464, 544).Wait()
 			time.Sleep(500 * time.Millisecond)
 			if latest, snapErr := a.snap(ctx, ctrl); snapErr == nil {
@@ -584,6 +592,11 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 			time.Sleep(1000 * time.Millisecond)
 			if img, err = a.snap(ctx, ctrl); err != nil {
 				return err
+			}
+			if a.acceptAgreementModal(ctx, ctrl, img) {
+				if img, err = a.snap(ctx, ctrl); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -648,7 +661,7 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 	if err != nil {
 		return err
 	}
-	if a.clickOCR(ctx, ctrl, postImg, maa.Rect{420, 340, 440, 180}, "^(同意|同意并继续)$", 1500*time.Millisecond) {
+	if a.acceptAgreementModal(ctx, ctrl, postImg) {
 		return nil
 	}
 	needAgree := a.findOCRBox(ctx, postImg, maa.Rect{320, 500, 460, 135}, "请先勾选同意") != nil
@@ -669,7 +682,7 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 			submitLogin(postImg)
 		}
 		if finalImg, snapErr := a.snap(ctx, ctrl); snapErr == nil {
-			_ = a.clickOCR(ctx, ctrl, finalImg, maa.Rect{420, 340, 440, 180}, "^(同意|同意并继续)$", 1500*time.Millisecond)
+			_ = a.acceptAgreementModal(ctx, ctrl, finalImg)
 		}
 	}
 	return nil
@@ -893,9 +906,27 @@ func (a *SwitchAccount) hasNeteaseAccountDialog(ctx *maa.Context, img image.Imag
 	}
 	return a.hasTpl(ctx, img, tplNeteaseLogo, maa.Rect{460, 145, 360, 130}, 0.8) ||
 		a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) ||
+		a.hasAgreementModal(ctx, img) ||
 		a.isLoginMethodChooser(ctx, img) ||
 		a.isPasswordPrompt(ctx, img) ||
 		a.findOCRBox(ctx, img, maa.Rect{400, 150, 480, 120}, "网易游戏|网易账号|邮箱账号|账号登录") != nil
+}
+
+func (a *SwitchAccount) hasAgreementModal(ctx *maa.Context, img image.Image) bool {
+	return a.findOCRBox(ctx, img, maa.Rect{450, 170, 380, 95}, "用户协议及隐私保护") != nil ||
+		a.findOCRBox(ctx, img, maa.Rect{420, 340, 470, 200}, "^(同意|同意并继续|同意并登录)$") != nil
+}
+
+func (a *SwitchAccount) acceptAgreementModal(ctx *maa.Context, ctrl *maa.Controller, img image.Image) bool {
+	if a.clickOCR(ctx, ctrl, img, maa.Rect{420, 340, 470, 200}, "^(同意|同意并继续|同意并登录)$", 1000*time.Millisecond) {
+		return true
+	}
+	if a.findOCRBox(ctx, img, maa.Rect{450, 170, 380, 95}, "用户协议及隐私保护") != nil {
+		ctrl.PostClick(761, 487).Wait()
+		time.Sleep(1000 * time.Millisecond)
+		return true
+	}
+	return false
 }
 
 func (a *SwitchAccount) isLoginMethodChooser(ctx *maa.Context, img image.Image) bool {
