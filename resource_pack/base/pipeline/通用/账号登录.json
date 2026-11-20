@@ -8,7 +8,9 @@
             "platform": "android",
             "server": ""
         },
+        "max_hit": 1,
+        "on_error": [],
         "recognition": "DirectHit",
-        "timeout": 180000
+        "timeout": 200000
     }
 }

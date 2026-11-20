@@ -142,8 +142,10 @@ func MatchEmail(ocrText, targetEmail string) bool {
 func MatchServer(ocrText, targetServer string) bool {
 	clean := func(s string) string {
 		s = strings.TrimSpace(s)
-		s = strings.Trim(s, " <>[]【】()（）·-—>")
-		return strings.ReplaceAll(s, " ", "")
+		s = strings.ReplaceAll(s, " ", "")
+		s = strings.Trim(s, "<>[]【】()（）·-—>🌸*")
+		s = strings.TrimSuffix(s, "切换")
+		return strings.Trim(s, "<>[]【】()（）·-—>🌸*")
 	}
 	got, want := clean(ocrText), clean(targetServer)
 	return got != "" && want != "" && got == want
@@ -277,11 +279,18 @@ func (a *SwitchAccount) ensureSurface(ctx *maa.Context, ctrl *maa.Controller, ho
 		a.detail(hook, "正在识别当前页面")
 	}
 
-	deadline := time.Now().Add(90 * time.Second)
+	deadline := time.Now().Add(135 * time.Second)
 	for time.Now().Before(deadline) {
 		img, err := a.snap(ctx, ctrl)
 		if err != nil {
 			return false, err
+		}
+
+		// Always clear foreground blocking modals BEFORE checking background login surface,
+		// because bottom-left CADPA 8+ badge can still match >= 0.8 behind semi-transparent overlays.
+		if a.dismissStartupPopups(ctx, ctrl, img) {
+			time.Sleep(1000 * time.Millisecond)
+			continue
 		}
 
 		if a.isLoginSurface(ctx, img) {
@@ -291,11 +300,6 @@ func (a *SwitchAccount) ensureSurface(ctx *maa.Context, ctrl *maa.Controller, ho
 			return true, nil
 		}
 
-		// Dismiss startup modals without clicking "进入游戏".
-		if a.dismissStartupPopups(ctx, ctrl, img) {
-			time.Sleep(800 * time.Millisecond)
-			continue
-		}
 		// Return from an inner game page back toward courtyard if applicable.
 		if a.runNodeIfHit(ctx, img, "导航-庭院-点击返回按钮-模板匹配") || a.runNodeIfHit(ctx, img, "导航-庭院-点击快捷返回庭院按钮") {
 			time.Sleep(1200 * time.Millisecond)
@@ -340,29 +344,42 @@ func (a *SwitchAccount) exitCourtyardToLogin(ctx *maa.Context, ctrl *maa.Control
 func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Controller, hook *RuntimeHook, p Params) error {
 	a.detail(hook, "正在切换账号")
 	openDeadline := time.Now().Add(45 * time.Second)
+	panelOpened := false
+	toolbarClicks := 0
 	for time.Now().Before(openDeadline) {
 		img, err := a.snap(ctx, ctrl)
 		if err != nil {
 			return err
+		}
+		// Clear foreground engine-update / session-expired modals first.
+		if a.dismissStartupPopups(ctx, ctrl, img) {
+			time.Sleep(1000 * time.Millisecond)
+			continue
 		}
 		if a.hasSelectServerUI(ctx, img) {
 			clickRect(ctrl, maa.Rect{50, 70, 60, 360})
 			time.Sleep(time.Second)
 			continue
 		}
-		if a.hasTpl(ctx, img, tplNeteaseLogo, maa.Rect{500, 170, 300, 90}, 0.8) &&
-			!a.hasTpl(ctx, img, tplPlatformApple, maa.Rect{508, 354, 100, 100}, 0.8) {
+		if a.hasNeteaseAccountDialog(ctx, img) {
+			panelOpened = true
 			break
 		}
-		if a.clickTpl(ctx, ctrl, img, tplSwitchAccountBtn, maa.Rect{930, 170, 160, 75}, 0.8, 1500*time.Millisecond) {
+		if a.clickTpl(ctx, ctrl, img, tplSwitchAccountBtn, maa.Rect{900, 155, 210, 100}, 0.8, 1500*time.Millisecond) ||
+			a.clickOCR(ctx, ctrl, img, maa.Rect{850, 140, 300, 150}, "切换账号|切换用户", 1500*time.Millisecond) {
 			continue
 		}
-		if a.dismissStartupPopups(ctx, ctrl, img) {
-			time.Sleep(800 * time.Millisecond)
-			continue
+		// Click right-side User Center [1210, 235, 45, 50]; alternate with Account icon [1210, 315, 45, 50] if unresponsive.
+		if toolbarClicks%2 == 1 {
+			clickRect(ctrl, maa.Rect{1210, 315, 45, 50})
+		} else {
+			clickRect(ctrl, maa.Rect{1210, 235, 45, 50})
 		}
-		clickRect(ctrl, maa.Rect{1210, 230, 40, 40})
+		toolbarClicks++
 		time.Sleep(1500 * time.Millisecond)
+	}
+	if !panelOpened {
+		return errors.New("未能打开网易账号登录面板")
 	}
 
 	accountVerified, needPassword, err := a.selectStoredAccount(ctx, ctrl, hook, p)
@@ -385,15 +402,15 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 	}
 
 	a.detail(hook, "正在选择登录平台")
-	platDeadline := time.Now().Add(30 * time.Second)
+	platDeadline := time.Now().Add(35 * time.Second)
 	passwordRetried := needPassword
 	for time.Now().Before(platDeadline) {
 		img, err := a.snap(ctx, ctrl)
 		if err != nil {
 			return err
 		}
-		appleBox := a.matchTemplate(ctx, img, tplPlatformApple, maa.Rect{508, 354, 100, 100}, 0.8)
-		androidBox := a.matchTemplate(ctx, img, tplPlatformAndroid, maa.Rect{670, 352, 100, 100}, 0.8)
+		appleBox := a.matchTemplate(ctx, img, tplPlatformApple, maa.Rect{475, 320, 165, 165}, 0.8)
+		androidBox := a.matchTemplate(ctx, img, tplPlatformAndroid, maa.Rect{640, 320, 165, 165}, 0.8)
 		if appleBox != nil || androidBox != nil {
 			targetROI := maa.Rect{671, 353, 100, 100}
 			if p.Platform == "ios" {
@@ -410,8 +427,7 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 			if err != nil {
 				return err
 			}
-			if !a.hasTpl(ctx, afterImg, tplPlatformApple, maa.Rect{508, 354, 100, 100}, 0.8) &&
-				!a.hasTpl(ctx, afterImg, tplPlatformAndroid, maa.Rect{670, 352, 100, 100}, 0.8) {
+			if !a.hasPlatformDialog(ctx, afterImg) {
 				return nil
 			}
 			continue
@@ -425,6 +441,10 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 				return err
 			}
 			platDeadline = time.Now().Add(25 * time.Second)
+			continue
+		}
+		if a.dismissStartupPopups(ctx, ctrl, img) {
+			time.Sleep(800 * time.Millisecond)
 			continue
 		}
 		time.Sleep(600 * time.Millisecond)
@@ -444,7 +464,7 @@ func (a *SwitchAccount) selectStoredAccount(ctx *maa.Context, ctrl *maa.Controll
 		if a.matchSelectedEmail(ctx, img, p.Email) {
 			return true, false, nil
 		}
-		if !a.clickTpl(ctx, ctrl, img, tplDropdownClosed, maa.Rect{850, 320, 30, 25}, 0.78, time.Second) {
+		if !a.clickTpl(ctx, ctrl, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78, time.Second) {
 			clickRect(ctrl, maa.Rect{850, 320, 30, 25})
 			time.Sleep(time.Second)
 		}
@@ -581,12 +601,15 @@ func (a *SwitchAccount) verifyAndSwitchServer(ctx *maa.Context, ctrl *maa.Contro
 		if err != nil {
 			return err
 		}
-		if a.dismissPhoneBind(ctx, ctrl, img) {
+		// Always dismiss foreground modals before evaluating login home / server bar.
+		if a.dismissStartupPopups(ctx, ctrl, img) {
 			time.Sleep(time.Second)
 			continue
 		}
-		if a.hasTpl(ctx, img, tplLoginForm, maa.Rect{1, 547, 241, 105}, 0.8) ||
-			a.findOCRBox(ctx, img, maa.Rect{480, 545, 320, 95}, "进入游戏") != nil {
+		if !a.hasNeteaseAccountDialog(ctx, img) &&
+			(a.hasTpl(ctx, img, tplLoginForm, maa.Rect{1, 547, 241, 105}, 0.8) ||
+				a.findOCRBox(ctx, img, maa.Rect{480, 545, 320, 95}, "进入游戏") != nil ||
+				a.findOCRBox(ctx, img, maa.Rect{660, 495, 150, 52}, "切换") != nil) {
 			loginImg = img
 			break
 		}
@@ -602,13 +625,17 @@ func (a *SwitchAccount) verifyAndSwitchServer(ctx *maa.Context, ctrl *maa.Contro
 
 	a.detail(hook, "正在切换目标区服")
 	svrSelectOpened := false
+	curImg := loginImg
 	for i := 0; i < 4; i++ {
-		clickRect(ctrl, maa.Rect{550, 510, 280, 35})
-		time.Sleep(1500 * time.Millisecond)
+		if !a.clickOCR(ctx, ctrl, curImg, maa.Rect{660, 495, 150, 52}, "切换", 1500*time.Millisecond) {
+			clickRect(ctrl, maa.Rect{550, 505, 250, 40})
+			time.Sleep(1500 * time.Millisecond)
+		}
 		img, err := a.snap(ctx, ctrl)
 		if err != nil {
 			return err
 		}
+		curImg = img
 		if a.hasSelectServerUI(ctx, img) {
 			svrSelectOpened = true
 			break
@@ -623,10 +650,10 @@ func (a *SwitchAccount) verifyAndSwitchServer(ctx *maa.Context, ctrl *maa.Contro
 		if err != nil {
 			return err
 		}
-		if a.hasTpl(ctx, img, tplSelectSvr2, maa.Rect{207, 127, 187, 70}, 0.8) {
+		if a.hasTpl(ctx, img, tplSelectSvr2, maa.Rect{195, 115, 220, 95}, 0.8) {
 			break
 		}
-		if a.hasTpl(ctx, img, tplSelectSvr1, maa.Rect{210, 128, 185, 68}, 0.8) {
+		if a.hasTpl(ctx, img, tplSelectSvr1, maa.Rect{195, 115, 220, 95}, 0.8) {
 			clickRect(ctrl, maa.Rect{205, 570, 815, 40})
 			time.Sleep(1500 * time.Millisecond)
 			continue
@@ -767,10 +794,25 @@ func (a *SwitchAccount) enterAndConfirmCourtyard(ctx *maa.Context, ctrl *maa.Con
 }
 
 func (a *SwitchAccount) hasSelectServerUI(ctx *maa.Context, img image.Image) bool {
-	return a.hasTpl(ctx, img, tplSelectSvr1, maa.Rect{210, 128, 185, 68}, 0.8) ||
-		a.hasTpl(ctx, img, tplSelectSvr2, maa.Rect{207, 127, 187, 70}, 0.8) ||
+	return a.hasTpl(ctx, img, tplSelectSvr1, maa.Rect{195, 115, 220, 95}, 0.8) ||
+		a.hasTpl(ctx, img, tplSelectSvr2, maa.Rect{195, 115, 220, 95}, 0.8) ||
 		a.findOCRBox(ctx, img, maa.Rect{200, 120, 220, 80}, "已有角色") != nil ||
 		a.findOCRBox(ctx, img, maa.Rect{200, 510, 220, 75}, "已有角色") != nil
+}
+
+func (a *SwitchAccount) hasPlatformDialog(ctx *maa.Context, img image.Image) bool {
+	return a.hasTpl(ctx, img, tplPlatformApple, maa.Rect{475, 320, 165, 165}, 0.8) ||
+		a.hasTpl(ctx, img, tplPlatformAndroid, maa.Rect{640, 320, 165, 165}, 0.8)
+}
+
+func (a *SwitchAccount) hasNeteaseAccountDialog(ctx *maa.Context, img image.Image) bool {
+	if a.hasPlatformDialog(ctx, img) {
+		return false
+	}
+	return a.hasTpl(ctx, img, tplNeteaseLogo, maa.Rect{460, 145, 360, 130}, 0.8) ||
+		a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) ||
+		a.isPasswordPrompt(ctx, img) ||
+		a.findOCRBox(ctx, img, maa.Rect{400, 150, 480, 120}, "网易游戏|网易账号|邮箱账号|账号登录") != nil
 }
 
 func (a *SwitchAccount) hasTpl(ctx *maa.Context, img image.Image, tpl string, roi maa.Rect, thr float64) bool {
@@ -819,11 +861,12 @@ func (a *SwitchAccount) snap(ctx *maa.Context, ctrl *maa.Controller) (image.Imag
 }
 
 func (a *SwitchAccount) isLoginSurface(ctx *maa.Context, img image.Image) bool {
-	return a.matchTemplate(ctx, img, tplLoginForm, maa.Rect{1, 547, 241, 105}, 0.8) != nil ||
-		a.matchTemplate(ctx, img, tplNeteaseLogo, maa.Rect{500, 170, 300, 90}, 0.8) != nil ||
-		a.matchTemplate(ctx, img, tplSwitchAccountBtn, maa.Rect{930, 170, 160, 75}, 0.8) != nil ||
-		a.matchTemplate(ctx, img, tplPlatformApple, maa.Rect{508, 354, 100, 100}, 0.8) != nil ||
-		a.matchTemplate(ctx, img, tplSelectSvr1, maa.Rect{210, 128, 185, 68}, 0.8) != nil
+	return a.hasTpl(ctx, img, tplLoginForm, maa.Rect{1, 540, 250, 120}, 0.8) ||
+		a.hasNeteaseAccountDialog(ctx, img) ||
+		a.hasTpl(ctx, img, tplSwitchAccountBtn, maa.Rect{900, 155, 210, 100}, 0.8) ||
+		a.hasPlatformDialog(ctx, img) ||
+		a.hasSelectServerUI(ctx, img) ||
+		a.findOCRBox(ctx, img, maa.Rect{480, 545, 320, 95}, "进入游戏") != nil
 }
 
 func (a *SwitchAccount) isCourtyard(ctx *maa.Context, img image.Image) bool {
@@ -849,18 +892,40 @@ func (a *SwitchAccount) isCourtyardOrProfile(ctx *maa.Context, img image.Image) 
 }
 
 func (a *SwitchAccount) isPasswordPrompt(ctx *maa.Context, img image.Image) bool {
-	if a.matchTemplate(ctx, img, tplDropdownClosed, maa.Rect{850, 320, 30, 25}, 0.78) != nil {
+	if a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) {
 		return false
 	}
-	return a.findOCRBox(ctx, img, maa.Rect{380, 200, 520, 290}, "密码|登录过期|重新登录|请输入邮箱|获取验证码") != nil
+	return a.findOCRBox(ctx, img, maa.Rect{380, 200, 520, 290}, "请输入密码|输入密码|密码登录|请输入邮箱|获取验证码") != nil
 }
 
 func (a *SwitchAccount) dismissStartupPopups(ctx *maa.Context, ctrl *maa.Controller, img image.Image) bool {
-	// Client update notice.
+	// 1. Engine update modal ("发现全新的引擎版本！"): strictly click left button "暂不更新" (never "后台下载").
+	if a.findOCRBox(ctx, img, maa.Rect{340, 200, 600, 220}, "发现全新的引擎版本|全新的引擎|引擎版本") != nil {
+		if !a.clickOCR(ctx, ctrl, img, maa.Rect{360, 340, 560, 170}, "暂不更新|以后再说|暂不升级", 0) {
+			clickRect(ctrl, maa.Rect{445, 412, 173, 47})
+		}
+		return true
+	}
+	if a.clickOCR(ctx, ctrl, img, maa.Rect{360, 340, 560, 170}, "^(暂不更新|以后再说|暂不升级)$", 0) {
+		return true
+	}
+
+	// 2. Session expired modal ("用户登录失效。"): click centered red button "^重新登录$" to open NetEase login dialog.
+	if a.findOCRBox(ctx, img, maa.Rect{380, 240, 520, 160}, "用户登录失效|登录失效|登录已失效") != nil {
+		if !a.clickOCR(ctx, ctrl, img, maa.Rect{450, 360, 380, 130}, "^重新登录$", 0) {
+			clickRect(ctrl, maa.Rect{536, 403, 208, 62})
+		}
+		return true
+	}
+	if !a.hasNeteaseAccountDialog(ctx, img) && a.clickOCR(ctx, ctrl, img, maa.Rect{450, 360, 380, 130}, "^重新登录$", 0) {
+		return true
+	}
+
+	// 3. Client update notice.
 	if a.runNodeIfHit(ctx, img, "客户端更新提示处理") {
 		return true
 	}
-	// Cancel illustration / resource download or CG video.
+	// 4. Cancel illustration / resource download or CG video.
 	if a.findOCRBox(ctx, img, maa.Rect{320, 170, 640, 270}, "下载插画|资源下载|观看视频|是否打开|加成") != nil {
 		if cancel := a.findOCRBox(ctx, img, maa.Rect{280, 330, 420, 220}, "取消|拒绝|不观看|暂不"); cancel != nil {
 			clickRect(ctrl, *cancel)
@@ -870,7 +935,7 @@ func (a *SwitchAccount) dismissStartupPopups(ctx *maa.Context, ctrl *maa.Control
 	if a.runNodeIfHit(ctx, img, "通用-拒绝下载-识别拒绝后点击") {
 		return true
 	}
-	// Announcements and ads.
+	// 5. Announcements and ads.
 	if a.runNodeIfHit(ctx, img, "关闭公告") || a.runNodeIfHit(ctx, img, "关闭广告-模板匹配") {
 		return true
 	}
@@ -952,7 +1017,7 @@ func (a *SwitchAccount) matchEmailInROI(ctx *maa.Context, img image.Image, roi m
 }
 
 func (a *SwitchAccount) readAndMatchServer(ctx *maa.Context, img image.Image, server string) bool {
-	for _, roi := range []maa.Rect{{545, 510, 140, 40}, {520, 505, 195, 48}} {
+	for _, roi := range []maa.Rect{{460, 495, 255, 52}, {450, 495, 340, 55}} {
 		for _, it := range a.ocrItems(ctx, img, roi) {
 			if MatchServer(it.Text, server) {
 				return true

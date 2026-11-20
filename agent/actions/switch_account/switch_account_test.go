@@ -54,6 +54,12 @@ func TestMatchEmailAndServer(t *testing.T) {
 	if !MatchServer("【全平台互通】>", "全平台互通") {
 		t.Fatal("expected decorated server text to match")
 	}
+	if !MatchServer("永远的平安京 切换", "永远的平安京") {
+		t.Fatal("expected 6-char server name with trailing 切换 to match")
+	}
+	if !MatchServer("携手同心切换", "携手同心") {
+		t.Fatal("expected server name with adjacent 切换 to match")
+	}
 	if MatchServer("携手同心", "全平台互通") {
 		t.Fatal("distinct servers must not match")
 	}
