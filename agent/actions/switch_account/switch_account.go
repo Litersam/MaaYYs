@@ -300,6 +300,10 @@ func (a *SwitchAccount) ensureSurface(ctx *maa.Context, ctrl *maa.Controller, ho
 		a.detail(hook, "正在识别当前页面")
 	}
 
+	surfaceStart := time.Now()
+	var lastCGTap time.Time
+	idleFrames := 0
+
 	deadline := time.Now().Add(135 * time.Second)
 	for time.Now().Before(deadline) {
 		img, err := a.snap(ctx, ctrl)
@@ -310,6 +314,7 @@ func (a *SwitchAccount) ensureSurface(ctx *maa.Context, ctrl *maa.Controller, ho
 		// Always clear foreground blocking modals BEFORE checking background login surface,
 		// because bottom-left CADPA 8+ badge can still match >= 0.8 behind semi-transparent overlays.
 		if a.dismissStartupPopups(ctx, ctrl, img) {
+			idleFrames = 0
 			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
@@ -323,7 +328,21 @@ func (a *SwitchAccount) ensureSurface(ctx *maa.Context, ctrl *maa.Controller, ho
 
 		// Return from an inner game page back toward courtyard if applicable.
 		if a.runNodeIfHit(ctx, img, "导航-庭院-点击返回按钮-模板匹配") || a.runNodeIfHit(ctx, img, "导航-庭院-点击快捷返回庭院按钮") {
+			idleFrames = 0
 			time.Sleep(1200 * time.Millisecond)
+			continue
+		}
+
+		// Cold-start opening CG (>140s textless full-screen animation): after ~10s without any
+		// modal, login surface, or courtyard UI, periodically tap safe top-left blank area (250, 100)
+		// every ~4.5s until login/modal elements appear.
+		idleFrames++
+		if idleFrames >= 2 && time.Since(surfaceStart) >= 10*time.Second && time.Since(lastCGTap) >= 4500*time.Millisecond {
+			a.detail(hook, "正在跳过开场动画")
+			a.logf(hook, "info", "", "未识别到登录页或弹窗，轻触安全空白区 (250, 100) 跳过冷启动开场动画")
+			ctrl.PostClick(250, 100).Wait()
+			lastCGTap = time.Now()
+			time.Sleep(1500 * time.Millisecond)
 			continue
 		}
 		time.Sleep(800 * time.Millisecond)

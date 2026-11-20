@@ -348,6 +348,41 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 			t.Fatal("failed to recognize 用户协议及隐私保护 title in ROI {450, 170, 380, 95}")
 		}
 	}
+
+	cgShot := `D:\projs\game-desk-next\.data\screenshots\6fa1527b-2d6b-4f7e-9126-dc4b1cbc19ef.png`
+	if img, err := loadPNG(cgShot); err == nil {
+		cadpaReco := tasker.PostRecognition(maa.RecognitionTypeTemplateMatch, &maa.TemplateMatchParam{
+			Template:  []string{"账号登录/check_login_form.png"},
+			ROI:       maa.NewTargetRect(maa.Rect{1, 540, 250, 120}),
+			Threshold: []float64{0.8},
+		}, img).Wait()
+		cadpaDetail, _ := cadpaReco.GetDetail()
+		if cadpaDetail != nil && len(cadpaDetail.NodeDetails) > 0 && cadpaDetail.NodeDetails[0].Recognition != nil && cadpaDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("cold-start opening CG falsely matched check_login_form.png!")
+		}
+	}
+
+	afterCGShot := `C:\Users\liter\.copilot\session-state\58469ce6-1f77-483d-ba40-c5eb660c2ede\files\after_cg_tap_4.png`
+	if img, err := loadPNG(afterCGShot); err == nil {
+		cadpaAfter := tasker.PostRecognition(maa.RecognitionTypeTemplateMatch, &maa.TemplateMatchParam{
+			Template:  []string{"账号登录/check_login_form.png"},
+			ROI:       maa.NewTargetRect(maa.Rect{1, 540, 250, 120}),
+			Threshold: []float64{0.8},
+		}, img).Wait()
+		cadpaAfterDetail, _ := cadpaAfter.GetDetail()
+		if cadpaAfterDetail == nil || len(cadpaAfterDetail.NodeDetails) == 0 || cadpaAfterDetail.NodeDetails[0].Recognition == nil || !cadpaAfterDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("expected check_login_form.png to match on after_cg_tap_4.png")
+		}
+
+		skipReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{360, 340, 560, 170}),
+			Expected: []string{"暂不更新|以后再说|暂不升级"},
+		}, img).Wait()
+		skipDetail, _ := skipReco.GetDetail()
+		if skipDetail == nil || len(skipDetail.NodeDetails) == 0 || skipDetail.NodeDetails[0].Recognition == nil || !skipDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 暂不更新 after CG skip tap on after_cg_tap_4.png")
+		}
+	}
 }
 
 func loadPNG(path string) (image.Image, error) {
