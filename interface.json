@@ -123,6 +123,7 @@
   "task": [],
   "import": [
     "preset/一键日常.json",
+    "tasks/账号登录.json",
     "tasks/daily/打开游戏.json",
     "tasks/daily/购物.json",
     "tasks/daily/关闭游戏.json",

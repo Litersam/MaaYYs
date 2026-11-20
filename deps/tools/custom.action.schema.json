@@ -25,6 +25,7 @@
         "BattleTeam",
         "SwitchSoul",
         "SwitchSoulByWeek",
+        "SwitchAccount",
         "TeamBuilder",
         "BountyMonsterRecognition",
         "ChallengeDungeonBoss",
@@ -57,6 +58,7 @@
       { "$ref": "#/$defs/BattleTeam" },
       { "$ref": "#/$defs/SwitchSoul" },
       { "$ref": "#/$defs/SwitchSoulByWeek" },
+      { "$ref": "#/$defs/SwitchAccount" },
       { "$ref": "#/$defs/TeamBuilder" },
       { "$ref": "#/$defs/BountyMonsterRecognition" },
       { "$ref": "#/$defs/ChallengeDungeonBoss" },
@@ -544,6 +546,30 @@
             "date_rule": { "$ref": "#/$defs/DateRule" }
           },
           "required": ["start", "end"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action"]
+    },
+    "SwitchAccount": {
+      "title": "多账号精确切换与登录",
+      "description": "按目标邮箱、平台（ios/android）与区服切换并登录账号进入庭院。",
+      "allOf": [{ "$ref": "#/$defs/RequiredParam" }],
+      "properties": {
+        "custom_action": { "const": "SwitchAccount" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "email": { "$ref": "#/$defs/NonEmptyString", "description": "目标网易邮箱账号" },
+            "password": { "type": "string", "description": "密码兜底凭证（日志严禁输出）" },
+            "platform": { "type": "string", "enum": ["ios", "android"], "description": "登录平台" },
+            "server": { "$ref": "#/$defs/NonEmptyString", "description": "目标区服名称" },
+            "character": { "type": "string", "description": "可选目标角色名称" },
+            "mumu_index": { "type": "integer", "minimum": 0, "description": "可选 MuMu 实例索引" },
+            "adb_path": { "type": "string", "description": "可选 adb.exe 路径" },
+            "adb_address": { "type": "string", "description": "可选 ADB 地址" }
+          },
+          "required": ["email", "platform", "server"],
           "additionalProperties": false
         }
       },

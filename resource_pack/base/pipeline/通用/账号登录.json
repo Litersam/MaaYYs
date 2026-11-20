@@ -1,0 +1,14 @@
+{
+    "账号登录": {
+        "action": "Custom",
+        "custom_action": "SwitchAccount",
+        "custom_action_param": {
+            "email": "",
+            "password": "",
+            "platform": "android",
+            "server": ""
+        },
+        "recognition": "DirectHit",
+        "timeout": 180000
+    }
+}

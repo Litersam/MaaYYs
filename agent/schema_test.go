@@ -18,13 +18,13 @@ func TestCustomSchemasMatchRegistrations(t *testing.T) {
 
 	wantActions := make([]string, 0, len(customActions))
 	for _, registration := range customActions {
-		wantActions = append(wantActions, registration.name)
+		wantActions = append(wantActions, registration.Name)
 	}
 	assertSameNames(t, "actions", actions.Properties["custom_action"].Enum, wantActions)
 
 	wantRecognitions := make([]string, 0, len(customRecognitions))
 	for _, registration := range customRecognitions {
-		wantRecognitions = append(wantRecognitions, registration.name)
+		wantRecognitions = append(wantRecognitions, registration.Name)
 	}
 	assertSameNames(t, "recognitions", recognitions.Properties["custom_recognition"].Enum, wantRecognitions)
 }
