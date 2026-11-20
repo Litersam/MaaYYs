@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	wmActivate, wmSetFocus     = 0x0006, 0x0007
-	wmKeyDown, wmKeyUp, wmChar = 0x0100, 0x0101, 0x0102
-	waActive, vkBack           = 1, 0x08
+	wmActivate, wmSetFocus = 0x0006, 0x0007
+	wmChar, waActive       = 0x0102, 1
 )
 
 var (
@@ -32,7 +31,7 @@ var (
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 )
 
-func sendMuMuText(mumuIndex *int, adbPath, adbAddress, text string, clearBackspaces int) error {
+func sendMuMuText(mumuIndex *int, adbPath, adbAddress, text string) error {
 	mainWnd, renderWnd, err := resolveMuMuInputWindows(mumuIndex, adbPath, adbAddress)
 	if err != nil {
 		return err
@@ -41,18 +40,17 @@ func sendMuMuText(mumuIndex *int, adbPath, adbAddress, text string, clearBackspa
 		_, _, _ = procSendMessageW.Call(mainWnd, wmActivate, waActive, 0)
 	}
 	_, _, _ = procSendMessageW.Call(renderWnd, wmSetFocus, 0, 0)
-	time.Sleep(80 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
 
-	for i := 0; i < clearBackspaces; i++ {
-		_, _, _ = procPostMessageW.Call(renderWnd, wmKeyDown, vkBack, 1)
-		_, _, _ = procPostMessageW.Call(renderWnd, wmKeyUp, vkBack, 0xC0000001)
-		time.Sleep(12 * time.Millisecond)
-	}
-	for _, u := range utf16.Encode([]rune(text)) {
+	for i, u := range utf16.Encode([]rune(text)) {
 		if ret, _, callErr := procPostMessageW.Call(renderWnd, wmChar, uintptr(u), 1); ret == 0 {
 			return fmt.Errorf("PostMessageW WM_CHAR failed: %v", callErr)
 		}
-		time.Sleep(18 * time.Millisecond)
+		if i == 0 {
+			time.Sleep(80 * time.Millisecond)
+		} else {
+			time.Sleep(45 * time.Millisecond)
+		}
 	}
 	return nil
 }

@@ -126,16 +126,37 @@ func RedactSecrets(message string, secrets ...string) string {
 	return out
 }
 
-// MatchEmail checks whether OCR text matches target email strictly (allowing only fullwidth @ or whitespace noise).
-func MatchEmail(ocrText, targetEmail string) bool {
-	norm := func(s string) string {
-		s = strings.TrimSpace(s)
-		s = strings.ReplaceAll(s, " ", "")
-		s = strings.ReplaceAll(s, "＠", "@")
-		return strings.ToLower(s)
-	}
-	got, want := norm(ocrText), norm(targetEmail)
+func normEmail(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "＠", "@")
+	return strings.ToLower(s)
+}
+
+// MatchExactEmail checks whether OCR text matches the full target email without ellipsis truncation.
+func MatchExactEmail(ocrText, targetEmail string) bool {
+	got, want := normEmail(ocrText), normEmail(targetEmail)
 	return got != "" && want != "" && got == want
+}
+
+// MatchEmail checks whether OCR text matches target email strictly, including NetEase's >19-char
+// trailing-ellipsis truncation in stored-account cards (e.g. "lishennanus300@163.c..." for "lishennanus300@163.com").
+func MatchEmail(ocrText, targetEmail string) bool {
+	got, want := normEmail(ocrText), normEmail(targetEmail)
+	if got == "" || want == "" {
+		return false
+	}
+	if got == want {
+		return true
+	}
+	if strings.HasSuffix(got, "..") || strings.HasSuffix(got, "…") {
+		prefix := strings.TrimRight(got, ".…")
+		atIdx := strings.IndexByte(prefix, '@')
+		if len(prefix) >= 15 && atIdx > 0 && atIdx < len(prefix)-1 && strings.HasPrefix(want, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // MatchServer checks whether OCR server text matches target server name.
@@ -435,7 +456,7 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 		if a.clickOCR(ctx, ctrl, img, maa.Rect{420, 350, 440, 170}, "^(同意|同意并继续)$", time.Second) {
 			continue
 		}
-		if !passwordRetried && a.isPasswordPrompt(ctx, img) {
+		if !passwordRetried && (a.isPasswordPrompt(ctx, img) || a.isLoginMethodChooser(ctx, img)) {
 			passwordRetried = true
 			if err := a.passwordFallback(ctx, ctrl, hook, p); err != nil {
 				return err
@@ -458,8 +479,16 @@ func (a *SwitchAccount) selectStoredAccount(ctx *maa.Context, ctrl *maa.Controll
 		if err != nil {
 			return false, false, err
 		}
-		if a.isPasswordPrompt(ctx, img) {
+		// Never blind-click [850, 320, 30, 25] on the 4-tile login-method chooser (where 扫码登录 sits at [658, 314, 224, 62]).
+		if a.isLoginMethodChooser(ctx, img) || a.isPasswordPrompt(ctx, img) {
 			return false, true, nil
+		}
+		// Self-heal if a prior click opened the QR scan subpage: click top-left "<" back arrow to return to 4-tile chooser.
+		if a.findOCRBox(ctx, img, maa.Rect{360, 210, 560, 260}, "二维码|使用.*扫码|扫码登录") != nil &&
+			!a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) {
+			clickRect(ctrl, maa.Rect{355, 225, 36, 36})
+			time.Sleep(800 * time.Millisecond)
+			continue
 		}
 		if a.matchSelectedEmail(ctx, img, p.Email) {
 			return true, false, nil
@@ -532,43 +561,81 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 			return err
 		}
 	}
+	// Handle NetEase 4-tile login-method chooser idempotently so we never uncheck an already-checked agreement box.
+	if a.isLoginMethodChooser(ctx, img) {
+		clickEmailTile := func(frame image.Image) {
+			if !a.clickOCR(ctx, ctrl, frame, maa.Rect{370, 365, 280, 105}, "网易邮箱", 0) {
+				ctrl.PostClick(510, 419).Wait()
+			}
+		}
+		clickEmailTile(img)
+		time.Sleep(800 * time.Millisecond)
+		if img, err = a.snap(ctx, ctrl); err != nil {
+			return err
+		}
+		if a.isLoginMethodChooser(ctx, img) ||
+			a.findOCRBox(ctx, img, maa.Rect{320, 540, 420, 90}, "请先勾选同意") != nil {
+			ctrl.PostClick(464, 544).Wait()
+			time.Sleep(500 * time.Millisecond)
+			if latest, snapErr := a.snap(ctx, ctrl); snapErr == nil {
+				img = latest
+			}
+			clickEmailTile(img)
+			time.Sleep(1000 * time.Millisecond)
+			if img, err = a.snap(ctx, ctrl); err != nil {
+				return err
+			}
+		}
+	}
 	if a.findOCRBox(ctx, img, maa.Rect{380, 240, 520, 240}, "获取验证码|短信") != nil &&
 		a.clickOCR(ctx, ctrl, img, maa.Rect{380, 180, 520, 380}, "密码登录|邮箱登录|网易邮箱", time.Second) {
 		if img, err = a.snap(ctx, ctrl); err != nil {
 			return err
 		}
 	}
-	if !a.matchEmailInROI(ctx, img, maa.Rect{410, 250, 450, 85}, p.Email) {
-		emailField := maa.Rect{520, 285, 220, 36}
-		if box := a.findOCRBox(ctx, img, maa.Rect{410, 245, 450, 90}, "请输入邮箱|邮箱账号|网易邮箱|输入账号|账号"); box != nil {
-			emailField = *box
+
+	emailROI := maa.Rect{380, 225, 510, 70}
+	clearEmailField := func() {
+		ctrl.PostClick(540, 260).Wait()
+		time.Sleep(350 * time.Millisecond)
+		ctrl.PostClick(882, 260).Wait()
+		time.Sleep(350 * time.Millisecond)
+	}
+	if !a.matchExactEmailInROI(ctx, img, emailROI, p.Email) {
+		if a.hasNonPlaceholderEmailText(ctx, img, maa.Rect{380, 225, 475, 70}) {
+			clearEmailField()
 		}
-		clickRect(ctrl, emailField)
-		time.Sleep(500 * time.Millisecond)
-		if err := sendMuMuText(p.MumuIndex, p.AdbPath, p.AdbAddr, p.Email, 32); err != nil {
-			return fmt.Errorf("发送邮箱字符失败: %w", err)
+		for attempt := 0; attempt < 2; attempt++ {
+			ctrl.PostClick(540, 260).Wait()
+			time.Sleep(600 * time.Millisecond)
+			if err := sendMuMuText(p.MumuIndex, p.AdbPath, p.AdbAddr, p.Email); err != nil {
+				return fmt.Errorf("发送邮箱字符失败: %w", err)
+			}
+			time.Sleep(450 * time.Millisecond)
+			if img, err = a.snap(ctx, ctrl); err != nil {
+				return err
+			}
+			if a.matchExactEmailInROI(ctx, img, emailROI, p.Email) {
+				break
+			}
+			if attempt == 0 {
+				a.logf(hook, "info", p.Password, "邮箱输入框校验未命中目标邮箱，点击右侧清空按钮重试输入")
+				clearEmailField()
+			}
 		}
-		time.Sleep(400 * time.Millisecond)
 	}
 
-	if img, err = a.snap(ctx, ctrl); err != nil {
-		return err
-	}
-	pwdField := maa.Rect{520, 350, 220, 36}
-	if box := a.findOCRBox(ctx, img, maa.Rect{410, 315, 450, 95}, "请输入密码|输入密码|密码"); box != nil {
-		pwdField = *box
-	}
-	clickRect(ctrl, pwdField)
-	time.Sleep(500 * time.Millisecond)
-	if err := sendMuMuText(p.MumuIndex, p.AdbPath, p.AdbAddr, p.Password, 24); err != nil {
+	ctrl.PostClick(540, 348).Wait()
+	time.Sleep(600 * time.Millisecond)
+	if err := sendMuMuText(p.MumuIndex, p.AdbPath, p.AdbAddr, p.Password); err != nil {
 		return errors.New(RedactSecrets(fmt.Sprintf("发送登录凭证窗口消息失败: %v", err), p.Password))
 	}
 	time.Sleep(500 * time.Millisecond)
 
 	submitLogin := func(frame image.Image) {
-		if !a.clickTpl(ctx, ctrl, frame, tplAccountLoginBtn, maa.Rect{400, 380, 480, 140}, 0.8, 1500*time.Millisecond) &&
-			!a.clickOCR(ctx, ctrl, frame, maa.Rect{440, 380, 400, 130}, "^登录$|立即登录", 1500*time.Millisecond) {
-			clickRect(ctrl, maa.Rect{535, 420, 240, 60})
+		if !a.clickTpl(ctx, ctrl, frame, tplAccountLoginBtn, maa.Rect{380, 395, 520, 85}, 0.8, 1500*time.Millisecond) &&
+			!a.clickOCR(ctx, ctrl, frame, maa.Rect{380, 395, 520, 85}, "^登录$|立即登录", 1500*time.Millisecond) {
+			ctrl.PostClick(640, 435).Wait()
 			time.Sleep(1500 * time.Millisecond)
 		}
 	}
@@ -584,11 +651,26 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 	if a.clickOCR(ctx, ctrl, postImg, maa.Rect{420, 340, 440, 180}, "^(同意|同意并继续)$", 1500*time.Millisecond) {
 		return nil
 	}
-	if agreeLine := a.findOCRBox(ctx, postImg, maa.Rect{400, 410, 480, 120}, "我已阅读|阅读并同意|服务条款"); agreeLine != nil &&
-		a.isPasswordPrompt(ctx, postImg) {
-		ctrl.PostClick(int32(agreeLine.X()-16), int32(agreeLine.Y()+agreeLine.Height()/2)).Wait()
-		time.Sleep(500 * time.Millisecond)
-		submitLogin(postImg)
+	needAgree := a.findOCRBox(ctx, postImg, maa.Rect{320, 500, 460, 135}, "请先勾选同意") != nil
+	if needAgree || a.isPasswordPrompt(ctx, postImg) {
+		if agreeLine := a.findOCRBox(ctx, postImg, maa.Rect{380, 410, 520, 175}, "我已详细阅读|我已阅读|阅读并同意"); agreeLine != nil {
+			ctrl.PostClick(int32(agreeLine.X()-16), int32(agreeLine.Y()+agreeLine.Height()/2)).Wait()
+			time.Sleep(500 * time.Millisecond)
+			if latest, snapErr := a.snap(ctx, ctrl); snapErr == nil {
+				postImg = latest
+			}
+			submitLogin(postImg)
+		} else if needAgree {
+			ctrl.PostClick(464, 544).Wait()
+			time.Sleep(500 * time.Millisecond)
+			if latest, snapErr := a.snap(ctx, ctrl); snapErr == nil {
+				postImg = latest
+			}
+			submitLogin(postImg)
+		}
+		if finalImg, snapErr := a.snap(ctx, ctrl); snapErr == nil {
+			_ = a.clickOCR(ctx, ctrl, finalImg, maa.Rect{420, 340, 440, 180}, "^(同意|同意并继续)$", 1500*time.Millisecond)
+		}
 	}
 	return nil
 }
@@ -811,8 +893,20 @@ func (a *SwitchAccount) hasNeteaseAccountDialog(ctx *maa.Context, img image.Imag
 	}
 	return a.hasTpl(ctx, img, tplNeteaseLogo, maa.Rect{460, 145, 360, 130}, 0.8) ||
 		a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) ||
+		a.isLoginMethodChooser(ctx, img) ||
 		a.isPasswordPrompt(ctx, img) ||
 		a.findOCRBox(ctx, img, maa.Rect{400, 150, 480, 120}, "网易游戏|网易账号|邮箱账号|账号登录") != nil
+}
+
+func (a *SwitchAccount) isLoginMethodChooser(ctx *maa.Context, img image.Image) bool {
+	if a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) {
+		return false
+	}
+	if a.findOCRBox(ctx, img, maa.Rect{360, 290, 560, 190}, "手机账号|扫码登录|快速游戏") != nil {
+		return true
+	}
+	return a.findOCRBox(ctx, img, maa.Rect{360, 290, 560, 190}, "网易邮箱") != nil &&
+		!a.isPasswordPrompt(ctx, img)
 }
 
 func (a *SwitchAccount) hasTpl(ctx *maa.Context, img image.Image, tpl string, roi maa.Rect, thr float64) bool {
@@ -895,7 +989,7 @@ func (a *SwitchAccount) isPasswordPrompt(ctx *maa.Context, img image.Image) bool
 	if a.hasTpl(ctx, img, tplDropdownClosed, maa.Rect{830, 305, 65, 55}, 0.78) {
 		return false
 	}
-	return a.findOCRBox(ctx, img, maa.Rect{380, 200, 520, 290}, "请输入密码|输入密码|密码登录|请输入邮箱|获取验证码") != nil
+	return a.findOCRBox(ctx, img, maa.Rect{375, 210, 530, 335}, "请输入.*密码|输入.*密码|登录密码|密码登录|请输入.*邮箱|邮箱账号|获取验证码|立即注册|忘记密码") != nil
 }
 
 func (a *SwitchAccount) dismissStartupPopups(ctx *maa.Context, ctrl *maa.Controller, img image.Image) bool {
@@ -1012,6 +1106,26 @@ func (a *SwitchAccount) matchEmailInROI(ctx *maa.Context, img image.Image, roi m
 		if MatchEmail(it.Text, email) {
 			return true
 		}
+	}
+	return false
+}
+
+func (a *SwitchAccount) matchExactEmailInROI(ctx *maa.Context, img image.Image, roi maa.Rect, email string) bool {
+	for _, it := range a.ocrItems(ctx, img, roi) {
+		if MatchExactEmail(it.Text, email) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *SwitchAccount) hasNonPlaceholderEmailText(ctx *maa.Context, img image.Image, roi maa.Rect) bool {
+	for _, it := range a.ocrItems(ctx, img, roi) {
+		txt := strings.TrimSpace(it.Text)
+		if txt == "" || strings.Contains(txt, "请输入") || strings.Contains(txt, "邮箱账号") || strings.Contains(txt, "输入邮箱") {
+			continue
+		}
+		return true
 	}
 	return false
 }

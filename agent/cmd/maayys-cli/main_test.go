@@ -221,6 +221,107 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 			t.Fatal("session-expired popup falsely matched password prompt OCR!")
 		}
 	}
+
+	chooserShot := `D:\projs\game-desk-next\.data\screenshots\d0a724d1-0f75-495c-ad19-0aa918caf010.png`
+	if img, err := loadPNG(chooserShot); err == nil {
+		tilesReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{360, 290, 560, 190}),
+			Expected: []string{"手机账号|扫码登录|快速游戏"},
+		}, img).Wait()
+		tilesDetail, _ := tilesReco.GetDetail()
+		if tilesDetail == nil || len(tilesDetail.NodeDetails) == 0 || tilesDetail.NodeDetails[0].Recognition == nil || !tilesDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 4-tile login chooser in ROI {360, 290, 560, 190}")
+		}
+
+		emailTileReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{370, 365, 280, 105}),
+			Expected: []string{"网易邮箱"},
+		}, img).Wait()
+		emailTileDetail, _ := emailTileReco.GetDetail()
+		if emailTileDetail == nil || len(emailTileDetail.NodeDetails) == 0 || emailTileDetail.NodeDetails[0].Recognition == nil || !emailTileDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 网易邮箱 button in ROI {370, 365, 280, 105}")
+		}
+		eb := emailTileDetail.NodeDetails[0].Recognition.Box
+		cx, cy := eb.X()+eb.Width()/2, eb.Y()+eb.Height()/2
+		if cx < 398 || cx > 622 || cy < 390 || cy > 452 {
+			t.Fatalf("网易邮箱 click center (%d, %d) outside button [398, 390, 224, 62] (box=%v)", cx, cy, eb)
+		}
+
+		tipReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{320, 545, 360, 85}),
+			Expected: []string{"请先勾选同意"},
+		}, img).Wait()
+		tipDetail, _ := tipReco.GetDetail()
+		if tipDetail == nil || len(tipDetail.NodeDetails) == 0 || tipDetail.NodeDetails[0].Recognition == nil || !tipDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 请先勾选同意 tooltip in ROI {320, 545, 360, 85}")
+		}
+
+		agreeReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{380, 410, 520, 175}),
+			Expected: []string{"我已详细阅读|我已阅读|阅读并同意"},
+		}, img).Wait()
+		agreeDetail, _ := agreeReco.GetDetail()
+		if agreeDetail == nil || len(agreeDetail.NodeDetails) == 0 || agreeDetail.NodeDetails[0].Recognition == nil || !agreeDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize 我已详细阅读 in ROI {380, 410, 520, 175}")
+		}
+		ab := agreeDetail.NodeDetails[0].Recognition.Box
+		chkX, chkY := ab.X()-16, ab.Y()+ab.Height()/2
+		if chkX < 450 || chkX > 478 || chkY < 530 || chkY > 560 {
+			t.Fatalf("computed checkbox click (%d, %d) missed [452, 533, 24, 24] (agreeBox=%v)", chkX, chkY, ab)
+		}
+	}
+
+	mailFormShot := `C:\Users\liter\.copilot\session-state\58469ce6-1f77-483d-ba40-c5eb660c2ede\files\netease_mail_form.png`
+	if img, err := loadPNG(mailFormShot); err == nil {
+		pwdReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI:      maa.NewTargetRect(maa.Rect{375, 210, 530, 335}),
+			Expected: []string{"请输入.*密码|输入.*密码|登录密码|密码登录|请输入.*邮箱|邮箱账号|获取验证码|立即注册|忘记密码"},
+		}, img).Wait()
+		pwdDetail, _ := pwdReco.GetDetail()
+		if pwdDetail == nil || len(pwdDetail.NodeDetails) == 0 || pwdDetail.NodeDetails[0].Recognition == nil || !pwdDetail.NodeDetails[0].Recognition.Hit {
+			t.Fatal("failed to recognize NetEase mail form as password prompt")
+		}
+	}
+
+	wmcharShot := `C:\Users\liter\.copilot\session-state\58469ce6-1f77-483d-ba40-c5eb660c2ede\files\wmchar_test3.png`
+	if img, err := loadPNG(wmcharShot); err == nil {
+		emailReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI: maa.NewTargetRect(maa.Rect{380, 225, 510, 70}),
+		}, img).Wait()
+		emailDetail, _ := emailReco.GetDetail()
+		foundTyped := false
+		if emailDetail != nil && len(emailDetail.NodeDetails) > 0 && emailDetail.NodeDetails[0].Recognition != nil && emailDetail.NodeDetails[0].Recognition.Results != nil {
+			for _, item := range emailDetail.NodeDetails[0].Recognition.Results.All {
+				if ocr, ok := item.AsOCR(); ok && switch_account.MatchExactEmail(ocr.Text, "caborder_check_123@163.com") {
+					foundTyped = true
+					break
+				}
+			}
+		}
+		if !foundTyped {
+			t.Fatal("failed to read full typed email inside ROI {380, 225, 510, 70} on wmchar_test3.png")
+		}
+	}
+
+	truncShot := `C:\Users\liter\.copilot\session-state\58469ce6-1f77-483d-ba40-c5eb660c2ede\files\check_mumu5_clean.png`
+	if img, err := loadPNG(truncShot); err == nil {
+		selReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI: maa.NewTargetRect(maa.Rect{460, 280, 370, 50}),
+		}, img).Wait()
+		selDetail, _ := selReco.GetDetail()
+		matchedTrunc := false
+		if selDetail != nil && len(selDetail.NodeDetails) > 0 && selDetail.NodeDetails[0].Recognition != nil && selDetail.NodeDetails[0].Recognition.Results != nil {
+			for _, item := range selDetail.NodeDetails[0].Recognition.Results.All {
+				if ocr, ok := item.AsOCR(); ok && switch_account.MatchEmail(ocr.Text, "lishennanus300@163.com") {
+					matchedTrunc = true
+					break
+				}
+			}
+		}
+		if !matchedTrunc {
+			t.Fatal("failed to match NetEase truncated email lishennanus300@163.c... in stored account ROI {460, 280, 370, 50}")
+		}
+	}
 }
 
 func loadPNG(path string) (image.Image, error) {

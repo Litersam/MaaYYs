@@ -110,7 +110,12 @@ func parseAnyUintptr(v any) (uintptr, bool) {
 	case float64:
 		return uintptr(uint64(max(0, int64(val)))), val > 0
 	case string:
-		u, err := strconv.ParseUint(strings.TrimSpace(val), 0, 64)
+		s := strings.TrimSpace(val)
+		if s == "" {
+			return 0, false
+		}
+		hexStr := strings.TrimPrefix(strings.ToLower(s), "0x")
+		u, err := strconv.ParseUint(hexStr, 16, 64)
 		return uintptr(u), err == nil && u > 0
 	default:
 		return 0, false
