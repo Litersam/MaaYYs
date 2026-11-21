@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unsafe"
 
 	"maa-yys-agent/actions/switch_account"
 
@@ -38,24 +39,165 @@ func TestCatalogLoadsTasksIncludingLogin(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
 		t.Fatalf("unmarshal catalog output: %v", err)
 	}
-	if !out.OK || len(out.Tasks) < 10 {
+	if !out.OK || len(out.Tasks) < 40 {
 		t.Fatalf("unexpected catalog output: ok=%v count=%d", out.OK, len(out.Tasks))
 	}
 
-	want := map[string]string{
-		"账号登录":   "账号登录",
-		"打开游戏":   "启动游戏",
-		"关闭游戏":   "关闭阴阳师",
-		"日常奖励领取": "日常-开始执行日常任务",
+	type wantMeta struct {
+		entry    string
+		category string
+		file     string
 	}
-	got := make(map[string]string, len(out.Tasks))
+	want := map[string]wantMeta{
+		"账号登录":    {"账号登录", "standalone", "tasks/standalone/账号登录.json"},
+		"打开游戏":    {"启动游戏", "daily", "tasks/daily/打开游戏.json"},
+		"关闭游戏":    {"关闭阴阳师", "daily", "tasks/daily/关闭游戏.json"},
+		"日常奖励领取":  {"日常-开始执行日常任务", "daily", "tasks/daily/日常奖励领取.json"},
+		"自动逢魔":    {"开始逢魔-检查时间", "standalone", "tasks/standalone/逢魔.json"},
+		"契灵结契":    {"契灵结契-开始", "standalone", "tasks/standalone/契灵结契.json"},
+		"组队刷本":    {"组队刷本-开局", "standalone", "tasks/standalone/组队刷本.json"},
+		"超鬼王低星清票": {"超鬼王", "promotion", "tasks/promotion/超鬼王.json"},
+	}
+
+	got := make(map[string]CatalogTask, len(out.Tasks))
+	validCategories := map[string]bool{"daily": true, "standalone": true, "promotion": true}
 	for _, item := range out.Tasks {
-		got[item.Name] = item.Entry
-	}
-	for name, entry := range want {
-		if got[name] != entry {
-			t.Errorf("task %q entry = %q, want %q", name, got[name], entry)
+		got[item.Name] = item
+		if !validCategories[item.Category] {
+			t.Errorf("task %q has unexpected category %q (file=%s)", item.Name, item.Category, item.File)
 		}
+		expectedPrefix := "tasks/" + item.Category + "/"
+		if !strings.HasPrefix(item.File, expectedPrefix) {
+			t.Errorf("orphan or miscategorized task %q: file=%q want prefix %q", item.Name, item.File, expectedPrefix)
+		}
+	}
+	for name, w := range want {
+		item, ok := got[name]
+		if !ok {
+			t.Errorf("missing expected task %q in catalog", name)
+			continue
+		}
+		if item.Entry != w.entry || item.Category != w.category || item.File != w.file {
+			t.Errorf("task %q = (entry=%q, category=%q, file=%q), want (%q, %q, %q)",
+				name, item.Entry, item.Category, item.File, w.entry, w.category, w.file)
+		}
+	}
+
+	// Ensure interface.json imports exist on disk and contain no root orphan tasks/*.json paths.
+	ifaceRaw, err := os.ReadFile(filepath.Join(root, "interface.json"))
+	if err != nil {
+		t.Fatalf("read interface.json: %v", err)
+	}
+	var iface struct {
+		Import []string `json:"import"`
+	}
+	if err := json.Unmarshal(ifaceRaw, &iface); err != nil {
+		t.Fatalf("parse interface.json: %v", err)
+	}
+	foundLoginImport := false
+	for _, imp := range iface.Import {
+		if imp == "tasks/standalone/账号登录.json" {
+			foundLoginImport = true
+		}
+		if strings.HasPrefix(imp, "tasks/") && strings.Count(imp, "/") < 2 {
+			t.Errorf("interface.json still imports root orphan task path %q", imp)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(imp))); err != nil {
+			t.Errorf("interface.json import %q missing on disk: %v", imp, err)
+		}
+	}
+	if !foundLoginImport {
+		t.Error("interface.json missing tasks/standalone/账号登录.json import")
+	}
+}
+
+func TestV413NestedOptionsAndBackwardCompatLookup(t *testing.T) {
+	root := testRepoRoot(t)
+	_, byName, err := loadTaskDefinitions(root)
+	if err != nil {
+		t.Fatalf("loadTaskDefinitions failed: %v", err)
+	}
+
+	// Backward-compatible bare task name lookup + category/name lookup.
+	loginBare, ok := lookupTask(byName, "账号登录")
+	if !ok || loginBare.Category != "standalone" {
+		t.Fatalf("bare lookup 账号登录 failed: ok=%v task=%+v", ok, loginBare)
+	}
+	loginQual, ok := lookupTask(byName, "standalone/账号登录")
+	if !ok || loginQual.Name != "账号登录" {
+		t.Fatalf("qualified lookup standalone/账号登录 failed: ok=%v task=%+v", ok, loginQual)
+	}
+	if _, ok := lookupTask(byName, "promotion/账号登录"); ok {
+		t.Fatal("mismatched category lookup promotion/账号登录 should fail")
+	}
+
+	// CLI flag normalization (--catalog / catalog, --check-resources / check-resources).
+	for raw, want := range map[string]string{
+		"catalog":           "catalog",
+		"--catalog":         "catalog",
+		"-catalog":          "catalog",
+		"check-resources":   "check-resources",
+		"--check-resources": "check-resources",
+		"run":               "run",
+		"--run":             "run",
+	} {
+		if got := normalizeSubcommand(raw); got != want {
+			t.Errorf("normalizeSubcommand(%q) = %q, want %q", raw, got, want)
+		}
+	}
+
+	// Nested conditional options in 逢魔.json (SwitchSoul vs SwitchSoulByWeek).
+	fengmo, ok := lookupTask(byName, "自动逢魔")
+	if !ok {
+		t.Fatal("missing 自动逢魔 task")
+	}
+	defOv := resolveTaskOverride(fengmo, nil)
+	presetNode, _ := defOv["现世逢魔_装备式神预设"].(map[string]any)
+	if presetNode["custom_action"] != "SwitchSoul" {
+		t.Fatalf("default 自动逢魔 custom_action = %v, want SwitchSoul", presetNode["custom_action"])
+	}
+
+	weekOv := resolveTaskOverride(fengmo, map[string]any{
+		"逢魔-每日不同分组":    "Yes",
+		"default_group": "逢魔组",
+		"monday_group":  "歌伎组",
+	})
+	weekNode, _ := weekOv["现世逢魔_装备式神预设"].(map[string]any)
+	if weekNode["custom_action"] != "SwitchSoulByWeek" {
+		t.Fatalf("weekly 自动逢魔 custom_action = %v, want SwitchSoulByWeek", weekNode["custom_action"])
+	}
+	weekParam, _ := weekNode["custom_action_param"].(map[string]any)
+	monCfg, _ := weekParam["monday"].(map[string]any)
+	if monCfg["group_name"] != "歌伎组" {
+		t.Fatalf("weekly monday.group_name = %v, want 歌伎组", monCfg["group_name"])
+	}
+
+	disabledOv := resolveTaskOverride(fengmo, map[string]any{
+		"逢魔-切换御魂阵容": false,
+	})
+	if _, exists := disabledOv["现世逢魔_装备式神预设"]; exists {
+		t.Fatalf("disabled 逢魔-切换御魂阵容 should not evaluate nested soul preset option: %+v", disabledOv)
+	}
+
+	// Typed int placeholder coercion & 2-level nested switches in 契灵结契.json.
+	qiling, ok := lookupTask(byName, "契灵结契")
+	if !ok {
+		t.Fatal("missing 契灵结契 task")
+	}
+	qlOv := resolveTaskOverride(qiling, map[string]any{
+		"挑战次数":            25,
+		"契灵结契-自定义点击策略设置": "Yes",
+		"short_max":       15,
+	})
+	cntNode, _ := qlOv["契灵结契-计数"].(map[string]any)
+	cntParam, _ := cntNode["custom_recognition_param"].(map[string]any)
+	if cntParam["target_count"] != 25 {
+		t.Fatalf("target_count = %#v (%T), want int 25", cntParam["target_count"], cntParam["target_count"])
+	}
+	waitNode, _ := qlOv["契灵结契-先等待"].(map[string]any)
+	waitParam, _ := waitNode["custom_action_param"].(map[string]any)
+	if waitParam["short_wait_max"] != 15 {
+		t.Fatalf("short_wait_max = %#v (%T), want int 15", waitParam["short_wait_max"], waitParam["short_wait_max"])
 	}
 }
 
@@ -127,10 +269,21 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 	}
 
 	windows, err := maa.FindDesktopWindows()
-	if err != nil || len(windows) == 0 {
-		t.Skip("no desktop window available for offline Tasker OCR test")
+	var safeHandle unsafe.Pointer
+	for _, w := range windows {
+		sig := strings.ToLower(w.WindowName + " " + w.ClassName)
+		if strings.Contains(sig, "mumu") || strings.Contains(sig, "nemu") {
+			continue
+		}
+		if w.Handle != nil {
+			safeHandle = w.Handle
+			break
+		}
 	}
-	ctrl, err := maa.NewWin32Controller(windows[0].Handle, win32.ScreencapGDI, win32.InputNone, win32.InputNone)
+	if err != nil || safeHandle == nil {
+		t.Skip("no non-emulator desktop window available for offline Tasker OCR test")
+	}
+	ctrl, err := maa.NewWin32Controller(safeHandle, win32.ScreencapGDI, win32.InputNone, win32.InputNone)
 	if err != nil {
 		t.Skipf("Win32 GDI controller unavailable in headless CI: %v", err)
 	}

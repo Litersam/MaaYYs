@@ -7,7 +7,7 @@
             "option": [
                 "账号登录配置"
             ],
-            "group": ["daily", "standalone"],
+            "group": ["standalone"],
             "controller": [
                 "Android"
             ]

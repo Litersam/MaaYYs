@@ -105,13 +105,17 @@ func (w *jsonlWriter) Result(ok, displaced bool, errMsg string, screenshotSaved 
 	}{"result", ok, displaced, errPtr, screenshotSaved})
 }
 
+func normalizeSubcommand(arg string) string {
+	return strings.TrimLeft(strings.ToLower(strings.TrimSpace(arg)), "-")
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: maayys-cli <catalog|run|check-resources>")
+		fmt.Fprintln(os.Stderr, "usage: maayys-cli <catalog|check-resources|run> (or --catalog / --check-resources)")
 		os.Exit(2)
 	}
 	repoRoot := resolveRepoRoot()
-	switch strings.ToLower(strings.TrimSpace(os.Args[1])) {
+	switch normalizeSubcommand(os.Args[1]) {
 	case "catalog":
 		if err := runCatalog(repoRoot, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "catalog error: %v\n", err)
@@ -161,7 +165,7 @@ func runCheckResources(repoRoot string, paths []string) error {
 		return err
 	}
 	defer res.Destroy()
-	for _, n := range []string{"账号登录", "启动游戏", "关闭阴阳师"} {
+	for _, n := range []string{"账号登录", "启动游戏", "关闭阴阳师", "契灵结契-开始", "组队刷本-开局", "开始逢魔-检查时间"} {
 		if _, err := res.GetNodeJSON(n); err != nil {
 			return fmt.Errorf("missing node %q: %w", n, err)
 		}
@@ -277,10 +281,10 @@ func executeStep(tasker *maa.Tasker, res *maa.Resource, tasks map[string]resolve
 		return false, "", errors.New("step.task 不能为空")
 	}
 	entry, override := taskName, make(map[string]any)
-	if def, ok := tasks[taskName]; ok {
+	if def, ok := lookupTask(tasks, taskName); ok {
+		taskName = def.Name
 		entry = def.Entry
-		mergeMap(override, def.BaseOverride)
-		applyOptionParams(override, def, step.Params)
+		mergeMap(override, resolveTaskOverride(def, step.Params))
 	} else if _, err := res.GetNodeJSON(taskName); err != nil {
 		return false, "", fmt.Errorf("未知任务 %q", taskName)
 	}
