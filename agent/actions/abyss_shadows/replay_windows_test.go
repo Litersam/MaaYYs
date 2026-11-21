@@ -4,6 +4,9 @@ package abyss_shadows
 
 import (
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/draw"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 	"unsafe"
 
 	"maa-yys-agent/internal/runstate"
@@ -31,6 +35,10 @@ func (f fixtureRecognition) Run(_ *maa.Context, _ *maa.CustomRecognitionArg) (*m
 type fixtureAction func(*maa.CustomActionArg) bool
 
 func (f fixtureAction) Run(_ *maa.Context, a *maa.CustomActionArg) bool { return f(a) }
+
+type fixtureContextAction func(*maa.Context, *maa.CustomActionArg) bool
+
+func (f fixtureContextAction) Run(ctx *maa.Context, a *maa.CustomActionArg) bool { return f(ctx, a) }
 
 func replayController(t *testing.T) *maa.Controller {
 	t.Helper()
@@ -106,6 +114,46 @@ func TestNativeAbyssReplay(t *testing.T) {
 	if err := tasker.BindController(ctrl); err != nil {
 		t.Fatal(err)
 	}
+	t.Run("map scroll is not a blank or solid color", func(t *testing.T) {
+		const probe = "AbyssMapScrollFixture"
+		const scroll = "狭间暗域-地图卷轴"
+		ivory := image.NewUniform(color.RGBA{198, 178, 127, 255})
+		frame := image.NewRGBA(image.Rect(0, 0, 1280, 720))
+		if err := res.RegisterCustomAction(probe, fixtureContextAction(func(ctx *maa.Context, _ *maa.CustomActionArg) bool {
+			check := func(want bool) bool {
+				d, err := ctx.RunRecognition(scroll, frame)
+				if got := err == nil && d != nil && d.Hit; got != want || err != nil {
+					t.Errorf("map scroll hit = %v, want %v, err = %v", got, want, err)
+					return false
+				}
+				return true
+			}
+			draw.Draw(frame, frame.Bounds(), image.NewUniform(color.RGBA{40, 55, 75, 255}), image.Point{}, draw.Src)
+			if !check(false) {
+				return false
+			}
+			// Two staggered parchment ends, painted without a game asset.
+			for y := 4; y < 37; y++ {
+				x := 1200 + y/4
+				draw.Draw(frame, image.Rect(x, 372+y, x+11, 373+y), ivory, image.Point{}, draw.Src)
+				if y < 30 {
+					draw.Draw(frame, image.Rect(x+28, 372+y, x+42, 373+y), ivory, image.Point{}, draw.Src)
+				}
+			}
+			if !check(true) {
+				return false
+			}
+			draw.Draw(frame, image.Rect(1200, 372, 1250, 416), ivory, image.Point{}, draw.Src)
+			return check(false)
+		})); err != nil {
+			t.Fatal(err)
+		}
+		if !tasker.PostTask(probe, map[string]any{
+			probe: map[string]any{"action": "Custom", "custom_action": probe, "post_delay": 0, "timeout": 500},
+		}).Wait().Success() {
+			t.Fatal("map scroll probe failed")
+		}
+	})
 	data, err := os.ReadFile(filepath.Join(root, "resource_pack", "base", "pipeline", "战斗", "狭间暗域.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -122,6 +170,7 @@ func TestNativeAbyssReplay(t *testing.T) {
 		{"tier priority and caps", "", runstate.Completed},
 		{"failed travel never enters battle", "travel", runstate.Failed},
 		{"missing retreat confirmation is not settlement", "confirm", runstate.Failed},
+		{"natural map return counts once, next unconfirmed retreat cannot count", "map_then_unconfirmed", runstate.Failed},
 		{"missing courtyard confirmation fails", "courtyard", runstate.Failed},
 		{"partial work with unknown tiers fails at courtyard", "unresolved", runstate.Failed},
 		{"authoritative all defeated", "all_defeated", runstate.Skipped},
@@ -149,7 +198,7 @@ func TestNativeAbyssReplay(t *testing.T) {
 				p := edit(name)
 				p["recognition"], p["custom_recognition"] = "Custom", key
 			}
-			act := func(name string, f fixtureAction) {
+			registerAction := func(name string, f maa.CustomActionRunner) {
 				key := tc.name + "/" + name + "/act"
 				if err := res.RegisterCustomAction(key, f); err != nil {
 					t.Fatal(err)
@@ -157,6 +206,7 @@ func TestNativeAbyssReplay(t *testing.T) {
 				p := edit(name)
 				p["action"], p["custom_action"] = "Custom", key
 			}
+			act := func(name string, f fixtureAction) { registerAction(name, f) }
 			stage, region, tries := "field", 0, 0
 			if tc.stopAt == "not_open" {
 				stage = "lobby_not_open"
@@ -249,7 +299,7 @@ func TestNativeAbyssReplay(t *testing.T) {
 			rec("战斗中", on("battle"))
 			rec("结算标识", on("settlement"))
 			for _, name := range []string{"首领限伤", "副将限伤", "精英限伤"} {
-				act(name, func(a *maa.CustomActionArg) bool {
+				registerAction(name, fixtureContextAction(func(ctx *maa.Context, a *maa.CustomActionArg) bool {
 					var p battleParams
 					if err := json.Unmarshal([]byte(a.CustomActionParam), &p); err != nil || budgets[p.Tier] == 0 {
 						t.Errorf("battle parameters: %#v, %v", a, err)
@@ -257,6 +307,18 @@ func TestNativeAbyssReplay(t *testing.T) {
 					}
 					fought = append(fought, p.Tier)
 					switch {
+					case tc.stopAt == "map_then_unconfirmed":
+						stage = "field"
+						if len(fought) == 1 {
+							// The limit entry saw active combat, but the first
+							// fresh frame has already returned with no settlement.
+							return runBattle(ctx, a, time.Second, 10*time.Millisecond)
+						}
+						n, err := ctx.GetHitCount(counterNodes[p.Tier])
+						if err != nil || n != 1 {
+							t.Errorf("after first battle, %s verified count = %d, err = %v", p.Tier, n, err)
+						}
+						return true // A retreat request with the confirmation missing.
 					case tc.stopAt == "confirm":
 					case len(fought) == 1:
 						stage = "settlement"
@@ -264,7 +326,7 @@ func TestNativeAbyssReplay(t *testing.T) {
 						stage = "retreat_confirm"
 					}
 					return true
-				})
+				}))
 			}
 			rec("确认退出战斗", on("retreat_confirm"))
 			act("确认退出战斗", func(*maa.CustomActionArg) bool {
@@ -309,6 +371,32 @@ func TestNativeAbyssReplay(t *testing.T) {
 			case "confirm":
 				if len(fought) != 1 || len(returns) != 0 {
 					t.Fatalf("unconfirmed retreat advanced: %v / %v", fought, returns)
+				}
+			case "map_then_unconfirmed":
+				var first observation
+				raw, _ := out.Metrics["abyss_battle_boss_1"].(json.RawMessage)
+				if err := json.Unmarshal(raw, &first); err != nil || first.Result != naturalMapReturn {
+					t.Fatalf("first result = %s, err = %v", raw, err)
+				}
+				reason, _ := out.Metrics["task_reason"].(json.RawMessage)
+				if string(reason) != `"abyss_battle_unverified"` {
+					t.Fatalf("unconfirmed retreat outcome = %+v", out)
+				}
+				if !slices.Equal(fought, []tier{boss, boss}) || len(returns) != 0 {
+					t.Fatalf("unexpected fights or settlement/retreat clicks: %v / %v", fought, returns)
+				}
+				detail, err := job.GetDetail()
+				if err != nil || detail == nil {
+					t.Fatalf("read replay detail: %v", err)
+				}
+				counted := 0
+				for _, n := range detail.NodeDetails {
+					if n != nil && n.RunCompleted && n.Name == counterNodes[boss] {
+						counted++
+					}
+				}
+				if counted != 1 {
+					t.Fatalf("both map returns produced %d verified counts, want 1", counted)
 				}
 			case "unresolved":
 				reason, _ := out.Metrics["task_reason"].(json.RawMessage)

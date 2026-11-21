@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -228,6 +229,7 @@ func collectReachableOptions(rootOpts []string, opts map[string]rawOptionDef) []
 // resolveTaskOverride evaluates a task's conditional ProjectInterface v2 option tree
 // (including multi-select cases, nested options and typed input placeholders).
 func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]any {
+	params = withLegacyDokanPreset(task.Name, params)
 	merged := make(map[string]any)
 	visited := make(map[string]bool)
 
@@ -286,6 +288,29 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 		mergeMap(merged, task.RawTask.PipelineOverride)
 	}
 	return merged
+}
+
+func withLegacyDokanPreset(task string, params map[string]any) map[string]any {
+	const toggle = "道馆馆主战换御魂"
+	if task != "自动道馆突破" {
+		return params
+	}
+	if _, provided := params[toggle]; provided {
+		return params
+	}
+	legacy, _ := params["道馆阵容预设"].(map[string]any)
+	for _, key := range []string{"group_name", "team_name"} {
+		raw, flat := params[key]
+		if !flat || raw == nil {
+			raw = legacy[key]
+		}
+		if value, ok := raw.(string); ok && strings.TrimSpace(value) != "" {
+			compat := maps.Clone(params)
+			compat[toggle] = "Yes"
+			return compat
+		}
+	}
+	return params
 }
 
 func selectedCheckboxCases(opt rawOptionDef, selected any) []rawCaseDef {

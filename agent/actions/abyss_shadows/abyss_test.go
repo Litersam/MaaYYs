@@ -113,7 +113,7 @@ func TestDamageImageKeepsOnlyConnectedDigitComponents(t *testing.T) {
 	}
 }
 
-func TestMonitorPrioritizesNaturalSettlementAndResetsOnMiss(t *testing.T) {
+func TestMonitorBattleTransitions(t *testing.T) {
 	type frame struct {
 		label  string
 		damage int64
@@ -123,22 +123,38 @@ func TestMonitorPrioritizesNaturalSettlementAndResetsOnMiss(t *testing.T) {
 		frames                  []frame
 		want                    string
 		captures, reads, clicks int
+		activeAtEntry           bool
 	}{
-		{"settlement before OCR", []frame{{"settlement", 99}}, "natural_settlement_seen", 1, 0, 0},
+		{"settlement before OCR", []frame{{"settlement", 99}}, "natural_settlement_seen", 1, 0, 0, false},
 		{"settlement on fresh pre-click frame", []frame{{"battle", 20}, {"battle", 21}, {"settlement", 0}},
-			"natural_settlement_seen", 3, 2, 0},
+			"natural_settlement_seen", 3, 2, 0, false},
 		{"misses and low reads reset the streak", []frame{
 			{"battle", 22}, {"read_miss", 0}, {"battle", 20}, {"battle", 19}, {"capture_miss", 0},
 			{"battle", 22}, {"battle", 21}, {"battle", 0}},
-			"retreat_requested", 8, 6, 1},
+			"retreat_requested", 8, 6, 1, false},
 		{"failed pre-click verification requires two new reads", []frame{
 			{"battle", 20}, {"battle", 21}, {"unknown", 0}, {"battle", 20}, {"settlement", 0}},
-			"natural_settlement_seen", 5, 3, 0},
+			"natural_settlement_seen", 5, 3, 0, false},
+		{"map before any fight is not evidence", []frame{{"map", 0}, {"map", 0}}, "unverified", 3, 0, 0, false},
+		{"low damage then two maps", []frame{{"battle", 1}, {"map", 0}, {"map", 0}}, naturalMapReturn, 3, 1, 0, false},
+		{"map immediately after active entry", []frame{{"map", 0}, {"map", 0}}, naturalMapReturn, 2, 0, 0, true},
+		{"pre-battle map does not count toward the streak", []frame{{"map", 0}, {"battle", 1}, {"map", 0}},
+			"unverified", 4, 1, 0, false},
+		{"unknown, failed capture and active HUD each break the map streak", []frame{
+			{"read_miss", 0}, {"map", 0}, {"unknown", 0}, {"map", 0}, {"capture_miss", 0},
+			{"map", 0}, {"battle_map", 1}, {"map", 0}, {"map", 0}},
+			naturalMapReturn, 9, 2, 0, false},
+		{"pre-click map starts the streak without clicking", []frame{{"battle", 20}, {"battle", 21}, {"map", 0}, {"map", 0}},
+			naturalMapReturn, 4, 2, 0, false},
+		{"retreat request cannot then consume maps", []frame{{"battle", 20}, {"battle", 21}, {"battle", 0}, {"map", 0}, {"map", 0}},
+			"retreat_requested", 3, 2, 1, false},
+		{"failed retreat attempt cannot then consume maps", []frame{{"battle", 20}, {"battle", 21}, {"retreat_failure", 0}, {"map", 0}, {"map", 0}},
+			"retreat_click_failed", 3, 2, 1, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			i, reads, clicks := 0, 0, 0
 			obs := observation{DamageTarget: 20}
-			got := monitorBattle(&obs, time.Second, 0, func() bool { return i >= len(tc.frames)+1 },
+			got := monitorBattle(&obs, tc.activeAtEntry, time.Second, 0, func() bool { return i >= len(tc.frames)+1 },
 				func() image.Image {
 					i++
 					if i > len(tc.frames) || tc.frames[i-1].label == "capture_miss" {
@@ -152,7 +168,8 @@ func TestMonitorPrioritizesNaturalSettlementAndResetsOnMiss(t *testing.T) {
 					}
 					f := tc.frames[img.Bounds().Min.X-1]
 					if (node == settlementNode && f.label == "settlement") ||
-						(node == activeNode && (f.label == "battle" || f.label == "read_miss")) {
+						(node == activeNode && (f.label == "battle" || f.label == "read_miss" || f.label == "battle_map" || f.label == "retreat_failure")) ||
+						(node == mapNode && (f.label == "map" || f.label == "battle_map")) {
 						return &maa.RecognitionDetail{Hit: true}
 					}
 					return nil
@@ -162,7 +179,7 @@ func TestMonitorPrioritizesNaturalSettlementAndResetsOnMiss(t *testing.T) {
 					f := tc.frames[img.Bounds().Min.X-1]
 					return f.damage, f.label != "read_miss"
 				},
-				func(*maa.RecognitionDetail) bool { clicks++; return true })
+				func(*maa.RecognitionDetail) bool { clicks++; return tc.frames[i-1].label != "retreat_failure" })
 			if got != tc.want || i != tc.captures || reads != tc.reads || clicks != tc.clicks {
 				t.Fatalf("result=%s, captures=%d, reads=%d, clicks=%d, obs=%+v", got, i, reads, clicks, obs)
 			}

@@ -138,7 +138,20 @@
         "expected": "^(神[龙龍]|孔雀|白藏主|黑豹)(暗域|领域|領域)$"
     },
     "狭间暗域-战报按钮": {
-        "recognition": "OCR", "roi": [1172, 359, 108, 83], "expected": "^(战报|戰報)$"
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [1172, 359, 108, 83], "expected": "^(战报|戰報)$"},
+            "狭间暗域-地图卷轴"
+        ]
+    },
+    "狭间暗域-地图卷轴": {
+        "recognition": "And", "all_of": [
+            {"recognition": "ColorMatch", "roi": [1234, 383, 15, 20], "method": 40,
+             "lower": [12, 34, 135], "upper": [36, 166, 255], "count": 100},
+            {"recognition": "ColorMatch", "roi": [1205, 396, 16, 13], "method": 40,
+             "lower": [12, 34, 135], "upper": [36, 166, 255], "count": 50},
+            {"recognition": "ColorMatch", "roi": [1235, 405, 14, 6], "method": 6,
+             "lower": [0], "upper": [125], "count": 55}
+        ], "box_index": 0
     },
     "狭间暗域-领域": {
         "recognition": "And", "all_of": ["狭间暗域-领域名称", "狭间暗域-战报按钮"]
@@ -296,7 +309,7 @@
     },
 
     "狭间暗域-战报面板": {
-        "recognition": "OCR", "roi": [292, 128, 240, 88], "expected": "战报|戰報|战况|戰況"
+        "recognition": "OCR", "roi": [292, 128, 240, 88], "expected": "战报|戰報|战况|戰況|^怪物分[布佈]$"
     },
     "狭间暗域-前往按钮": {
         "recognition": "OCR", "roi": [1106, 592, 108, 83], "expected": "^前往$"
@@ -503,6 +516,7 @@
     "狭间暗域-点准备": {
         "recognition": "And", "all_of": ["狭间暗域-准备按钮"],
         "action": "Click", "post_delay": 650,
+        "anchor": {"暗域战后处理": "狭间暗域-处理结算"},
         "next": ["[Anchor]暗域限伤"], "timeout": 10000, "on_error": ["狭间暗域-失败"]
     },
 
@@ -529,17 +543,17 @@
     "狭间暗域-首领限伤": {
         "recognition": "And", "all_of": ["狭间暗域-限伤入口"],
         "action": "Custom", "custom_action": "AbyssDamageGuard", "custom_action_param": {"tier": "boss", "damage_target": 30000000},
-        "next": ["狭间暗域-处理结算", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
+        "next": ["[Anchor]暗域战后处理", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
     },
     "狭间暗域-副将限伤": {
         "recognition": "And", "all_of": ["狭间暗域-限伤入口"],
         "action": "Custom", "custom_action": "AbyssDamageGuard", "custom_action_param": {"tier": "general", "damage_target": 20000000},
-        "next": ["狭间暗域-处理结算", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
+        "next": ["[Anchor]暗域战后处理", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
     },
     "狭间暗域-精英限伤": {
         "recognition": "And", "all_of": ["狭间暗域-限伤入口"],
         "action": "Custom", "custom_action": "AbyssDamageGuard", "custom_action_param": {"tier": "elite", "damage_target": 10000000},
-        "next": ["狭间暗域-处理结算", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
+        "next": ["[Anchor]暗域战后处理", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
     },
     "狭间暗域-确认退出战斗": {
         "recognition": "And", "all_of": [

@@ -22,6 +22,9 @@ func TestNativeBatch2BanquetOutcome(t *testing.T) {
 		}{
 			{"confirmed guild before opening", "guild", false, true, runstate.Deferred, "banquet_not_open"},
 			{"flag recognized on retry", "guild", true, true, runstate.Completed, "banquet_finished_or_xp_capped"},
+			{"direct join first sees 00:00", "join", true, true, runstate.Completed, "banquet_finished_or_xp_capped"},
+			{"starts in expired room", "expired", true, true, runstate.Completed, "banquet_finished_or_xp_capped"},
+			{"expired room but courtyard not verified", "expired", true, false, runstate.Failed, "banquet_courtyard_unconfirmed"},
 			{"served dishes and confirmed end and return", "room", true, true, runstate.Completed, "banquet_finished_or_xp_capped"},
 			{"no terminal sign even after eating", "room", false, true, runstate.Failed, "banquet_end_unconfirmed"},
 			{"end but no courtyard", "room", true, false, runstate.Failed, "banquet_courtyard_unconfirmed"},
@@ -30,19 +33,21 @@ func TestNativeBatch2BanquetOutcome(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				page, meals, flagChecks := tc.page, 0, 0
 				f := newGuildBatch2Replay(t, res, tasker)
-				f.recognize("寮活动-阴阳寮", func() bool { return page == "guild" })
+				f.recognize("寮活动-阴阳寮", func() bool { return page == "guild" || page == "join" })
 				f.recognize("寮活动-庭院", func() bool { return page == "home" })
 				f.recognize("寮活动-返回箭头", func() bool { return true })
-				f.recognize("寮宴会-会场标题", func() bool { return page == "room" })
+				f.recognize("寮宴会-会场标题", func() bool { return page == "room" || page == "expired" })
 				f.recognize("寮宴会-有效倒计时", func() bool { return page == "room" && !(tc.end && meals == 3) })
 				f.recognize("寮宴会-尚可取餐", func() bool { return page == "room" && meals < 3 })
-				f.recognize("寮宴会-完席", func() bool { return page == "room" && tc.end && meals == 3 })
+				f.recognize("寮宴会-结束证据", func() bool { return page == "expired" || (page == "room" && tc.end && meals == 3) })
 				f.recognize("寮宴会-集结旗", func() bool {
 					flagChecks++
 					return tc.end && page == "guild" && flagChecks >= 3
 				})
+				f.recognize("寮宴会-参加按钮", func() bool { return page == "join" })
+				f.act("寮宴会-直接参加", func() { page = "expired" })
 				f.act("寮宴会-进入", func() { page = "room" })
-				for _, node := range []string{"寮宴会-参加按钮", "寮宴会-收下料理奖励", "寮活动-展开庭院菜单", "寮活动-点阴阳寮"} {
+				for _, node := range []string{"寮宴会-收下料理奖励", "寮活动-展开庭院菜单", "寮活动-点阴阳寮"} {
 					f.recognize(node, func() bool { return false })
 				}
 				for _, node := range []string{"寮宴会-取餐左桌", "寮宴会-取餐右侧后桌", "寮宴会-取餐右侧前桌"} {
@@ -54,7 +59,7 @@ func TestNativeBatch2BanquetOutcome(t *testing.T) {
 					}
 				})
 				f.act("寮宴会-退出席位", func() { page = "guild" })
-				f.shorten("寮宴会", "寮宴会-未开放", "寮宴会-在席", "寮宴会-完席", "寮宴会-在寮初检", "寮宴会-在寮复检")
+				f.shorten("寮宴会", "寮宴会-未开放", "寮宴会-在席", "寮宴会-完席归庭", "寮宴会-在寮初检", "寮宴会-在寮复检")
 				f.node("寮宴会-在寮初检")["post_delay"] = 0
 				f.node("寮宴会-在寮复检")["post_delay"] = 0
 				f.run("寮宴会", tc.want, tc.reason)
@@ -119,6 +124,58 @@ func TestNativeBatch2KirinOutcome(t *testing.T) {
 				if attempts > 1 || preparations > 1 || (attempts == 1) != (tc.opponent == "available") ||
 					(preparations == 1) != (tc.result == "lobby" || tc.result == "result") {
 					t.Fatalf("unexpected clicks: %d challenge, %d prepare", attempts, preparations)
+				}
+			})
+		}
+	})
+}
+
+func TestNativeKirinStartsWhilePresetApplies(t *testing.T) {
+	withNativeBattleFixture(t, func(_ string, res *maa.Resource, tasker *maa.Tasker) {
+		for _, presetSucceeds := range []bool{true, false} {
+			name := "preset succeeds before auto-start"
+			if !presetSucceeds {
+				name = "preset failure cannot use the new edge"
+			}
+			t.Run(name, func(t *testing.T) {
+				page := "prep"
+				f := newGuildBatch2Replay(t, res, tasker)
+				f.recognize("麒麟-备战按钮", func() bool { return page == "prep" })
+				f.recognize("出战队伍预设-打开备战预设", func() bool { return page == "prep" })
+				f.recognize("麒麟-战中成绩", func() bool {
+					if page != "battle" {
+						return false
+					}
+					page = "result"
+					return true
+				})
+				f.recognize("麒麟-伤害结算", func() bool { return page == "result" })
+				f.recognize("麒麟-狩猎战大厅", func() bool { return page == "lobby" })
+				f.recognize("麒麟-点击继续", func() bool { return false })
+				f.recognize("寮活动-庭院", func() bool { return page == "home" })
+				f.recognize("寮活动-返回箭头", func() bool { return true })
+				key := t.Name() + "/preset"
+				calls, prepareClicks := 0, 0
+				if err := res.RegisterCustomAction(key, offlineAction(func(*maa.Context, *maa.CustomActionArg) bool {
+					calls++
+					page = "battle"
+					return presetSucceeds
+				})); err != nil {
+					t.Fatal(err)
+				}
+				preset := f.node("麒麟-切换出战阵容")
+				preset["custom_action"], preset["post_delay"] = key, 0
+				f.act("麒麟-点准备", func() { prepareClicks++ })
+				f.act("麒麟-关闭伤害结算", func() { page = "lobby" })
+				f.act("麒麟-退出大厅", func() { page = "home" })
+				f.shorten("麒麟-切换出战阵容", "麒麟-等待战果", "麒麟-战果已见", "麒麟-结算后大厅")
+				if presetSucceeds {
+					f.run("麒麟-切换出战阵容", runstate.Completed, "kirin_result_verified")
+				} else {
+					f.run("麒麟-切换出战阵容", runstate.Failed, "kirin_preset_unconfirmed")
+				}
+				if calls != 1 || prepareClicks != 0 {
+					t.Fatalf("preset calls=%d, prepare clicks=%d", calls, prepareClicks)
 				}
 			})
 		}

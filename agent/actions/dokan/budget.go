@@ -32,6 +32,7 @@ type actionParams struct {
 	Op              string `json:"op"`
 	WaitSeconds     *int   `json:"wait_seconds"`
 	RefreshAttempts *int   `json:"refresh_attempts"`
+	ClickNode       string `json:"click_node"`
 }
 
 type budget struct {
@@ -99,9 +100,11 @@ func (a *BudgetAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	if arg == nil || json.Unmarshal([]byte(arg.CustomActionParam), &p) != nil {
 		return false
 	}
-	now := monotonicNow(a.now)
+	if (p.Op == "enter") != (p.ClickNode != "") {
+		return false
+	}
 	if p.Op == "init" {
-		b, err := newBudget(p, now)
+		b, err := newBudget(p, monotonicNow(a.now))
 		if err != nil {
 			fmt.Println(err)
 			return false
@@ -116,8 +119,15 @@ func (a *BudgetAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		return false
 	}
 	switch p.Op {
+	case "enter":
+		// Recognition can finish before the deadline but dispatch after it.
+		if arg.RecognitionDetail == nil || !b.permits("entry", monotonicNow(a.now)) {
+			return false
+		}
+		detail, err := ctx.RunAction(p.ClickNode, arg.Box, arg.RecognitionDetail.DetailJson)
+		return err == nil && detail != nil && detail.Success
 	case "wait":
-		until := b.waitUntil(now)
+		until := b.waitUntil(monotonicNow(a.now))
 		if !saveBudget(ctx, b) {
 			return false
 		}
@@ -135,7 +145,7 @@ func (a *BudgetAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		}
 		return false
 	case "refresh":
-		return b.refresh(now) && saveBudget(ctx, b)
+		return b.refresh(monotonicNow(a.now)) && saveBudget(ctx, b)
 	default:
 		return false
 	}

@@ -13,11 +13,15 @@ import (
 )
 
 const (
-	sampleInterval = time.Second
-	battleTimeout  = 4 * time.Minute
-	settlementNode = "狭间暗域-结算标识"
-	activeNode     = "狭间暗域-战斗中"
-	retreatNode    = "狭间暗域-退战按钮"
+	sampleInterval  = time.Second
+	battleTimeout   = 4 * time.Minute
+	settlementNode  = "狭间暗域-结算标识"
+	activeNode      = "狭间暗域-战斗中"
+	retreatNode     = "狭间暗域-退战按钮"
+	mapNode         = "狭间暗域-领域"
+	postFightAnchor = "暗域战后处理"
+
+	naturalMapReturn = "natural_map_return_seen"
 )
 
 type Battle struct{}
@@ -51,6 +55,10 @@ func (s *streak) sample(value int64, ok bool) bool {
 }
 
 func (*Battle) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
+	return runBattle(ctx, arg, battleTimeout, sampleInterval)
+}
+
+func runBattle(ctx *maa.Context, arg *maa.CustomActionArg, timeout, interval time.Duration) bool {
 	var p battleParams
 	if arg == nil || json.Unmarshal([]byte(arg.CustomActionParam), &p) != nil || budgets[p.Tier] == 0 || p.DamageTarget <= 0 {
 		return false
@@ -84,30 +92,78 @@ func (*Battle) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		}
 		return nil
 	}
-	obs.Result = monitorBattle(&obs, battleTimeout, sampleInterval, tasker.Stopping, fresh, match,
+	obs.Result = monitorBattle(&obs, sawActiveBattle(arg.RecognitionDetail), timeout, interval, tasker.Stopping, fresh, match,
 		func(img image.Image) (int64, bool) { return readDamage(ctx, img) },
 		func(d *maa.RecognitionDetail) bool {
 			act, err := ctx.RunAction(retreatNode, d.Box, d.DetailJson)
 			return err == nil && act != nil && act.Success
 		})
+	if obs.Result == naturalMapReturn {
+		// The next preparation resets this anchor to settlement handling.
+		return ctx.SetAnchor(postFightAnchor, counterNodes[p.Tier]) == nil
+	}
 	return obs.Result == "natural_settlement_seen" || obs.Result == "retreat_requested"
 }
 
-func monitorBattle(obs *observation, timeout, interval time.Duration, stopping func() bool,
+func sawActiveBattle(d *maa.RecognitionDetail) bool {
+	return d != nil && d.Hit && hasActiveBox(d)
+}
+
+func hasActiveBox(d *maa.RecognitionDetail) bool {
+	// Combined results from the v4 binding record a box, not Hit, on each child.
+	if d == nil || d.Box[2] <= 0 || d.Box[3] <= 0 {
+		return false
+	}
+	if d.Name == activeNode {
+		return true
+	}
+	// The damage guard can start on an active or settlement frame. Only the
+	// active recognition from that frame can seed the map fallback.
+	for _, child := range d.CombinedResult {
+		if hasActiveBox(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func monitorBattle(obs *observation, activeSeen bool, timeout, interval time.Duration, stopping func() bool,
 	fresh func() image.Image, match func(string, image.Image) *maa.RecognitionDetail,
 	read func(image.Image) (int64, bool), retreat func(*maa.RecognitionDetail) bool,
 ) string {
 	s := streak{target: obs.DamageTarget}
+	mapHits := 0
+	checkFrame := func(img image.Image) (string, *maa.RecognitionDetail) {
+		if img != nil {
+			if match(settlementNode, img) != nil {
+				return "natural_settlement_seen", nil
+			}
+			if button := match(activeNode, img); button != nil {
+				activeSeen, mapHits = true, 0
+				return "", button
+			}
+			if activeSeen && match(mapNode, img) != nil {
+				mapHits++
+				if mapHits >= 2 {
+					return naturalMapReturn, nil
+				}
+				return "", nil
+			}
+		}
+		mapHits = 0
+		return "", nil
+	}
 	deadline := time.Now().Add(timeout)
 	for !stopping() && time.Now().Before(deadline) {
 		start := time.Now()
 		img := fresh()
-		if match(settlementNode, img) != nil {
-			return "natural_settlement_seen"
+		result, button := checkFrame(img)
+		if result != "" {
+			return result
 		}
 		var value int64
 		var ok bool
-		if match(activeNode, img) != nil {
+		if button != nil {
 			value, ok = read(img)
 		}
 		obs.Samples++
@@ -117,12 +173,15 @@ func monitorBattle(obs *observation, timeout, interval time.Duration, stopping f
 		}
 		if s.sample(value, ok) {
 			// OCR may finish after settlement appeared. Never click from the OCR frame.
-			img = fresh()
-			if match(settlementNode, img) != nil {
-				return "natural_settlement_seen"
+			start = time.Now()
+			result, button := checkFrame(fresh())
+			if result != "" {
+				return result
 			}
 			// The active matcher returns its first child's box: the verified retreat button.
-			if button := match(activeNode, img); button != nil && !stopping() && time.Now().Before(deadline) {
+			if button != nil && !stopping() && time.Now().Before(deadline) {
+				// End monitoring after any click attempt. A later map cannot
+				// prove natural completion; the graph must see the confirmation or settlement.
 				if retreat(button) {
 					return "retreat_requested"
 				}

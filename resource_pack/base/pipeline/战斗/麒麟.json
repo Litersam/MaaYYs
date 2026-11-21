@@ -139,7 +139,7 @@
         "recognition": "And", "all_of": ["麒麟-备战按钮", "出战队伍预设-打开备战预设"],
         "action": "Custom", "custom_action": "BattleTeam", "max_hit": 1,
         "custom_action_param": {"position": "麒麟", "group_name": "默认分组", "team_name": "默认队伍"},
-        "next": ["麒麟-点准备"],
+        "next": ["麒麟-战败", "麒麟-战果已见", "麒麟-开战中", "麒麟-点准备"],
         "timeout": 5500, "on_error": ["麒麟-预设未确认"]
     },
     "麒麟-不用出战预设": {
