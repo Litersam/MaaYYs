@@ -9,28 +9,44 @@ import (
 type replay struct {
 	page                        string
 	memory, discs, stones       int
+	tier                        discTier
+	emptyMap, emptyRefill       bool
+	warn                        bool
 	board                       bool
 	quantity, debit             int
 	submits, battles, returning int
-	stockReads                  int
+	stockReads, shops, slots    int
 	confirms, courtyard         bool
 	bond, readable, debitRead   bool
 }
 
 func (r *replay) step(node string) stepResult {
 	switch node {
+	case "入口导航":
+		if r.page == "" {
+			r.page = mapPage
+		}
 	case "前置导航", "退出商店", "返回地图":
 		r.page = mapPage
 	case "查看契忆":
+		r.shops++
 		r.page = "在契忆商店"
-	case "寻找可挑战":
+	case "寻找可挑战", "复核手选目标":
 		// After a summon animation the map is shown, not the challenge.
 	case "盘位一":
+		r.slots++
 		r.page = quantityModal
 		if r.board {
 			r.page = ready
 		}
-	case "盘位二", "盘位三", "盘位四":
+	case "盘位二":
+		r.slots++
+		r.page = quantityModal
+		if !r.emptyMap {
+			r.page = ready
+		}
+	case "盘位三", "盘位四":
+		r.slots++
 		r.page = quantityModal
 	case "数量减一":
 		r.quantity--
@@ -52,6 +68,9 @@ func (r *replay) step(node string) stepResult {
 		r.board, r.page = true, mapPage
 		return stepResult{last: node}
 	case "试一场":
+		if r.warn || r.page == lowDiscs {
+			return stepResult{last: lowDiscs}
+		}
 		r.battles++
 		r.board, r.page = false, mapPage
 		return stepResult{last: "结算已返回", bond: r.bond, abandoned: !r.bond}
@@ -71,13 +90,29 @@ func (r *replay) counters(page string, _ ...counter) ([]int, bool) {
 	}
 	switch page {
 	case "在契忆商店":
-		return []int{r.memory, r.discs, 0, 0}, true
+		if r.emptyRefill && r.shops > 1 {
+			return []int{r.memory, 0, 52, 35}, true
+		}
+		return []int{r.memory, r.discs, 52, 35}, true
 	case ready:
-		return []int{1, r.discs, 0, 0}, true
+		if r.board {
+			return []int{1, r.discs}, true
+		}
+		return []int{0, r.discs}, true
 	default:
 		r.stockReads++
 		return []int{r.stones, r.quantity}, true
 	}
+}
+
+func (r *replay) selectedTier() discTier { return r.tier }
+
+func (r *replay) resumeWarning(_ discTier) stepResult {
+	if r.discs == 0 {
+		return stepResult{}
+	}
+	r.page, r.warn = ready, false
+	return r.step("试一场")
 }
 
 func (r *replay) stock(int) (int, bool) {
@@ -99,7 +134,9 @@ func TestBondlingVerifiedOutcome(t *testing.T) {
 		{"zero stones returns home", func(r *replay) { r.stones = 0 }, 2, 0, 0, 0, runstate.Skipped, "no_eligible_board"},
 		{"skip requires courtyard proof", func(r *replay) { r.courtyard = false }, 0, 0, 0, 0, runstate.Failed, "courtyard_unconfirmed"},
 		{"memory limit blocks spending", func(r *replay) { r.memory = 2000 }, 2, 0, 0, 0, runstate.Skipped, "memory_limit"},
-		{"no discs blocks spending", func(r *replay) { r.discs = 0 }, 2, 0, 0, 0, runstate.Skipped, "no_discs"},
+		{"selected tier zero blocks spending despite other balances", func(r *replay) { r.discs = 0 }, 2, 0, 0, 0, runstate.Failed, "selected_discs_insufficient"},
+		{"rechecked tier zero blocks spending", func(r *replay) { r.emptyRefill = true }, 2, 0, 0, 0, runstate.Failed, "selected_discs_insufficient"},
+		{"no evidence for active tier blocks spending", func(r *replay) { r.emptyMap = true }, 2, 0, 0, 0, runstate.Failed, "selected_tier_unconfirmed"},
 		{"unknown inventory is not empty", func(r *replay) { r.readable = false }, 2, 0, 0, 0, runstate.Failed, "inventory_unconfirmed"},
 		{"verified single debits reach run cap", func(r *replay) { r.quantity = 3 }, 2, 2, 2, 2, runstate.Completed, "bonds_verified"},
 		{"missing approval never clicks confirm", func(r *replay) { r.confirms = false }, 4, 0, 0, 0, runstate.Failed, "summon_confirmation_unconfirmed"},
@@ -110,7 +147,7 @@ func TestBondlingVerifiedOutcome(t *testing.T) {
 		{"returns after abandon without fake completion", func(r *replay) { r.board, r.bond = true, false }, 0, 0, 1, 0, runstate.Failed, "no_verified_bonds"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			r := replay{discs: 9, stones: 15, quantity: 1, debit: 1, confirms: true, courtyard: true, bond: true, readable: true, debitRead: true}
+			r := replay{tier: firstTier, discs: 9, stones: 15, quantity: 1, debit: 1, confirms: true, courtyard: true, bond: true, readable: true, debitRead: true}
 			c.edit(&r)
 			f := flow{ui: &r, max: c.budget, attempts: 3}
 			got := f.run()
@@ -128,6 +165,16 @@ func TestBondlingVerifiedOutcome(t *testing.T) {
 				t.Fatalf("skipped without returning to courtyard")
 			}
 		})
+	}
+}
+
+func TestBondlingPreservesManualTarget(t *testing.T) {
+	for _, entry := range []string{ready, lowDiscs} {
+		r := replay{page: entry, tier: firstTier, discs: 9, board: true, bond: true, readable: true}
+		f := flow{ui: &r, max: 5, attempts: 3}
+		if got := f.run(); got.status != runstate.Completed || got.bonds != 1 || r.shops != 0 || r.slots != 0 || r.submits != 0 {
+			t.Fatalf("entry %s: %+v, replay %+v", entry, got, r)
+		}
 	}
 }
 

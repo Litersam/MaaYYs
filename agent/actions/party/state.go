@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"maa-yys-agent/actions/bonus_toggle"
 	"maa-yys-agent/internal/runstate"
@@ -26,11 +27,34 @@ type Config struct {
 
 type state struct {
 	Config
-	Names    []string
-	Selected []string
-	Fights   int
-	End      string
-	InRound  bool
+	Names         []string
+	Selected      []string
+	Fights        int
+	End           string
+	InRound       bool
+	AcceptedPeer  string
+	AcceptedUntil time.Time
+	MemberJoined  bool
+}
+
+func (s state) authorized(now time.Time) bool {
+	return s.Role == "member" && s.AcceptedPeer != "" && (s.MemberJoined || now.Before(s.AcceptedUntil))
+}
+
+func (s *state) clearInvitation() {
+	s.AcceptedPeer = ""
+	s.AcceptedUntil = time.Time{}
+	s.MemberJoined = false
+}
+
+func clearHits(ctx *maa.Context, nodes ...string) bool {
+	for _, node := range nodes {
+		if err := ctx.ClearHitCount(node); err != nil {
+			log.Warn().Err(err).Str("node", node).Msg("无法重置组队节点次数")
+			return false
+		}
+	}
+	return true
 }
 
 func splitNames(input string) ([]string, error) {
@@ -126,9 +150,11 @@ func (*StateAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 			log.Warn().Err(err).Msg("组队参数无效")
 			return runstate.Publish(ctx, runstate.Failed, "party_invalid_parameters")
 		}
-		if s.Role != "manual" {
-			runstate.SetMetric(ctx, "party_battles", 0)
+		if s.Role == "captain" && !clearHits(ctx, "组队管控-打开建房", "组队管控-勾私密甲",
+			"组队管控-勾私密乙", "组队管控-层数向下") {
+			return runstate.Publish(ctx, runstate.Failed, "party_build_room_reset_failed")
 		}
+		runstate.SetMetric(ctx, "party_battles", 0)
 		return save(ctx, s)
 	}
 	s, ok := load(ctx)
@@ -137,8 +163,11 @@ func (*StateAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	}
 	switch p.Op {
 	case "start":
-		if s.Fights >= s.LimitCount {
+		if s.Fights >= s.LimitCount || s.Role == "member" && !s.authorized(time.Now()) {
 			return false
+		}
+		if s.Role == "member" {
+			s.MemberJoined = true
 		}
 		s.InRound = true
 	case "settled":
@@ -153,18 +182,33 @@ func (*StateAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		s.End = "party_invitation_timeout"
 	case "lost":
 		s.End = "party_room_disbanded"
+		s.clearInvitation()
+	case "manual_idle":
+		s.End = "party_manual_member_idle"
+	case "cleanup":
+		s.clearInvitation()
+		if !clearHits(ctx, "组队管控-取消再邀", "组队管控-关闭邀请", "组队管控-退出房间",
+			"组队管控-确认退出房间", "组队管控-恢复关闭面板", "组队管控-恢复返回",
+			"组队管控-恢复快捷返回", "组队管控-恢复结算", "组队管控-恢复关闭结算",
+			"组队管控-恢复点击继续", "组队管控-恢复领取奖励", "组队管控-归位打开面板",
+			"组队管控-恢复打开房间加成") {
+			return runstate.Publish(ctx, runstate.Failed, "party_cleanup_reset_failed")
+		}
 	case "terminal":
 		switch {
-		case s.End == "party_invitation_timeout" || s.End == "party_room_disbanded":
+		case s.End == "party_invitation_timeout" || s.End == "party_room_disbanded" || s.End == "party_manual_member_idle":
 			return runstate.Publish(ctx, runstate.Deferred, s.End)
 		case s.End != "":
 			return runstate.Publish(ctx, runstate.Failed, s.End)
+		case s.Role == "manual" && s.LimitCount > 0 && s.Fights == s.LimitCount:
+			return runstate.Publish(ctx, runstate.Completed, "party_manual_budget_reached")
 		case s.LimitCount > 0 && s.Fights == s.LimitCount && s.Flow != "bond":
 			return runstate.Publish(ctx, runstate.Completed, "party_battle_budget_reached")
 		default:
 			return runstate.Publish(ctx, runstate.Failed, "party_terminal_unconfirmed")
 		}
 	case "cleanup_failure":
+		runstate.SetMetric(ctx, "party_bonus_cleanup_pending", bonus_toggle.OwnsAny(ctx))
 		if s.End != "party_teammate_not_found" {
 			s.End = "party_courtyard_or_bonus_unconfirmed"
 		}
@@ -197,9 +241,13 @@ func (*StateRecognition) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*
 	case "sea":
 		match = s.Dungeon == "eternity_sea"
 	case "zero":
-		match = s.Role != "manual" && s.LimitCount == 0
+		match = s.LimitCount == 0
 	case "done":
 		match = s.LimitCount > 0 && s.Fights == s.LimitCount
+	case "member_authorized":
+		match = s.authorized(time.Now())
+	case "can_settle":
+		match = s.InRound && s.Fights < s.LimitCount
 	case "has_bonus":
 		match = bonus_toggle.OwnsAny(ctx)
 	case "bond_done":

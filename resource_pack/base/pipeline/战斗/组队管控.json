@@ -18,7 +18,7 @@
         "next": ["组队管控-分派"]
     },
     "组队管控-加成入口": {
-        "next": ["组队管控-拨动加成", "[JumpBack]通用加成-打开面板", "[JumpBack]导航-庭院"],
+        "next": ["组队管控-拨动加成", "[JumpBack]通用加成-打开面板"],
         "timeout": 12000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-拨动加成": {
@@ -32,7 +32,7 @@
         "next": ["组队管控-加成已收起"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-加成已收起": {
-        "recognition": "And", "all_of": ["通用加成-确认收起"],
+        "recognition": "And", "all_of": ["通用加成-收起面板"], "inverse": true,
         "next": ["组队管控-分派"]
     },
     "组队管控-分派": {
@@ -68,7 +68,7 @@
         "next": ["组队管控-确认御魂层数"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-确认御魂层数": {
-        "recognition": "OCR", "roi": [896, 100, 269, 84], "expected": ["^(御魂[ ·・]*)?(拾层|十层)$"],
+        "recognition": "OCR", "roi": [896, 100, 269, 84], "expected": ["^(御魂[ ·・]*)?(拾层|十层)$", "^政大跑$"],
         "next": ["组队管控-御魂组队按钮"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-层数向下": {
@@ -145,12 +145,15 @@
         "next": ["组队管控-打开邀请"], "timeout": 10000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-房间": {
-        "recognition": "Or", "any_of": [
-            {"recognition": "OCR", "roi": [82, 8, 247, 75], "expected": ["^协战队伍$"]},
-            {"recognition": "And", "all_of": [
-                {"recognition": "OCR", "roi": [70, 4, 275, 94], "expected": ["^永生之海$"]},
-                {"recognition": "OCR", "roi": [17, 487, 127, 146], "expected": ["^(发言|聊天)$"]}
-            ]}
+        "recognition": "Or", "any_of": ["组队管控-标准房间", "组队管控-永生房间"]
+    },
+    "组队管控-标准房间": {
+        "recognition": "OCR", "roi": [82, 8, 247, 75], "expected": ["^协战队伍$"]
+    },
+    "组队管控-永生房间": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [70, 4, 275, 94], "expected": ["^永生之海$"]},
+            {"recognition": "OCR", "roi": [17, 487, 127, 146], "expected": ["^(发言|聊天)$"]}
         ]
     },
     "组队管控-空位": {
@@ -194,7 +197,7 @@
         "recognition": "And", "all_of": [
             "组队管控-房间",
             "组队管控-满员证据",
-            {"recognition": "Or", "any_of": ["组队管控-挑战文字", "组队管控-挑战模板"]}
+            "组队管控-挑战可用"
         ], "box_index": 2, "action": "Click", "post_delay": 650,
         "next": ["组队管控-开战记账"], "on_error": ["组队管控-失败归庭"]
     },
@@ -202,20 +205,39 @@
         "recognition": "OCR", "roi": [1131, 565, 149, 143], "expected": ["^挑战$"]
     },
     "组队管控-挑战模板": {
-        "recognition": "And", "all_of": ["组队刷本-房主-识别挑战"]
+        "recognition": "TemplateMatch", "roi": [1054, 518, 226, 202],
+        "template": ["战斗/组队副本/组队副本-点击挑战_1.png", "战斗/真蛇/真蛇-点击开始挑战_1.png"]
+    },
+    "组队管控-挑战可用": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph",
+                "custom_recognition_param": {"kind": "challenge_enabled", "box": [1156, 585, 119, 101]}},
+            {"recognition": "Or", "any_of": ["组队管控-挑战模板", "组队管控-挑战文字"]}
+        ], "box_index": 1
     },
     "组队管控-队员路线": {
         "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member"},
-        "next": ["组队管控-庭院等待", "[JumpBack]导航-庭院"], "timeout": 12000, "on_error": ["组队管控-失败归庭"]
+        "next": ["组队管控-庭院等待"], "timeout": 12000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-庭院等待": {
         "recognition": "And", "all_of": ["组队管控-庭院"],
-        "next": ["组队管控-加入房间", "[JumpBack]组队管控-接邀判定", "[JumpBack]通用弹窗-寄养归来-稍后"],
+        "next": ["组队管控-加入房间", "组队管控-队员直接备战", "[JumpBack]组队管控-接邀判定", "[JumpBack]通用弹窗-寄养归来-稍后"],
         "timeout": 90000, "rate_limit": 400, "on_error": ["组队管控-等邀超时"]
     },
     "组队管控-收到邀请": {
-        "recognition": "TemplateMatch", "template": ["组队刷本/邀请-接受_1.png"],
-        "roi": [106, 213, 80, 303], "threshold": 0.83
+        "recognition": "Or", "any_of": ["组队管控-邀请普通接受", "组队管控-邀请默认接受"]
+    },
+    "组队管控-邀请普通接受": {
+        "recognition": "Custom", "custom_recognition": "PartyGlyph",
+        "custom_recognition_param": {"kind": "invite_accept", "box": [106, 213, 80, 303]}
+    },
+    "组队管控-邀请默认接受": {
+        "recognition": "Custom", "custom_recognition": "PartyGlyph",
+        "custom_recognition_param": {"kind": "invite_accept_default", "box": [197, 208, 84, 312]}
+    },
+    "组队管控-邀请拒绝": {
+        "recognition": "TemplateMatch", "template": ["账号登录/gi_i_reject.png"],
+        "roi": [5, 208, 84, 312], "threshold": 0.83
     },
     "组队管控-接邀判定": {
         "recognition": "And", "all_of": ["组队管控-收到邀请"],
@@ -223,7 +245,11 @@
         "post_delay": 550
     },
     "组队管控-加入房间": {
-        "recognition": "And", "all_of": ["组队管控-房间"],
+        "recognition": "And", "all_of": ["组队管控-成员下一局", "组队管控-房间"],
+        "next": ["组队管控-开战记账"]
+    },
+    "组队管控-队员直接备战": {
+        "recognition": "And", "all_of": ["组队管控-成员下一局", "组队管控-准备战斗"],
         "next": ["组队管控-开战记账"]
     },
     "组队管控-开战记账": {
@@ -257,12 +283,13 @@
     },
     "组队管控-战后去向": {
         "next": [
+            "组队管控-预算达标", "组队管控-队员直接备战",
             "[JumpBack]组队管控-默认邀请确定", "[JumpBack]组队管控-默认邀请勾选", "[JumpBack]组队管控-关胜利画面",
             "[JumpBack]组队刷本-房主-点击空白区域继续", "[JumpBack]组队刷本-房主-点击屏幕继续",
             "[JumpBack]组队刷本-房主-点击本次通关时间", "[JumpBack]组队刷本-房主-领取奖励",
             "[JumpBack]组队刷本-房主-获得宝藏", "[JumpBack]组队刷本-房主-点赞", "[JumpBack]组队刷本-识别分享",
-            "组队管控-预算达标", "[JumpBack]组队管控-队员再次接邀", "组队管控-队员房间解散",
-            "组队管控-房间续刷", "组队管控-单人续刷路由"
+            "[JumpBack]组队管控-队员再次接邀", "组队管控-队员房间解散",
+            "组队管控-加入房间", "组队管控-房间续刷", "组队管控-单人续刷路由"
         ], "timeout": 22000, "rate_limit": 350, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-关胜利画面": {
@@ -301,12 +328,14 @@
         "next": ["组队管控-归庭"]
     },
     "组队管控-房间续刷": {
-        "recognition": "And", "all_of": ["组队管控-房间"],
-        "next": ["组队管控-成员下一局", "组队管控-等待满员"]
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "captain"}},
+            "组队管控-房间"
+        ],
+        "next": ["组队管控-等待满员"]
     },
     "组队管控-成员下一局": {
-        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member"},
-        "next": ["组队管控-开战记账"]
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member_authorized"}
     },
     "组队管控-单人续刷路由": {
         "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "solo"},
@@ -338,25 +367,81 @@
         "recognition": "Or", "any_of": ["导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院"]
     },
     "组队管控-归庭": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "cleanup"},
+        "next": ["组队管控-安全归庭"], "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-安全归庭": {
         "next": [
+            "[JumpBack]组队管控-取消再邀", "组队管控-归庭直接关闭加成",
             "[JumpBack]组队管控-确认退出房间", "[JumpBack]组队管控-关闭邀请",
+            "[JumpBack]组队管控-恢复结算", "[JumpBack]组队管控-恢复关闭结算",
+            "[JumpBack]组队管控-恢复点击继续", "[JumpBack]组队管控-恢复领取奖励",
+            "[JumpBack]组队管控-恢复打开房间加成",
             "[JumpBack]组队管控-退出房间", "组队管控-归庭确认",
-            "[JumpBack]导航-庭院"
+            "[JumpBack]组队管控-恢复关闭面板", "[JumpBack]组队管控-恢复快捷返回",
+            "[JumpBack]组队管控-恢复返回"
         ], "timeout": 18000, "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-取消再邀": {
+        "recognition": "And", "all_of": [
+            "组队管控-默认邀请提示",
+            {"recognition": "OCR", "roi": [387, 380, 240, 110], "expected": ["^取消$"]}
+        ], "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 550
+    },
+    "组队管控-恢复结算": {
+        "recognition": "And", "all_of": ["组队管控-胜利标志"],
+        "action": "Click", "target": [523, 643, 312, 64], "max_hit": 2, "post_delay": 600
+    },
+    "组队管控-恢复关闭结算": {
+        "recognition": "And", "all_of": ["组队刷本-房主-点击本次通关时间"],
+        "action": "Click", "target": [608, 641, 201, 79], "max_hit": 2, "post_delay": 500
+    },
+    "组队管控-恢复点击继续": {
+        "recognition": "Or", "any_of": ["组队刷本-房主-点击空白区域继续", "组队刷本-房主-点击屏幕继续"],
+        "action": "Click", "max_hit": 3, "post_delay": 500
+    },
+    "组队管控-恢复领取奖励": {
+        "recognition": "And", "all_of": ["组队刷本-房主-领取奖励"],
+        "action": "Click", "target": [651, 498, 107, 46], "max_hit": 2, "post_delay": 500
+    },
+    "组队管控-恢复关闭面板": {
+        "recognition": "And", "all_of": ["导航-庭院-关闭当前弹窗"],
+        "action": "Click", "max_hit": 3, "post_delay": 550
+    },
+    "组队管控-恢复返回": {
+        "recognition": "And", "all_of": ["导航-庭院-点击返回按钮-模板匹配"],
+        "action": "Click", "max_hit": 4, "post_delay": 650
+    },
+    "组队管控-恢复快捷返回": {
+        "recognition": "And", "all_of": ["导航-庭院-点击快捷返回庭院按钮"],
+        "action": "Click", "max_hit": 2, "post_delay": 650
     },
     "组队管控-关闭邀请": {
         "recognition": "And", "all_of": ["组队管控-邀请确认钮"],
-        "action": "Click", "target": [1008, 77, 49, 45], "post_delay": 500
+        "action": "Click", "target": [1008, 77, 49, 45], "max_hit": 2, "post_delay": 500
     },
     "组队管控-退出房间": {
         "recognition": "And", "all_of": ["组队管控-房间"], "action": "Click",
-        "target": [19, 13, 58, 55], "post_delay": 550
+        "target": [19, 13, 58, 55], "max_hit": 2, "post_delay": 550
     },
     "组队管控-确认退出房间": {
         "recognition": "And", "all_of": [
             {"recognition": "OCR", "roi": [330, 219, 628, 177], "expected": [".*(退出|离开|解散).*(房间|队伍).*", ".*队伍已解散.*"]},
             {"recognition": "OCR", "roi": [544, 360, 367, 162], "expected": ["^(确定|确认|知道了)$"]}
-        ], "box_index": 1, "action": "Click", "post_delay": 600
+        ], "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 600
+    },
+    "组队管控-归庭直接关闭加成": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "has_bonus"}},
+            "通用加成-关闭本轮加成"
+        ],
+        "next": ["组队管控-关闭本轮加成"], "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-恢复打开房间加成": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "has_bonus"}},
+            "通用加成-打开房间面板"
+        ], "box_index": 1, "action": "Click", "post_wait_freezes": 250, "max_hit": 1
     },
     "组队管控-归庭确认": {
         "recognition": "And", "all_of": ["组队管控-庭院"],
@@ -382,8 +467,8 @@
         "next": ["组队管控-收起后归庭"], "timeout": 5000, "on_error": ["组队管控-归庭失败"]
     },
     "组队管控-收起后归庭": {
-        "recognition": "And", "all_of": ["通用加成-确认收起", "组队管控-庭院"],
-        "next": ["组队管控-已归庭"]
+        "recognition": "And", "all_of": ["通用加成-收起面板"], "inverse": true,
+        "next": ["组队管控-安全归庭"]
     },
     "组队管控-已归庭": {
         "next": ["组队管控-同心之兰续领奖", "组队管控-登记终态"]

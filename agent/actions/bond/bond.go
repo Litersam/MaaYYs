@@ -190,6 +190,13 @@ func recognize(ctx *maa.Context, img image.Image, node string, roi *maa.Rect) *m
 	return d
 }
 
+// v5.14.2 ignores a child's pipeline inverse inside And/Or. Negate the
+// positive OCR result on the same frame here, without treating errors as misses.
+func misses(ctx *maa.Context, img image.Image, node string) bool {
+	d, err := ctx.RunRecognition(node, img)
+	return err == nil && d != nil && !d.Hit
+}
+
 func exactName(d *maa.RecognitionDetail, name string) (maa.Rect, bool) {
 	var box maa.Rect
 	n := 0
@@ -212,14 +219,28 @@ func (*Probe) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomR
 	if arg == nil || arg.Img == nil || json.Unmarshal([]byte(arg.CustomRecognitionParam), &p) != nil {
 		return nil, false
 	}
-	s, ok := load(ctx)
-	if !ok {
-		return nil, false
-	}
 	hit := func(box maa.Rect) (*maa.CustomRecognitionResult, bool) {
 		return &maa.CustomRecognitionResult{Box: box}, true
 	}
 	img := arg.Img
+	switch p.Kind {
+	case "courtyard":
+		if misses(ctx, img, "同心之兰-好友页") && misses(ctx, img, "同心之兰-面板标题") {
+			if d, err := ctx.RunRecognition("寮活动-庭院", img); err == nil && d != nil && d.Hit {
+				return hit(d.Box)
+			}
+		}
+		return nil, false
+	case "non_panel":
+		if misses(ctx, img, "同心之兰-面板标题") {
+			return hit(maa.Rect{0, 0, 1, 1})
+		}
+		return nil, false
+	}
+	s, ok := load(ctx)
+	if !ok {
+		return nil, false
+	}
 	switch p.Kind {
 	case "zero", "captain", "member":
 		if p.Kind == "zero" && s.Limit == 0 || p.Kind == s.Role {

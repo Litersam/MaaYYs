@@ -3,69 +3,42 @@
         "focus": {
             "Node.Recognition.Succeeded": "次数达标任务结束！！！"
         },
-        "recognition": "DirectHit",
-        "next": ["组队刷本-旧版归庭"]
+        "recognition": "Custom",
+        "custom_recognition": "PartyState",
+        "custom_recognition_param": {"is": "done"},
+        "next": ["组队管控-归庭"]
     },
     "组队刷本-开局": {
-        "next": ["组队刷本-房主", "组队刷本-队友"],
+        "next": ["组队刷本-手动初始化"],
         "recognition": "DirectHit"
     },
-    "组队刷本-旧版归庭": {
-        "next": ["组队刷本-旧版完成", "[JumpBack]组队管控-确认退出房间", "[JumpBack]组队管控-退出房间", "[JumpBack]导航-庭院"],
-        "timeout": 18000,
-        "on_error": ["组队刷本-旧版归庭失败"]
+    "组队刷本-手动初始化": {
+        "action": "Custom", "custom_action": "PartyStateAction",
+        "custom_action_param": {"role": "manual", "flow": "party", "limit_count": 10},
+        "next": ["组队管控-零场次", "组队刷本-房主", "组队刷本-队友"]
     },
-    "组队刷本-旧版完成": {
-        "recognition": "And", "all_of": ["组队管控-庭院"],
-        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "completed", "reason": "party_manual_budget_reached"}
+    "组队刷本-手动结算": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "can_settle"}},
+            "组队管控-胜利"
+        ],
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "settled"},
+        "next": ["组队刷本-任务结束", "组队刷本-手动离开结算"]
     },
-    "组队刷本-旧版归庭失败": {
-        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "party_courtyard_or_bonus_unconfirmed"}
+    "组队刷本-手动离开结算": {
+        "next": [
+            "[JumpBack]组队管控-关胜利画面", "[JumpBack]组队刷本-房主-点击本次通关时间",
+            "[JumpBack]组队刷本-房主-点击空白区域继续", "组队刷本-手动结算已离开"
+        ],
+        "timeout": 12000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队刷本-手动结算已离开": {
+        "recognition": "And", "all_of": ["组队管控-胜利"], "inverse": true,
+        "next": ["组队刷本-房主", "组队刷本-队友"]
     },
     "组队刷本-房主": {
         "enabled": true,
         "next": ["组队刷本-房主-开局等待"],
-        "recognition": "DirectHit"
-    },
-    "组队刷本-房主-OCR点击挑战": {
-        "action": "Click",
-        "expected": "挑战",
-        "next": ["组队刷本-房主-循环"],
-        "post_delay": 3000,
-        "pre_wait_freezes": 200,
-        "recognition": "OCR",
-        "roi": [925, 552, 355, 168]
-    },
-    "组队刷本-房主-OCR识别挑战": {
-        "expected": "挑战",
-        "next": ["组队刷本-房主-计数", "组队刷本-任务结束"],
-        "post_delay": 3000,
-        "pre_wait_freezes": 200,
-        "recognition": "OCR",
-        "roi": [925, 552, 355, 168]
-    },
-    "组队刷本-房主-关闭加成": {
-        "action": "Custom",
-        "custom_action": "BonusToggleAction",
-        "custom_action_param": {
-            "drop_soul": false
-        },
-        "expected": "觉醒材料|八岐大蛇|御魂材料|战斗胜利",
-        "next": ["组队刷本-房主-关闭加成界面"],
-        "on_error": ["导航-庭院"],
-        "recognition": "OCR",
-        "roi": [414, 109, 357, 361]
-    },
-    "组队刷本-房主-关闭加成界面": {
-        "action": "Click",
-        "next": ["导航-庭院"],
-        "post_delay": 2000,
-        "recognition": "DirectHit",
-        "target": [1032, 239, 78, 255]
-    },
-    "组队刷本-房主-开始关闭加成": {
-        "next": ["组队刷本-房主-关闭加成", "[JumpBack]组队刷本-房主-点击加成"],
-        "on_error": ["导航-庭院"],
         "recognition": "DirectHit"
     },
     "组队刷本-房主-开局等待": {
@@ -79,9 +52,10 @@
         "recognition": "DirectHit"
     },
     "组队刷本-房主-循环": {
-        "next": ["组队刷本-房主-OCR识别挑战", "组队刷本-房主-识别挑战", "[JumpBack]组队刷本-房主-默认邀请-确定", "[JumpBack]组队刷本-房主-点击空白区域继续", "[JumpBack]组队刷本-房主-点击屏幕继续", "[JumpBack]组队刷本-房主-领取奖励", "[JumpBack]组队刷本-房主-获得宝藏", "[JumpBack]组队刷本-房主-点击本次通关时间", "[JumpBack]组队刷本-房主-默认邀请-勾选", "[JumpBack]组队刷本-房主-点击确认", "[JumpBack]组队刷本-房主-点赞", "[JumpBack]组队刷本-识别分享"],
+        "next": ["组队刷本-房主-识别挑战", "[JumpBack]组队刷本-房主-默认邀请-确定", "[JumpBack]组队刷本-房主-点击空白区域继续", "[JumpBack]组队刷本-房主-点击屏幕继续", "[JumpBack]组队刷本-房主-领取奖励", "[JumpBack]组队刷本-房主-获得宝藏", "[JumpBack]组队刷本-房主-点击本次通关时间", "[JumpBack]组队刷本-房主-默认邀请-勾选", "[JumpBack]组队刷本-房主-点击确认", "[JumpBack]组队刷本-房主-点赞", "[JumpBack]组队刷本-识别分享"],
         "recognition": "DirectHit",
-        "timeout": 180000
+        "timeout": 180000,
+        "on_error": ["组队管控-失败归庭"]
     },
     "组队刷本-房主-循环-等待": {
         "action": "Custom",
@@ -90,8 +64,8 @@
             "max": 2,
             "min": 1
         },
-        "next": ["组队刷本-点击挑战", "组队刷本-房主-OCR点击挑战"],
-        "recognition": "DirectHit"
+        "next": ["组队刷本-点击挑战", "组队刷本-房主-循环"],
+        "timeout": 1000, "recognition": "DirectHit"
     },
     "组队刷本-房主-点击加成": {
         "action": "Click",
@@ -145,25 +119,9 @@
         "roi": [420, 160, 496, 150],
         "target": [367, 611, 175, 109]
     },
-    "组队刷本-房主-计数": {
-        "custom_recognition": "TaskCounterRecognition",
-        "custom_recognition_param": {
-            "target_count": 10
-        },
-        "focus": {
-            "Node.Recognition.Succeeded": "次数未达标，继续战斗"
-        },
-        "next": ["组队刷本-房主-循环-等待"],
-        "on_error": ["组队刷本-房主-开始关闭加成"],
-        "recognition": "Custom"
-    },
     "组队刷本-房主-识别挑战": {
-        "next": ["组队刷本-房主-计数", "组队刷本-任务结束"],
-        "post_delay": 3000,
-        "pre_wait_freezes": 200,
-        "recognition": "TemplateMatch",
-        "roi": [1054, 518, 226, 202],
-        "template": ["战斗/组队副本/组队副本-点击挑战_1.png", "战斗/真蛇/真蛇-点击开始挑战_1.png"]
+        "next": ["组队刷本-房主-循环-等待"],
+        "recognition": "And", "all_of": ["组队管控-挑战可用"]
     },
     "组队刷本-房主-领取奖励": {
         "action": "Click",
@@ -193,12 +151,19 @@
     },
     "组队刷本-点击挑战": {
         "action": "Click",
-        "next": ["组队刷本-房主-循环"],
+        "next": ["组队刷本-手动开战记账"],
         "post_delay": 3000,
         "pre_wait_freezes": 200,
-        "recognition": "TemplateMatch",
-        "roi": [1054, 518, 226, 202],
-        "template": ["战斗/组队副本/组队副本-点击挑战_1.png", "战斗/真蛇/真蛇-点击开始挑战_1.png"]
+        "recognition": "And", "all_of": ["组队刷本-房主-识别挑战"]
+    },
+    "组队刷本-手动开战记账": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "start"},
+        "next": ["组队刷本-房主-等待结算"]
+    },
+    "组队刷本-房主-等待结算": {
+        "next": ["组队刷本-手动结算", "组队管控-战败", "[JumpBack]组队管控-准备战斗",
+            "[JumpBack]通用弹窗-御魂溢出-知道了"],
+        "timeout": 180000, "on_error": ["组队管控-失败归庭"]
     },
     "组队刷本-识别分享": {
         "action": "Click",
@@ -209,7 +174,8 @@
     },
     "组队刷本-队友": {
         "enabled": false,
-        "next": ["[JumpBack]组队刷本-队友-点击空白区域继续", "[JumpBack]组队刷本-队友-点击屏幕继续", "[JumpBack]组队刷本-队友-领取奖励", "[JumpBack]组队刷本-队友-获得宝藏", "[JumpBack]组队刷本-队友-点击本次通关时间", "[JumpBack]组队刷本-队友-接受邀请", "[JumpBack]组队刷本-队友-点击确认", "[JumpBack]组队刷本-队友-特殊结算界面点击", "[JumpBack]组队刷本-识别分享", "[JumpBack]组队刷本-房主-点赞"],
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "start"},
+        "next": ["组队刷本-手动结算", "组队管控-战败", "[JumpBack]组队管控-准备战斗", "[JumpBack]组队刷本-队友-点击空白区域继续", "[JumpBack]组队刷本-队友-点击屏幕继续", "[JumpBack]组队刷本-队友-领取奖励", "[JumpBack]组队刷本-队友-获得宝藏", "[JumpBack]组队刷本-队友-点击本次通关时间", "[JumpBack]组队刷本-队友-接受邀请", "[JumpBack]组队刷本-队友-点击确认", "[JumpBack]组队刷本-队友-特殊结算界面点击", "[JumpBack]组队刷本-识别分享", "[JumpBack]组队刷本-房主-点赞"],
         "on_error": ["组队刷本-队友-结束"],
         "recognition": "DirectHit",
         "timeout": 120000
@@ -261,8 +227,9 @@
     },
     "组队刷本-队友-结束": {
         "action": "Custom",
-        "custom_action": "TaskOutcome",
-        "custom_action_param": {"status": "deferred", "reason": "party_manual_member_idle"}
+        "custom_action": "PartyStateAction",
+        "custom_action_param": {"op": "manual_idle"},
+        "next": ["组队管控-归庭"]
     },
     "组队刷本-队友-获得宝藏": {
         "action": "Click",

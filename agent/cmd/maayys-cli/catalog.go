@@ -268,6 +268,9 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 			case "input":
 				if opt.PipelineOverride != nil && task.Name != "账号登录" {
 					vals := resolveInputValues(opt, optName, params)
+					if task.Name == "契灵结契" && optName == "契灵结契-设置挑战次数" {
+						resolveBondlingLimit(vals, params, optName)
+					}
 					if expanded, ok := substitutePlaceholders(opt.PipelineOverride, vals).(map[string]any); ok {
 						mergeMap(merged, expanded)
 					}
@@ -289,6 +292,38 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 		mergeMap(merged, task.RawTask.PipelineOverride)
 	}
 	return merged
+}
+
+func resolveBondlingLimit(vals map[string]typedInputValue, params map[string]any, optName string) {
+	const legacy = "挑战次数"
+	nested, _ := params[optName].(map[string]any)
+	limit, valid, provided := 0, false, false
+	for _, input := range []struct {
+		source map[string]any
+		key    string
+	}{{params, "limit_count"}, {params, legacy}, {nested, legacy}} {
+		raw, exists := input.source[input.key]
+		if !exists {
+			continue
+		}
+		provided = true
+		text := strings.TrimSpace(fmt.Sprint(raw))
+		if number, ok := raw.(float64); ok {
+			text = strconv.FormatFloat(number, 'f', -1, 64)
+		}
+		n, err := strconv.Atoi(text)
+		if err == nil && n >= 0 && (!valid || n < limit) {
+			limit, valid = n, true
+		}
+	}
+	if provided {
+		// Ignore malformed siblings of a valid limit; never fall back to the
+		// default when the caller supplied only invalid limits.
+		if !valid {
+			limit = -1
+		}
+		vals[legacy] = typedInputValue{strconv.Itoa(limit), "int"}
+	}
 }
 
 // PI v2 imports merge options in a shared namespace. Keep distinct MXU IDs

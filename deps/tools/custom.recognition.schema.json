@@ -65,7 +65,7 @@
         "custom_recognition_param": {
           "type": "object",
           "properties": {
-            "kind": { "enum": ["zero", "row", "header", "ready", "captain", "member", "expand", "accept", "active"] },
+            "kind": { "enum": ["zero", "row", "header", "ready", "captain", "member", "expand", "accept", "active", "courtyard", "non_panel"] },
             "target": { "enum": [10, 20] }
           },
           "required": ["kind"],

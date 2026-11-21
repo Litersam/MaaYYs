@@ -179,7 +179,8 @@ func (*CreateAndInvite) Run(ctx *maa.Context, _ *maa.CustomActionArg) bool {
 	return save(ctx, s)
 }
 
-func allowedSender(items []maa.OCRResult, allow []string) bool {
+func invitationSender(items []maa.OCRResult, allow []string) string {
+	var sender string
 	for _, item := range items {
 		text := strings.TrimSpace(item.Text)
 		for _, suffix := range []string{"邀请你加入队伍", "邀请您加入队伍", "邀请你组队", "邀请您组队", "邀请你", "邀请您"} {
@@ -189,15 +190,18 @@ func allowedSender(items []maa.OCRResult, allow []string) bool {
 			}
 		}
 		if slices.Contains(allow, text) {
-			return true
+			if sender != "" && sender != text {
+				return ""
+			}
+			sender = text
 		}
 	}
-	return false
+	return sender
 }
 
 func (*WaitAndAccept) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	s, ok := load(ctx)
-	if !ok || s.Role != "member" || arg == nil || arg.Box.Width() == 0 {
+	if !ok || s.Role != "member" || s.Fights >= s.LimitCount || arg == nil || arg.Box.Width() == 0 {
 		return false
 	}
 	u := inviteUI{ctx}
@@ -206,16 +210,29 @@ func (*WaitAndAccept) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	if box == nil {
 		return true // The card may have been withdrawn between callbacks.
 	}
-	y := box.Y()
-	items := vision.OCRItems(ctx, img, maa.Rect{10, max(0, y-105), 302, 105})
-	if !allowedSender(items, s.Names) {
-		return u.click(maa.Rect{12, y, 64, box.Height()})
+	items := vision.OCRItems(ctx, img, maa.Rect{10, max(0, box.Y()-105), 302, 105})
+	sender := invitationSender(items, s.Names)
+	button := "组队管控-邀请拒绝"
+	if sender != "" {
+		button = "组队管控-邀请普通接受"
+		if s.AutoAccept {
+			button = "组队管控-邀请默认接受"
+		}
 	}
-	if s.AutoAccept {
-		// It is the third button in the same per-player card, not a global rule.
-		return u.click(maa.Rect{205, y, 61, box.Height()})
+	target := u.hit(button, img)
+	if target == nil || target.Y() < box.Y()-18 || target.Y() > box.Y()+18 {
+		return true // Never click an unverified column or an adjacent card.
 	}
-	return u.click(*box)
+	if !u.click(*target) {
+		return false
+	}
+	if sender == "" {
+		return true
+	}
+	s.AcceptedPeer = sender
+	s.AcceptedUntil = time.Now().Add(12 * time.Second)
+	s.MemberJoined = false
+	return save(ctx, s)
 }
 
 type GlyphRecognition struct{}
@@ -239,6 +256,12 @@ func (*GlyphRecognition) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*
 		match = colorFraction(arg.Img, box, func(r, g, b int) bool { return r < 106 && g < 80 && b < 72 && r > g+7 }) > .26
 	case "default_on":
 		match = colorFraction(arg.Img, box, func(r, g, b int) bool { return r >= 195 && g >= 176 && b >= 144 && r > g }) > .38
+	case "challenge_enabled":
+		match = colorFraction(arg.Img, box, func(r, g, b int) bool {
+			return r > 155 && r > g+15 && g > b+14 && r > b+45
+		}) > .025
+	case "invite_accept", "invite_accept_default":
+		box, match = findInviteAccept(arg.Img, box, p.Kind == "invite_accept_default")
 	case "empty":
 		box, match = findPlus(arg.Img, box)
 	case "full":
@@ -246,7 +269,15 @@ func (*GlyphRecognition) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*
 		if !ok || s.Role != "captain" {
 			return nil, false
 		}
-		match = fullRoom(arg.Img, s)
+		u := inviteUI{ctx}
+		regular := u.hit("组队管控-标准房间", arg.Img) != nil
+		sea := u.hit("组队管控-永生房间", arg.Img) != nil
+		switch {
+		case regular && !sea && s.Dungeon != "eternity_sea":
+			match = seatsOccupied(arg.Img, middleRoomSlot, rightRoomSlot)
+		case sea && !regular && s.Dungeon == "eternity_sea":
+			match = seatsOccupied(arg.Img, seaRoomSlot)
+		}
 	}
 	if !match {
 		return nil, false
@@ -274,7 +305,7 @@ func colorFraction(img image.Image, roi maa.Rect, pred func(r, g, b int) bool) f
 	return float64(n) / float64(b.Dx()*b.Dy())
 }
 
-var soloRoomSlot = maa.Rect{970, 151, 193, 220}
+var rightRoomSlot = maa.Rect{970, 151, 193, 220}
 var middleRoomSlot = maa.Rect{569, 196, 186, 161}
 var seaRoomSlot = maa.Rect{836, 231, 100, 100}
 
@@ -296,13 +327,7 @@ func findPlus(img image.Image, roi maa.Rect) (maa.Rect, bool) {
 	return maa.Rect{}, false
 }
 
-func fullRoom(img image.Image, s state) bool {
-	slots := []maa.Rect{soloRoomSlot}
-	if s.Dungeon == "eternity_sea" {
-		slots[0] = seaRoomSlot
-	} else if len(s.Names) == 2 {
-		slots = append(slots, middleRoomSlot)
-	}
+func seatsOccupied(img image.Image, slots ...maa.Rect) bool {
 	for _, slot := range slots {
 		if _, empty := findPlus(img, slot); empty {
 			return false
@@ -312,5 +337,5 @@ func fullRoom(img image.Image, s state) bool {
 			return false
 		}
 	}
-	return len(s.Names) > 0
+	return len(slots) > 0
 }
