@@ -3,17 +3,39 @@
         {
             "name": "契灵结契",
             "label": "契灵结契",
-            "description": "在需要结契的契灵的挑战界面开始,在需要结契的副本直接开始,手动装备御魂以及锁定阵容,手动设置自动结契设置",
+            "description": "可从庭院、探索地图或契灵之境开始。检查契忆（达到2000时停止）和式盘后，在当前地域优先结契已有契灵。默认不消耗鸣契石。请事先装备御魂、锁定阵容并设置自动结契。",
             "entry": "契灵结契-开始",
             "group": ["standalone"],
             "option": [
                 "契灵结契-设置挑战次数",
                 "契灵结契-设置爬塔开始的按钮",
-                "契灵结契-启用等待时间"
+                "契灵结契-启用等待时间",
+                "契灵结契-鸣契石上限"
             ]
         }
     ],
     "option": {
+        "契灵结契-鸣契石上限": {
+            "type": "input",
+            "label": "鸣契石消耗上限",
+            "description": "整次任务允许消耗的鸣契石数量，0仅结契已有契灵。只在无可用的已有契灵时逐只召唤。",
+            "inputs": [
+                {
+                    "name": "max_summon_stones",
+                    "label": "鸣契石消耗上限",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^[0-9]+$"
+                }
+            ],
+            "pipeline_override": {
+                "契灵结契-开始": {
+                    "custom_action_param": {
+                        "max_summon_stones": "{max_summon_stones}"
+                    }
+                }
+            }
+        },
         "契灵结契-设置挑战次数": {
             "type": "input",
             "label": "挑战次数",
@@ -50,13 +72,13 @@
             ],
             "pipeline_override": {
                 "契灵结契-开始战斗": {
-                    "expected": "挑战|准备"
+                    "expected": "{开始的文字}"
                 },
                 "契灵结契-点击挑战": {
-                    "expected": "挑战|准备"
+                    "expected": "{开始的文字}"
                 },
                 "契灵结契-识别是否返回挑战界面": {
-                    "expected": "挑战|准备"
+                    "expected": "{开始的文字}"
                 }
             }
         },

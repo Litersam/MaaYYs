@@ -5,98 +5,114 @@
       "label": "组队刷本",
       "entry": "组队刷本-开局",
       "group": ["standalone"],
-      "description": "### 使用前提\n\n先在游戏里组好队并停在**组队界面**，脚本从下一把开始接管；拉人交给游戏自带的默认邀请。\n\n### 流程\n\n- **房主**：点挑战 → 打完领奖 → 勾选默认邀请并确定 → 循环\n- **房客**：接受邀请 → 进房 → 打完领奖 → 等待下次邀请\n\n### 结束条件\n\n- 房主：达到「挑战次数」后关闭御魂加成并返回庭院\n- 房客：连续 **2 分钟**没有可操作内容则自动结束",
-      "option": [
-        "组队刷本-组队身份",
-        "组队刷本-开局随机等待时间",
-        "组队刷本-挑战次数"
-      ]
+      "description": "手动模式兼容原房主/房客流程。自动模式从庭院出发，队长建私密房并定向邀请，队员只接白名单邀请；完成指定场次后归庭。",
+      "option": ["组队刷本-party_role"]
     }
   ],
   "option": {
+    "组队刷本-party_role": {
+      "type": "select",
+      "label": "组队模式",
+      "default_case": "manual",
+      "cases": [
+        {"name": "manual", "label": "手动（已在房间）", "option": ["组队刷本-组队身份", "组队刷本-开局随机等待时间", "组队刷本-挑战次数"]},
+        {"name": "captain", "label": "自动队长", "option": ["组队刷本-队友昵称", "dungeon", "组队刷本-管控次数", "组队刷本-加成"],
+          "pipeline_override": {
+            "组队刷本-开局": {"next": ["组队管控-开局"]},
+            "组队管控-初始化": {"custom_action_param": {"flow": "party", "role": "captain"}}
+          }
+        },
+        {"name": "member", "label": "自动队员", "option": ["组队刷本-队长白名单", "组队刷本-管控次数", "组队刷本-加成", "auto_accept"],
+          "pipeline_override": {
+            "组队刷本-开局": {"next": ["组队管控-开局"]},
+            "组队管控-初始化": {"custom_action_param": {"flow": "party", "role": "member"}}
+          }
+        }
+      ]
+    },
+    "组队刷本-队友昵称": {
+      "type": "input", "label": "队友昵称（逗号分隔）",
+      "inputs": [{"name": "teammate_names", "label": "队友昵称", "description": "填写 1–2 个准确的游戏昵称；永生之海仅填 1 个", "default": "", "pipeline_type": "string"}],
+      "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"teammate_names": "{teammate_names}"}}}
+    },
+    "组队刷本-队长白名单": {
+      "type": "input", "label": "队长白名单（逗号分隔）",
+      "inputs": [{"name": "captain_names", "label": "队长昵称", "default": "", "pipeline_type": "string"}],
+      "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"captain_names": "{captain_names}"}}}
+    },
+    "组队刷本-管控次数": {
+      "type": "input", "label": "挑战场次",
+      "inputs": [{"name": "limit_count", "label": "目标胜利场次（0 跳过）", "default": "10", "pipeline_type": "int"}],
+      "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"limit_count": "{limit_count}"}}}
+    },
+    "dungeon": {
+      "type": "select", "label": "组队副本", "default_case": "soul_10",
+      "cases": [
+        {"name": "soul_10", "label": "八岐大蛇·拾层"},
+        {"name": "soul_11", "label": "巫女大蛇·悲鸣", "pipeline_override": {
+          "组队管控-初始化": {"custom_action_param": {"dungeon": "soul_11"}},
+          "组队管控-选择御魂层数": {"expected": ["^悲鸣$"]},
+          "组队管控-确认御魂层数": {"expected": ["^(巫女大蛇[·・])?悲鸣$"]}
+        }},
+        {"name": "soul_12", "label": "大蛇神·神罚", "pipeline_override": {
+          "组队管控-初始化": {"custom_action_param": {"dungeon": "soul_12"}},
+          "组队管控-选择御魂层数": {"expected": ["^神罚$"]},
+          "组队管控-确认御魂层数": {"expected": ["^(大蛇神[·・])?神罚$"]}
+        }},
+        {"name": "eternity_sea", "label": "永生之海", "option": ["组队刷本-dungeon_layer"], "pipeline_override": {
+          "组队管控-初始化": {"custom_action_param": {"dungeon": "eternity_sea"}},
+          "组队管控-御魂入口": {"next": ["组队管控-进入永生之海", "[JumpBack]导航-御魂"]}
+        }}
+      ]
+    },
+    "组队刷本-dungeon_layer": {
+      "type": "select", "label": "永生之海层数", "default_case": "4",
+      "cases": [
+        {"name": "1", "label": "壹", "pipeline_override": {"组队管控-选择永生层": {"expected": ["^壹(层)?$"]}, "组队管控-确认永生层": {"expected": ["^(永生之海[·・]?)?壹(层)?$"]}}},
+        {"name": "2", "label": "贰", "pipeline_override": {"组队管控-选择永生层": {"expected": ["^贰(层)?$"]}, "组队管控-确认永生层": {"expected": ["^(永生之海[·・]?)?贰(层)?$"]}}},
+        {"name": "3", "label": "叁", "pipeline_override": {"组队管控-选择永生层": {"expected": ["^叁(层)?$"]}, "组队管控-确认永生层": {"expected": ["^(永生之海[·・]?)?叁(层)?$"]}}},
+        {"name": "4", "label": "肆"}
+      ]
+    },
+    "组队刷本-加成": {
+      "type": "select", "label": "掉落加成", "default_case": "off",
+      "cases": [
+        {"name": "off", "label": "保持原状"},
+        {"name": "soul", "label": "开启御魂掉落", "pipeline_override": {
+          "组队管控-开启加成": {"next": ["组队管控-加成入口"]},
+          "组队管控-拨动加成": {"custom_action_param": {"drop_soul": true}}
+        }}
+      ]
+    },
+    "auto_accept": {
+      "type": "select", "label": "默认接邀", "default_case": "off",
+      "cases": [
+        {"name": "off", "label": "单次接邀（每次核对白名单）"},
+        {"name": "on", "label": "仅对白名单队长默认接邀", "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"auto_accept": true}}}}
+      ]
+    },
     "组队刷本-组队身份": {
       "type": "select",
       "label": "组队身份",
-      "description": "选择本机在队伍中的身份：\n\n- **房主** 发起挑战，负责点挑战、领奖、默认邀请\n- **房客** 接受邀请，负责进房、领奖、等待下次邀请\n\n两者流程互斥，只会执行所选身份的分支",
       "default_case": "房主",
       "cases": [
-        {
-          "name": "房主",
-          "label": "房主",
-          "description": "点挑战 → 打完领奖 → 勾选默认邀请并确定 → 循环，达到次数后关闭御魂加成并返回庭院",
-          "pipeline_override": {
-            "组队刷本-房主": {
-              "enabled": true
-            },
-            "组队刷本-队友": {
-              "enabled": false
-            }
-          }
-        },
-        {
-          "name": "房客",
-          "label": "房客",
-          "description": "接受邀请 → 进房 → 打完领奖 → 等待下次邀请，连续 **2 分钟**没有可操作内容则自动结束",
-          "pipeline_override": {
-            "组队刷本-房主": {
-              "enabled": false
-            },
-            "组队刷本-队友": {
-              "enabled": true
-            }
-          }
-        }
+        {"name": "房主", "label": "房主", "pipeline_override": {"组队刷本-房主": {"enabled": true}, "组队刷本-队友": {"enabled": false}}},
+        {"name": "房客", "label": "房客", "pipeline_override": {"组队刷本-房主": {"enabled": false}, "组队刷本-队友": {"enabled": true}}}
       ]
     },
     "组队刷本-开局随机等待时间": {
       "type": "input",
       "label": "开局随机等待时间",
-      "description": "房主启动任务后随机等待一段时间再点挑战，给队友进房留出时间\n\n- 建议不超过 **3 秒**\n- 最短与最长时间填反了也能正常使用",
       "inputs": [
-        {
-          "name": "最短时间",
-          "label": "最短时间（秒）",
-          "description": "填写随机等待的最短时间（秒）",
-          "default": "1",
-          "pipeline_type": "string"
-        },
-        {
-          "name": "最长时间",
-          "label": "最长时间（秒）",
-          "description": "填写随机等待的最长时间（秒）",
-          "default": "3",
-          "pipeline_type": "string"
-        }
+        {"name": "最短时间", "label": "最短时间（秒）", "default": "1", "pipeline_type": "string"},
+        {"name": "最长时间", "label": "最长时间（秒）", "default": "3", "pipeline_type": "string"}
       ],
-      "pipeline_override": {
-        "组队刷本-房主-开局等待": {
-          "custom_action_param": {
-            "max": "{最长时间}",
-            "min": "{最短时间}"
-          }
-        }
-      }
+      "pipeline_override": {"组队刷本-房主-开局等待": {"custom_action_param": {"max": "{最长时间}", "min": "{最短时间}"}}}
     },
     "组队刷本-挑战次数": {
-      "type": "input",
-      "label": "挑战次数",
-      "description": "房主达到设定次数后自动关闭御魂加成并返回庭院\n\n- 仅**房主**身份生效，房客身份下无效\n- 每完成一轮挑战累加一次",
-      "inputs": [
-        {
-          "name": "挑战次数",
-          "label": "挑战次数",
-          "description": "填写需要挑战的次数",
-          "default": "10",
-          "pipeline_type": "int"
-        }
-      ],
-      "pipeline_override": {
-        "组队刷本-房主-计数": {
-          "custom_recognition_param": {
-            "target_count": "{挑战次数}"
-          }
-        }
-      }
+      "type": "input", "label": "挑战次数",
+      "inputs": [{"name": "挑战次数", "label": "挑战次数", "default": "10", "pipeline_type": "int"}],
+      "pipeline_override": {"组队刷本-房主-计数": {"custom_recognition_param": {"target_count": "{挑战次数}"}}}
     }
   }
 }

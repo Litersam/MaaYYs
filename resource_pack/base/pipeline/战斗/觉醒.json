@@ -1,0 +1,138 @@
+{
+    "觉醒": {
+        "recognition": "DirectHit",
+        "next": ["组队管控-开局"]
+    },
+    "觉醒-御魂准备": {
+        "next": ["觉醒-切换御魂", "[JumpBack]导航-式神录", "[JumpBack]导航-庭院"],
+        "timeout": 18000,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-切换御魂": {
+        "recognition": "And",
+        "all_of": ["导航-式神录-识别是否位于式神录"],
+        "action": "Custom",
+        "custom_action": "SwitchSoul",
+        "custom_action_param": {"group_name": "默认分组", "team_name": "默认队伍"},
+        "next": ["觉醒-换装后归庭"]
+    },
+    "觉醒-换装后归庭": {
+        "next": ["觉醒-换装后确认庭院", "[JumpBack]导航-庭院"],
+        "timeout": 16000,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-换装后确认庭院": {
+        "recognition": "And",
+        "all_of": ["组队管控-庭院"],
+        "next": ["组队管控-开启加成"]
+    },
+    "觉醒-选层入口": {
+        "next": ["觉醒-火麒麟", "[JumpBack]导航-觉醒材料"],
+        "timeout": 16000,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-火麒麟": {
+        "recognition": "And",
+        "all_of": [
+            "导航-觉醒之塔-识别是否位于觉醒之塔",
+            {"recognition": "ColorMatch", "roi": [193, 194, 38, 32], "lower": [185, 75, 54], "upper": [255, 151, 132], "count": 170}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 650,
+        "next": ["觉醒-搜索层标签"],
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-风麒麟": {
+        "recognition": "And",
+        "all_of": [
+            "导航-觉醒之塔-识别是否位于觉醒之塔",
+            {"recognition": "ColorMatch", "roi": [519, 224, 32, 38], "lower": [3, 88, 57], "upper": [100, 186, 147], "count": 170}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 650,
+        "next": ["觉醒-搜索层标签"],
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-水麒麟": {
+        "recognition": "And",
+        "all_of": [
+            "导航-觉醒之塔-识别是否位于觉醒之塔",
+            {"recognition": "ColorMatch", "roi": [821, 333, 32, 38], "lower": [12, 135, 196], "upper": [85, 225, 255], "count": 120}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 650,
+        "next": ["觉醒-搜索层标签"],
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-雷麒麟": {
+        "recognition": "And",
+        "all_of": [
+            "导航-觉醒之塔-识别是否位于觉醒之塔",
+            {"recognition": "ColorMatch", "roi": [1122, 290, 27, 37], "lower": [68, 46, 122], "upper": [182, 127, 211], "count": 100}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 650,
+        "next": ["觉醒-搜索层标签"],
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-搜索层标签": {
+        "next": ["觉醒-选择目标层", "[JumpBack]觉醒-层列表向下", "[JumpBack]觉醒-层列表向上"],
+        "timeout": 10000,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-目标层标签": {
+        "recognition": "OCR", "roi": [124, 84, 77, 632], "expected": ["^(拾|十)层?$"]
+    },
+    "觉醒-选择目标层": {
+        "recognition": "And",
+        "all_of": ["觉醒-组队文字", "觉醒-目标层标签"],
+        "box_index": 1, "action": "Click", "post_delay": 600,
+        "next": ["觉醒-分派"],
+        "timeout": 6500,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-层列表向下": {
+        "recognition": "And", "all_of": ["觉醒-组队文字"],
+        "action": "Swipe", "begin": [161, 625], "end": [161, 166], "duration": 450,
+        "post_delay": 350, "max_hit": 2
+    },
+    "觉醒-层列表向上": {
+        "recognition": "And", "all_of": ["觉醒-组队文字"],
+        "action": "Swipe", "begin": [161, 166], "end": [161, 625], "duration": 450,
+        "post_delay": 350, "max_hit": 2
+    },
+    "觉醒-当前层标题": {
+        "recognition": "OCR", "roi": [650, 70, 584, 205], "expected": ["^(拾|十)层$"]
+    },
+    "觉醒-组队文字": {
+        "recognition": "OCR", "roi": [916, 572, 156, 130], "expected": ["^组队$"]
+    },
+    "觉醒-挑战文字": {
+        "recognition": "OCR", "roi": [1127, 568, 131, 124], "expected": ["^挑战$"]
+    },
+    "觉醒-分派": {
+        "recognition": "And", "all_of": ["觉醒-组队文字", "觉醒-当前层标题"],
+        "next": ["觉醒-单人分支", "觉醒-组队按钮"],
+        "timeout": 6500,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-单人分支": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "solo"},
+        "next": ["觉醒-单人续刷"],
+        "timeout": 6500,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-单人续刷": {
+        "recognition": "And", "all_of": ["觉醒-组队文字", "觉醒-当前层标题", "觉醒-挑战文字"],
+        "box_index": 2, "action": "Click", "post_delay": 650,
+        "next": ["组队管控-开战记账"],
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "觉醒-组队按钮": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "captain"}},
+            "觉醒-当前层标题",
+            "觉醒-组队文字"
+        ],
+        "box_index": 2, "action": "Click", "post_delay": 650,
+        "next": ["组队管控-建房设置"],
+        "on_error": ["组队管控-失败归庭"]
+    }
+}

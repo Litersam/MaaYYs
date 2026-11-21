@@ -42,6 +42,8 @@ For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` sepa
 
 `狭间暗域`, `自动道馆突破`, `寮三十捐材料`, `寮宴会`, and `自动麒麟` also require explicit task outcomes. Use `TaskOutcome` only after verifying the corresponding business terminal; a successful native `StopTask` from navigation or recovery cannot complete these tasks.
 
+`组队刷本`, `觉醒`, `同心之兰`, and `契灵结契` require explicit outcomes as well. For automatic parties, pass `party_role: "captain"` with `teammate_names`, or `"member"` with `captain_names`. Both name fields are comma-separated strings of exact in-game nicknames, not JSON arrays. The captain provides one or two nicknames (one for 永生之海 and 同心之兰). `组队刷本` defaults to `manual` and keeps its legacy 房主/房客 options; `觉醒` defaults to `solo`. `limit_count` sets the managed battle budget. `契灵结契` defaults to `max_summon_stones: 0` and reports `bondling_stones_spent` and `bondling_verified_bonds`. Native offline replays do not establish end-to-end compatibility with a current game client's visual layout.
+
 ## `maayys-cli.exe` Headless Subprocess Protocol
 Build and verify offline from `agent/`:
 ```powershell

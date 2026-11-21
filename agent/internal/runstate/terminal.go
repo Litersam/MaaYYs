@@ -19,9 +19,14 @@ func (*TerminalAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		SetMetric(ctx, "task_reason", "invalid_task_outcome")
 		return false
 	}
-	Report(ctx, p.Status)
-	if p.Reason != "" {
-		SetMetric(ctx, "task_reason", p.Reason)
+	return Publish(ctx, p.Status, p.Reason)
+}
+
+// Publish is also used by tasks whose terminal depends on task-local evidence.
+func Publish(ctx *maa.Context, status Status, reason string) bool {
+	Report(ctx, status)
+	if reason != "" {
+		SetMetric(ctx, "task_reason", reason)
 	}
-	return p.Status != Failed
+	return status != Failed
 }

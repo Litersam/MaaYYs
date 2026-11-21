@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -86,10 +87,10 @@ func runCheckResources(repoRoot string, paths []string) error {
 	}
 	defer res.Destroy()
 	nodes := []string{
-		"账号登录", "启动游戏", "关闭阴阳师", "契灵结契-开始", "组队刷本-开局", "开始逢魔-检查时间",
+		"账号登录", "启动游戏", "关闭阴阳师", "开始逢魔-检查时间",
 		"好友寄养", "结界挂卡", "结界收菜", "自动结界", "寮突", "通用加成-归位", "装备御魂",
 	}
-	for _, name := range guildActivityTasks {
+	for _, name := range slices.Concat(guildActivityTasks, partyActivityTasks) {
 		task, ok := tasks[name]
 		if !ok {
 			return fmt.Errorf("missing catalog task %q", name)

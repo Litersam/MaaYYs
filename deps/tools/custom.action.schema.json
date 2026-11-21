@@ -45,7 +45,12 @@
         "TaskOutcome",
         "AbyssDamageGuard",
         "DokanBudget",
-        "GuildDonation"
+        "GuildDonation",
+        "PartyCreateAndInvite",
+        "PartyWaitAndAccept",
+        "PartyStateAction",
+        "BondControl",
+        "BondlingRun"
       ]
     }
   },
@@ -89,10 +94,71 @@
       { "$ref": "#/$defs/TaskOutcome" },
       { "$ref": "#/$defs/AbyssDamageGuard" },
       { "$ref": "#/$defs/DokanBudget" },
-      { "$ref": "#/$defs/GuildDonation" }
+      { "$ref": "#/$defs/GuildDonation" },
+      { "$ref": "#/$defs/PartyCreateAndInvite" },
+      { "$ref": "#/$defs/PartyWaitAndAccept" },
+      { "$ref": "#/$defs/PartyStateAction" },
+      { "$ref": "#/$defs/BondControl" },
+      { "$ref": "#/$defs/BondlingRun" }
     ]
   },
   "$defs": {
+    "BondControl": {
+      "properties": {
+        "custom_action": { "const": "BondControl" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "op": { "enum": ["prepare", "party"] },
+            "role": { "enum": ["captain", "member"] },
+            "teammate_names": { "type": "string" },
+            "captain_names": { "type": "string" },
+            "limit_count": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "BondlingRun": {
+      "properties": {
+        "custom_action": { "const": "BondlingRun" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": { "max_summon_stones": { "type": "integer", "minimum": 0 } },
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "PartyCreateAndInvite": {
+      "properties": { "custom_action": { "const": "PartyCreateAndInvite" } },
+      "required": ["custom_action"]
+    },
+    "PartyWaitAndAccept": {
+      "properties": { "custom_action": { "const": "PartyWaitAndAccept" } },
+      "required": ["custom_action"]
+    },
+    "PartyStateAction": {
+      "properties": {
+        "custom_action": { "const": "PartyStateAction" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "op": { "enum": ["init", "start", "settled", "failed", "invite_timeout", "lost", "terminal", "cleanup_failure"] },
+            "role": { "enum": ["manual", "solo", "captain", "member"] },
+            "flow": { "enum": ["party", "awake", "bond"] },
+            "dungeon": { "enum": ["soul_10", "soul_11", "soul_12", "eternity_sea"] },
+            "teammate_names": { "type": "string" },
+            "captain_names": { "type": "string" },
+            "limit_count": { "type": "integer", "minimum": 0 },
+            "auto_accept": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
     "AbyssDamageGuard": {
       "properties": {
         "custom_action": { "const": "AbyssDamageGuard" },

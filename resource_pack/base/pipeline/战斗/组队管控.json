@@ -1,0 +1,401 @@
+{
+    "组队管控-开局": {
+        "next": ["组队管控-初始化"]
+    },
+    "组队管控-初始化": {
+        "action": "Custom", "custom_action": "PartyStateAction",
+        "custom_action_param": {"role": "captain", "flow": "party", "limit_count": 10},
+        "next": ["组队管控-零场次", "组队管控-准备"]
+    },
+    "组队管控-零场次": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "zero"},
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "skipped", "reason": "party_zero_count"}
+    },
+    "组队管控-准备": {
+        "next": ["组队管控-开启加成"]
+    },
+    "组队管控-开启加成": {
+        "next": ["组队管控-分派"]
+    },
+    "组队管控-加成入口": {
+        "next": ["组队管控-拨动加成", "[JumpBack]通用加成-打开面板", "[JumpBack]导航-庭院"],
+        "timeout": 12000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-拨动加成": {
+        "recognition": "And", "all_of": ["通用加成-关闭本轮加成"],
+        "action": "Custom", "custom_action": "BonusToggleAction", "custom_action_param": {},
+        "next": ["组队管控-收起加成"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-收起加成": {
+        "recognition": "And", "all_of": ["通用加成-收起面板"],
+        "action": "Click", "target": [1032, 239, 78, 255],
+        "next": ["组队管控-加成已收起"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-加成已收起": {
+        "recognition": "And", "all_of": ["通用加成-确认收起"],
+        "next": ["组队管控-分派"]
+    },
+    "组队管控-分派": {
+        "next": ["组队管控-队员路线", "组队管控-队长路线"]
+    },
+    "组队管控-队长路线": {
+        "next": ["组队管控-觉醒路线", "组队管控-御魂入口"]
+    },
+    "组队管控-觉醒路线": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "awake"},
+        "next": ["觉醒-选层入口"]
+    },
+    "组队管控-御魂入口": {
+        "next": ["组队管控-御魂分类", "[JumpBack]导航-御魂"], "timeout": 16000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-御魂分类": {
+        "recognition": "And", "all_of": [
+            "导航-御魂-识别是否位于御魂界面",
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [55, 104, 295, 406], "expected": ["^八岐大蛇$"]},
+                {"recognition": "OCR", "roi": [0, 86, 94, 634], "expected": ["^八岐大蛇$"]}
+            ]}
+        ], "box_index": 1, "action": "Click", "post_delay": 600,
+        "next": ["组队管控-找御魂层数"], "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-找御魂层数": {
+        "next": ["组队管控-选择御魂层数", "[JumpBack]组队管控-层数向下"],
+        "timeout": 12000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-选择御魂层数": {
+        "recognition": "OCR", "roi": [108, 100, 136, 597], "expected": ["^(拾层|十层)$"],
+        "action": "Click", "post_delay": 600,
+        "next": ["组队管控-确认御魂层数"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-确认御魂层数": {
+        "recognition": "OCR", "roi": [896, 100, 269, 84], "expected": ["^(御魂[ ·・]*)?(拾层|十层)$"],
+        "next": ["组队管控-御魂组队按钮"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-层数向下": {
+        "action": "Swipe", "begin": [155, 593], "end": [155, 219], "duration": 450,
+        "post_delay": 400, "max_hit": 6
+    },
+    "组队管控-御魂组队按钮": {
+        "recognition": "OCR", "roi": [922, 565, 162, 135], "expected": ["^组队$"],
+        "action": "Click", "post_delay": 500,
+        "next": ["组队管控-建房设置"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-进入永生之海": {
+        "recognition": "And", "all_of": [
+            "导航-御魂-识别是否位于御魂界面",
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [1002, 78, 233, 353], "expected": ["^永生之海$"]},
+                {"recognition": "OCR", "roi": [0, 86, 94, 634], "expected": ["^永生之海$"]}
+            ]}
+        ], "box_index": 1, "action": "Click", "post_delay": 650,
+        "next": ["组队管控-选择永生层"], "timeout": 9500, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-选择永生层": {
+        "recognition": "OCR", "roi": [122, 99, 83, 600], "expected": ["^肆(层)?$"],
+        "action": "Click", "post_delay": 600,
+        "next": ["组队管控-确认永生层"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-确认永生层": {
+        "recognition": "OCR", "roi": [875, 97, 299, 97], "expected": ["^(永生之海[·・]?)?肆(层)?$"],
+        "next": ["组队管控-御魂组队按钮"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-建房设置": {
+        "next": ["组队管控-选私密", "[JumpBack]组队管控-打开建房"],
+        "timeout": 9000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-打开建房": {
+        "recognition": "OCR", "roi": [396, 569, 813, 100], "expected": ["^创建队伍$"],
+        "action": "Click", "post_delay": 500, "max_hit": 1
+    },
+    "组队管控-隐私文字甲": {
+        "recognition": "OCR", "roi": [779, 474, 141, 63], "expected": ["^(不公开|仅好友可见|仅邀请)$"]
+    },
+    "组队管控-隐私文字乙": {
+        "recognition": "OCR", "roi": [434, 391, 235, 70], "expected": ["^(不公开|仅好友可见|仅邀请)$"]
+    },
+    "组队管控-选私密": {
+        "recognition": "Or", "any_of": ["组队管控-隐私文字甲", "组队管控-隐私文字乙"],
+        "next": ["组队管控-创建私密甲", "组队管控-创建私密乙", "[JumpBack]组队管控-勾私密甲", "[JumpBack]组队管控-勾私密乙"],
+        "timeout": 6000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-勾私密甲": {
+        "recognition": "And",
+        "all_of": ["组队管控-隐私文字甲", {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "private_unchecked", "box": [747, 489, 37, 40]}}],
+        "box_index": 1, "action": "Click", "post_delay": 400, "max_hit": 1
+    },
+    "组队管控-勾私密乙": {
+        "recognition": "And",
+        "all_of": ["组队管控-隐私文字乙", {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "private_unchecked", "box": [400, 408, 36, 38]}}],
+        "box_index": 1, "action": "Click", "post_delay": 400, "max_hit": 1
+    },
+    "组队管控-创建私密甲": {
+        "recognition": "And", "all_of": [
+            "组队管控-隐私文字甲",
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "private_checked", "box": [748, 489, 36, 40]}},
+            {"recognition": "OCR", "roi": [790, 544, 194, 88], "expected": ["^(创建|确定|确认)$"]}
+        ], "box_index": 2, "action": "Click", "post_delay": 600,
+        "next": ["组队管控-打开邀请"], "timeout": 10000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-创建私密乙": {
+        "recognition": "And", "all_of": [
+            "组队管控-隐私文字乙",
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "private_checked", "box": [401, 409, 34, 40]}},
+            {"recognition": "OCR", "roi": [505, 475, 220, 83], "expected": ["^(创建|确定|确认)$"]}
+        ], "box_index": 2, "action": "Click", "post_delay": 600,
+        "next": ["组队管控-打开邀请"], "timeout": 10000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-房间": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [82, 8, 247, 75], "expected": ["^协战队伍$"]},
+            {"recognition": "And", "all_of": [
+                {"recognition": "OCR", "roi": [70, 4, 275, 94], "expected": ["^永生之海$"]},
+                {"recognition": "OCR", "roi": [17, 487, 127, 146], "expected": ["^(发言|聊天)$"]}
+            ]}
+        ]
+    },
+    "组队管控-空位": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "empty", "box": [970, 151, 193, 220]}},
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "empty", "box": [569, 196, 186, 161]}},
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "empty", "box": [836, 231, 100, 100]}}
+        ]
+    },
+    "组队管控-打开邀请": {
+        "recognition": "And", "all_of": ["组队管控-房间", "组队管控-空位"], "box_index": 1,
+        "action": "Click", "post_delay": 650, "next": ["组队管控-定向勾选"], "timeout": 8000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-邀请确认钮": {
+        "recognition": "OCR", "roi": [473, 505, 409, 121], "expected": ["^(邀请|确定邀请)$"]
+    },
+    "组队管控-定向勾选": {
+        "recognition": "And", "all_of": ["组队管控-邀请确认钮"],
+        "action": "Custom", "custom_action": "PartyCreateAndInvite", "custom_action_param": {},
+        "next": ["组队管控-发送邀请", "组队管控-缺搭档"], "timeout": 2500, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-发送邀请": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "selected"}},
+            "组队管控-邀请确认钮"
+        ], "box_index": 1, "action": "Click", "post_delay": 500,
+        "next": ["组队管控-等待满员"]
+    },
+    "组队管控-缺搭档": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "missing"},
+        "next": ["组队管控-归庭"]
+    },
+    "组队管控-点识别框": {"action": "Click"},
+    "组队管控-等待满员": {
+        "next": ["组队管控-队长开战"], "timeout": 35000, "rate_limit": 400, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-满员证据": {
+        "recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "full", "box": [1170, 580, 97, 110]}
+    },
+    "组队管控-队长开战": {
+        "recognition": "And", "all_of": [
+            "组队管控-房间",
+            "组队管控-满员证据",
+            {"recognition": "Or", "any_of": ["组队管控-挑战文字", "组队管控-挑战模板"]}
+        ], "box_index": 2, "action": "Click", "post_delay": 650,
+        "next": ["组队管控-开战记账"], "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-挑战文字": {
+        "recognition": "OCR", "roi": [1131, 565, 149, 143], "expected": ["^挑战$"]
+    },
+    "组队管控-挑战模板": {
+        "recognition": "And", "all_of": ["组队刷本-房主-识别挑战"]
+    },
+    "组队管控-队员路线": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member"},
+        "next": ["组队管控-庭院等待", "[JumpBack]导航-庭院"], "timeout": 12000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-庭院等待": {
+        "recognition": "And", "all_of": ["组队管控-庭院"],
+        "next": ["组队管控-加入房间", "[JumpBack]组队管控-接邀判定", "[JumpBack]通用弹窗-寄养归来-稍后"],
+        "timeout": 90000, "rate_limit": 400, "on_error": ["组队管控-等邀超时"]
+    },
+    "组队管控-收到邀请": {
+        "recognition": "TemplateMatch", "template": ["组队刷本/邀请-接受_1.png"],
+        "roi": [106, 213, 80, 303], "threshold": 0.83
+    },
+    "组队管控-接邀判定": {
+        "recognition": "And", "all_of": ["组队管控-收到邀请"],
+        "action": "Custom", "custom_action": "PartyWaitAndAccept", "custom_action_param": {},
+        "post_delay": 550
+    },
+    "组队管控-加入房间": {
+        "recognition": "And", "all_of": ["组队管控-房间"],
+        "next": ["组队管控-开战记账"]
+    },
+    "组队管控-开战记账": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "start"},
+        "next": ["组队管控-战斗等待"]
+    },
+    "组队管控-战斗等待": {
+        "next": ["组队管控-胜利", "组队管控-战败", "组队管控-队员房间解散",
+            "[JumpBack]组队管控-准备战斗", "[JumpBack]通用弹窗-御魂溢出-知道了"],
+        "timeout": 180000, "rate_limit": 400, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-准备战斗": {
+        "recognition": "OCR", "roi": [1116, 535, 137, 94], "expected": ["^准备$"],
+        "action": "Click", "post_delay": 850
+    },
+    "组队管控-胜利标志": {
+        "recognition": "OCR", "roi": [286, 24, 438, 246], "expected": ["^(战斗)?胜利$", "^挑战成功$"]
+    },
+    "组队管控-胜利": {
+        "recognition": "Or", "any_of": [
+            "组队管控-胜利标志",
+            {"recognition": "OCR", "roi": [518, 543, 186, 114], "expected": ["^本次通关时间$"]}
+        ],
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "settled"},
+        "next": ["组队管控-战后去向"]
+    },
+    "组队管控-战败": {
+        "recognition": "OCR", "roi": [286, 24, 438, 246], "expected": ["^(战斗)?失败$", "^挑战失败$"],
+        "action": "Click", "target": [608, 641, 201, 79], "post_delay": 450,
+        "next": ["组队管控-失败归庭"]
+    },
+    "组队管控-战后去向": {
+        "next": [
+            "[JumpBack]组队管控-默认邀请确定", "[JumpBack]组队管控-默认邀请勾选", "[JumpBack]组队管控-关胜利画面",
+            "[JumpBack]组队刷本-房主-点击空白区域继续", "[JumpBack]组队刷本-房主-点击屏幕继续",
+            "[JumpBack]组队刷本-房主-点击本次通关时间", "[JumpBack]组队刷本-房主-领取奖励",
+            "[JumpBack]组队刷本-房主-获得宝藏", "[JumpBack]组队刷本-房主-点赞", "[JumpBack]组队刷本-识别分享",
+            "组队管控-预算达标", "[JumpBack]组队管控-队员再次接邀", "组队管控-队员房间解散",
+            "组队管控-房间续刷", "组队管控-单人续刷路由"
+        ], "timeout": 22000, "rate_limit": 350, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-关胜利画面": {
+        "recognition": "And", "all_of": ["组队管控-胜利标志"],
+        "action": "Click", "target": [523, 643, 312, 64], "post_delay": 600
+    },
+    "组队管控-默认邀请提示": {
+        "recognition": "OCR", "roi": [408, 232, 486, 158], "expected": [".*默认邀请.*", ".*邀请.*队友.*"]
+    },
+    "组队管控-默认邀请勾选": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "captain"}},
+            "组队管控-默认邀请提示",
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "default_off", "box": [545, 343, 33, 36]}}
+        ], "box_index": 2, "action": "Click", "post_delay": 300,
+        "next": ["组队管控-默认邀请确定"], "timeout": 4000,
+        "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-默认邀请确定": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "captain"}},
+            "组队管控-默认邀请提示",
+            {"recognition": "Custom", "custom_recognition": "PartyGlyph", "custom_recognition_param": {"kind": "default_on", "box": [564, 341, 40, 38]}},
+            {"recognition": "OCR", "roi": [640, 380, 240, 100], "expected": ["^(确定|确认)$"]}
+        ], "box_index": 3, "action": "Click", "post_delay": 800
+    },
+    "组队管控-队员再次接邀": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member"}},
+            "组队管控-收到邀请"
+        ], "box_index": 1, "action": "Custom", "custom_action": "PartyWaitAndAccept", "custom_action_param": {},
+        "post_delay": 550
+    },
+    "组队管控-预算达标": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "done"},
+        "next": ["组队管控-归庭"]
+    },
+    "组队管控-房间续刷": {
+        "recognition": "And", "all_of": ["组队管控-房间"],
+        "next": ["组队管控-成员下一局", "组队管控-等待满员"]
+    },
+    "组队管控-成员下一局": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member"},
+        "next": ["组队管控-开战记账"]
+    },
+    "组队管控-单人续刷路由": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "solo"},
+        "next": ["觉醒-单人续刷"], "timeout": 9000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-解散证据": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [325, 160, 641, 293], "expected": [".*(队伍已解散|房主已离开|队长已离开|队伍不存在).*"]},
+            {"recognition": "OCR", "roi": [3, 0, 301, 79], "expected": ["^组队$"]},
+            "组队管控-庭院"
+        ]
+    },
+    "组队管控-队员房间解散": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member"}},
+            "组队管控-解散证据"
+        ], "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "lost"},
+        "next": ["组队管控-归庭"]
+    },
+    "组队管控-等邀超时": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "invite_timeout"},
+        "next": ["组队管控-归庭"]
+    },
+    "组队管控-失败归庭": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "failed"},
+        "next": ["组队管控-归庭"]
+    },
+    "组队管控-庭院": {
+        "recognition": "Or", "any_of": ["导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院"]
+    },
+    "组队管控-归庭": {
+        "next": [
+            "[JumpBack]组队管控-确认退出房间", "[JumpBack]组队管控-关闭邀请",
+            "[JumpBack]组队管控-退出房间", "组队管控-归庭确认",
+            "[JumpBack]导航-庭院"
+        ], "timeout": 18000, "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-关闭邀请": {
+        "recognition": "And", "all_of": ["组队管控-邀请确认钮"],
+        "action": "Click", "target": [1008, 77, 49, 45], "post_delay": 500
+    },
+    "组队管控-退出房间": {
+        "recognition": "And", "all_of": ["组队管控-房间"], "action": "Click",
+        "target": [19, 13, 58, 55], "post_delay": 550
+    },
+    "组队管控-确认退出房间": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [330, 219, 628, 177], "expected": [".*(退出|离开|解散).*(房间|队伍).*", ".*队伍已解散.*"]},
+            {"recognition": "OCR", "roi": [544, 360, 367, 162], "expected": ["^(确定|确认|知道了)$"]}
+        ], "box_index": 1, "action": "Click", "post_delay": 600
+    },
+    "组队管控-归庭确认": {
+        "recognition": "And", "all_of": ["组队管控-庭院"],
+        "next": ["组队管控-归位本轮加成", "组队管控-已归庭"]
+    },
+    "组队管控-归位本轮加成": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "has_bonus"},
+        "next": ["组队管控-关闭本轮加成", "[JumpBack]组队管控-归位打开面板"],
+        "timeout": 6500, "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-归位打开面板": {
+        "recognition": "And", "all_of": ["通用加成-打开面板"],
+        "action": "Click", "post_wait_freezes": 250, "max_hit": 1
+    },
+    "组队管控-关闭本轮加成": {
+        "recognition": "And", "all_of": ["通用加成-关闭本轮加成"],
+        "action": "Custom", "custom_action": "BonusToggleAction", "custom_action_param": {"drop_awake": false, "drop_soul": false},
+        "next": ["组队管控-归位收起"], "timeout": 5500, "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-归位收起": {
+        "recognition": "And", "all_of": ["通用加成-收起面板"],
+        "action": "Click", "target": [1032, 239, 78, 255],
+        "next": ["组队管控-收起后归庭"], "timeout": 5000, "on_error": ["组队管控-归庭失败"]
+    },
+    "组队管控-收起后归庭": {
+        "recognition": "And", "all_of": ["通用加成-确认收起", "组队管控-庭院"],
+        "next": ["组队管控-已归庭"]
+    },
+    "组队管控-已归庭": {
+        "next": ["组队管控-同心之兰续领奖", "组队管控-登记终态"]
+    },
+    "组队管控-同心之兰续领奖": {
+        "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "bond_done"},
+        "next": ["同心之兰-组队后"]
+    },
+    "组队管控-登记终态": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "terminal"}
+    },
+    "组队管控-归庭失败": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "cleanup_failure"}
+    }
+}

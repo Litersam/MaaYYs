@@ -1,0 +1,409 @@
+{
+    "同心之兰": {
+        "action": "Custom", "custom_action": "BondControl",
+        "custom_action_param": {"role": "captain", "limit_count": 10},
+        "anchor": {"同心后续": "同心之兰-无后续"},
+        "next": ["同心之兰-零场次", "同心之兰-查搭档"],
+        "on_error": ["同心之兰-参数无效"]
+    },
+    "同心之兰-无后续": {"enabled": false},
+    "同心之兰-零场次": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "zero"},
+        "anchor": {"同心归庭终点": "同心之兰-归庭零场次"},
+        "next": ["同心之兰-归庭"]
+    },
+    "同心之兰-庭院": {
+        "recognition": "And", "all_of": [
+            "寮活动-庭院",
+            {"recognition": "OCR", "roi": [555, 35, 166, 62], "expected": "^好友$", "inverse": true}
+        ]
+    },
+    "同心之兰-查搭档": {
+        "next": [
+            "同心之兰-核对好友", "同心之兰-在好友", "[JumpBack]同心之兰-开好友",
+            "[JumpBack]同心之兰-展开庭院菜单", "[JumpBack]同心之兰-返回主庭院"
+        ],
+        "timeout": 8000, "on_error": ["同心之兰-好友未确认"]
+    },
+    "同心之兰-好友页": {
+        "recognition": "OCR", "roi": [555, 35, 166, 62], "expected": "^好友$"
+    },
+    "同心之兰-开好友": {
+        "recognition": "And", "all_of": ["同心之兰-庭院", "导航-好友-点击好友"],
+        "box_index": 1, "action": "Click", "post_delay": 1000, "max_hit": 42
+    },
+    "同心之兰-展开庭院菜单": {
+        "recognition": "And", "all_of": ["同心之兰-庭院", "导航-庭院-底部菜单栏-点击底部菜单栏-模型识别"],
+        "target": [1205, 618, 49, 64], "action": "Click", "post_delay": 650, "max_hit": 2
+    },
+    "同心之兰-返回主庭院": {
+        "recognition": "And", "all_of": ["导航-是否位于闲庭"],
+        "target": [42, 35, 34, 37], "action": "Click", "post_delay": 650, "max_hit": 1
+    },
+    "同心之兰-好友名录OCR": {
+        "recognition": "OCR", "roi": [191, 150, 301, 481], "expected": "^.+$"
+    },
+    "同心之兰-好友标题昵称OCR": {
+        "recognition": "OCR", "roi": [610, 96, 266, 46], "expected": "^.+$"
+    },
+    "同心之兰-搭档好友行": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "row"}
+    },
+    "同心之兰-搭档好友名": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "header"}
+    },
+    "同心之兰-在好友": {
+        "recognition": "And", "all_of": ["同心之兰-好友页"],
+        "next": ["同心之兰-选搭档", "同心之兰-跨区列表", "同心之兰-同服列表", "[JumpBack]同心之兰-关闭羁绊弹窗"],
+        "timeout": 5000, "on_error": ["同心之兰-好友未确认"]
+    },
+    "同心之兰-跨区列表": {
+        "recognition": "OCR", "roi": [135, 151, 361, 470],
+        "expected": "^跨区好友\\s*[:：]\\s*\\d+\\s*[/／]\\s*\\d+$",
+        "action": "Click", "max_hit": 1, "post_delay": 550,
+        "next": ["同心之兰-选搭档", "同心之兰-跨区下翻"],
+        "timeout": 4000, "on_error": ["同心之兰-跨区查完"]
+    },
+    "同心之兰-跨区下翻": {
+        "recognition": "And", "all_of": ["同心之兰-好友页"],
+        "action": "Swipe", "begin": [308, 554], "end": [308, 268], "duration": 400, "max_hit": 7, "post_delay": 420,
+        "next": ["同心之兰-选搭档", "同心之兰-跨区下翻"], "timeout": 800, "on_error": ["同心之兰-跨区查完"]
+    },
+    "同心之兰-跨区查完": {
+        "next": ["同心之兰-同服列表"], "timeout": 3000, "on_error": ["同心之兰-好友未确认"]
+    },
+    "同心之兰-同服列表": {
+        "recognition": "OCR", "roi": [137, 150, 361, 114],
+        "expected": "^好友\\s*[:：]\\s*\\d+\\s*[/／]\\s*\\d+$",
+        "action": "Click", "max_hit": 1, "post_delay": 550,
+        "next": ["同心之兰-选搭档", "同心之兰-同服下翻"],
+        "timeout": 4000, "on_error": ["同心之兰-好友未确认"]
+    },
+    "同心之兰-同服下翻": {
+        "recognition": "And", "all_of": ["同心之兰-好友页"],
+        "action": "Swipe", "begin": [308, 554], "end": [308, 268], "duration": 400, "max_hit": 7, "post_delay": 420,
+        "next": ["同心之兰-选搭档", "同心之兰-同服下翻"], "timeout": 800, "on_error": ["同心之兰-好友未确认"]
+    },
+    "同心之兰-选搭档": {
+        "recognition": "And", "all_of": ["同心之兰-好友页", "同心之兰-搭档好友行"],
+        "box_index": 1, "action": "Click", "post_delay": 600,
+        "next": ["同心之兰-核对好友", "[JumpBack]同心之兰-关闭羁绊弹窗"],
+        "timeout": 4000, "on_error": ["同心之兰-好友未确认"]
+    },
+    "同心之兰-核对好友": {
+        "recognition": "And", "all_of": ["同心之兰-好友页", "同心之兰-搭档好友名"],
+        "next": [
+            "同心之兰-冷却", "同心之兰-今日已领", "同心之兰-领二档", "同心之兰-领一档", "同心之兰-记本轮",
+            "[Anchor]同心后续", "同心之兰-检查面板", "同心之兰-打开礼袋"
+        ],
+        "timeout": 6000, "on_error": ["同心之兰-状态未确认"]
+    },
+    "同心之兰-礼袋成长OCR": {
+        "recognition": "OCR", "roi": [1065, 138, 74, 29], "expected": "^.+$"
+    },
+    "同心之兰-面板标题": {
+        "recognition": "OCR", "roi": [814, 149, 173, 44], "expected": "^同心之[兰蘭]$"
+    },
+    "同心之兰-面板成长OCR": {
+        "recognition": "OCR", "roi": [706, 602, 103, 62], "expected": "^.+$"
+    },
+    "同心之兰-一档满成长": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "ready", "target": 10}
+    },
+    "同心之兰-二档满成长": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "ready", "target": 20}
+    },
+    "同心之兰-领一档": {
+        "recognition": "And", "all_of": ["同心之兰-一档满成长", "同心之兰-非面板"],
+        "target": [1080, 108, 48, 45], "action": "Click", "max_hit": 1, "post_delay": 650,
+        "next": ["同心之兰-一档入账", "同心之兰-一档面板已领", "[JumpBack]同心之兰-关闭羁绊弹窗"],
+        "timeout": 7000, "on_error": ["同心之兰-领奖未确认"]
+    },
+    "同心之兰-领二档": {
+        "recognition": "And", "all_of": ["同心之兰-二档满成长", "同心之兰-非面板"],
+        "target": [1080, 108, 48, 45], "action": "Click", "max_hit": 1, "post_delay": 650,
+        "next": ["同心之兰-二档入账", "同心之兰-冷却", "同心之兰-今日已领"],
+        "timeout": 7000, "on_error": ["同心之兰-领奖未确认"]
+    },
+    "同心之兰-一档面板已领": {
+        "recognition": "And", "all_of": ["同心之兰-面板标题", "同心之兰-一档满成长", "同心之兰-一档已领文字"],
+        "anchor": {"同心后续": "同心之兰-再次打开礼袋"},
+        "next": ["同心之兰-回赠", "同心之兰-队长等待回赠"],
+        "timeout": 5000, "on_error": ["同心之兰-状态未确认"]
+    },
+    "同心之兰-一档已领文字": {
+        "recognition": "OCR", "roi": [702, 550, 399, 115], "expected": "^(10点成长奖励已领取|第一档奖励已领取)$"
+    },
+    "同心之兰-奖励弹窗": {
+        "recognition": "OCR", "roi": [427, 152, 425, 200], "expected": "^获得奖励$"
+    },
+    "同心之兰-一档入账": {
+        "recognition": "And", "all_of": ["同心之兰-奖励弹窗"],
+        "target": [604, 59, 71, 25], "action": "Click", "post_delay": 650, "max_hit": 1,
+        "anchor": {"同心后续": "同心之兰-再次打开礼袋"},
+        "next": ["同心之兰-查搭档"]
+    },
+    "同心之兰-二档入账": {
+        "recognition": "And", "all_of": ["同心之兰-奖励弹窗"],
+        "target": [604, 59, 71, 25], "action": "Click", "post_delay": 650, "max_hit": 1,
+        "anchor": {"同心归庭终点": "同心之兰-归庭领奖完成"},
+        "next": ["同心之兰-归庭"]
+    },
+    "同心之兰-非面板": {
+        "recognition": "OCR", "roi": [814, 149, 173, 44], "expected": "^同心之[兰蘭]$", "inverse": true
+    },
+    "同心之兰-打开礼袋": {
+        "recognition": "And", "all_of": ["同心之兰-好友页", "同心之兰-搭档好友名", "同心之兰-非面板"],
+        "target": [1080, 108, 48, 45], "action": "Click", "post_delay": 650, "max_hit": 1,
+        "next": ["同心之兰-检查面板"], "timeout": 5000, "on_error": ["同心之兰-状态未确认"]
+    },
+    "同心之兰-再次打开礼袋": {
+        "recognition": "And", "all_of": ["同心之兰-好友页", "同心之兰-搭档好友名", "同心之兰-非面板"],
+        "target": [1080, 108, 48, 45], "action": "Click", "post_delay": 650, "max_hit": 1,
+        "next": ["同心之兰-复核回赠面板"], "timeout": 5000, "on_error": ["同心之兰-状态未确认"]
+    },
+    "同心之兰-复核回赠面板": {
+        "recognition": "And", "all_of": ["同心之兰-面板标题", "同心之兰-搭档好友名"],
+        "next": [
+            "同心之兰-冷却", "同心之兰-今日已领", "同心之兰-记本轮", "同心之兰-回赠",
+            "同心之兰-队长等待回赠", "同心之兰-等待领受"
+        ],
+        "timeout": 4000, "on_error": ["同心之兰-状态未确认"]
+    },
+    "同心之兰-检查面板": {
+        "recognition": "And", "all_of": ["同心之兰-面板标题", "同心之兰-搭档好友名"],
+        "next": [
+            "同心之兰-冷却", "同心之兰-今日已领", "同心之兰-记本轮", "同心之兰-一档面板已领",
+            "同心之兰-首次赠送", "同心之兰-队员等待赠送", "同心之兰-等待领受"
+        ],
+        "timeout": 4000, "on_error": ["同心之兰-状态未确认"]
+    },
+    "同心之兰-队长身份": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "captain"}
+    },
+    "同心之兰-队员身份": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "member"}
+    },
+    "同心之兰-赠送前额度": {
+        "recognition": "OCR", "roi": [778, 558, 250, 47],
+        "expected": "^每[日天]限购\\s*2\\s*次\\s*[（(]\\s*0\\s*[/／]\\s*2\\s*[）)]$"
+    },
+    "同心之兰-额度已用一次": {
+        "recognition": "OCR", "roi": [778, 558, 250, 47],
+        "expected": "^每[日天]限购\\s*2\\s*次\\s*[（(]\\s*1\\s*[/／]\\s*2\\s*[）)]$"
+    },
+    "同心之兰-赠送价格": {
+        "recognition": "And", "all_of": [
+            {"recognition": "TemplateMatch", "roi": [809, 603, 110, 69], "template": ["通用图标/勾玉.png", "通用图标/勾玉_2.png"], "threshold": 0.82},
+            {"recognition": "OCR", "roi": [864, 603, 110, 69], "expected": "^30$"}
+        ], "box_index": 1
+    },
+    "同心之兰-回赠价格": {
+        "recognition": "And", "all_of": [
+            {"recognition": "TemplateMatch", "roi": [1035, 599, 123, 67], "template": ["通用图标/勾玉.png", "通用图标/勾玉_2.png"], "threshold": 0.82},
+            {"recognition": "OCR", "roi": [1081, 599, 129, 67], "expected": "^30$"}
+        ], "box_index": 1
+    },
+    "同心之兰-首次赠送": {
+        "recognition": "And", "all_of": [
+            "同心之兰-队长身份", "同心之兰-面板标题", "同心之兰-搭档好友名", "同心之兰-赠送前额度", "同心之兰-赠送价格"
+        ],
+        "box_index": 4, "action": "Click", "max_hit": 1, "post_delay": 750,
+        "next": ["同心之兰-确认赠送", "同心之兰-赠送反馈"], "timeout": 5000, "on_error": ["同心之兰-赠送未确认"]
+    },
+    "同心之兰-回赠": {
+        "recognition": "And", "all_of": [
+            "同心之兰-队员身份", "同心之兰-面板标题", "同心之兰-一档满成长", "同心之兰-回赠价格", "同心之兰-赠送前额度"
+        ],
+        "box_index": 3, "action": "Click", "max_hit": 1, "post_delay": 750,
+        "next": ["同心之兰-确认赠送", "同心之兰-赠送反馈"], "timeout": 5000, "on_error": ["同心之兰-赠送未确认"]
+    },
+    "同心之兰-确认赠送": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [307, 226, 668, 206], "expected": "^(确认|确定|是否)(向.+)?(赠送|回赠)(好友)?同心之[兰蘭][？?]?$"},
+            {"recognition": "OCR", "roi": [318, 252, 648, 174], "expected": "^(消耗)?\\s*30\\s*勾玉$"},
+            {"recognition": "OCR", "roi": [639, 359, 315, 176], "expected": "^确[定认認]$"}
+        ],
+        "box_index": 2, "action": "Click", "max_hit": 1, "post_delay": 850,
+        "next": ["同心之兰-赠送反馈"], "timeout": 5000, "on_error": ["同心之兰-赠送未确认"]
+    },
+    "同心之兰-赠送反馈": {
+        "next": ["同心之兰-冷却", "同心之兰-明确拒绝赠送", "同心之兰-开始等绑定"],
+        "post_delay": 750
+    },
+    "同心之兰-明确拒绝赠送": {
+        "recognition": "OCR", "roi": [267, 206, 746, 260],
+        "expected": "^(勾玉不足|赠送失败[，,]?.*|回赠失败[，,]?.*)[。！!]?$",
+        "next": ["同心之兰-赠送未确认"]
+    },
+    "同心之兰-队员等待赠送": {
+        "recognition": "And", "all_of": ["同心之兰-队员身份", "同心之兰-面板标题", "同心之兰-赠送前额度"],
+        "next": ["同心之兰-开始等绑定"]
+    },
+    "同心之兰-等待领受": {
+        "recognition": "And", "all_of": ["同心之兰-面板标题", "同心之兰-额度已用一次"],
+        "next": ["同心之兰-开始等绑定"]
+    },
+    "同心之兰-队长等待回赠": {
+        "recognition": "And", "all_of": ["同心之兰-队长身份", "同心之兰-面板标题", "同心之兰-一档满成长"],
+        "next": ["同心之兰-开始等绑定"]
+    },
+    "同心之兰-开始等绑定": {
+        "anchor": {"同心后续": "同心之兰-继续等绑定"},
+        "next": ["同心之兰-继续等绑定"]
+    },
+    "同心之兰-继续等绑定": {
+        "next": [
+            "同心之兰-到庭等绑定", "[JumpBack]同心之兰-关闭羁绊弹窗",
+            "[JumpBack]同心之兰-关闭礼袋面板", "[JumpBack]同心之兰-退出好友"
+        ],
+        "timeout": 6500, "on_error": ["同心之兰-归庭未确认"]
+    },
+    "同心之兰-到庭等绑定": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"],
+        "next": ["同心之兰-接绑定邀请", "[JumpBack]同心之兰-展开绑定邀请", "同心之兰-刷新好友"],
+        "timeout": 8500, "on_error": ["同心之兰-绑定未确认"]
+    },
+    "同心之兰-绑定邀请文字": {
+        "recognition": "OCR", "roi": [185, 105, 314, 466], "expected": "^同心之[兰蘭]绑定邀请$"
+    },
+    "同心之兰-接受图标": {
+        "recognition": "TemplateMatch", "roi": [0, 108, 438, 463],
+        "template": ["组队刷本/邀请-接受_1.png"], "threshold": 0.83
+    },
+    "同心之兰-展开绑定邀请": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "expand"},
+        "action": "Click", "max_hit": 2, "post_delay": 750
+    },
+    "同心之兰-接绑定邀请": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "accept"},
+        "action": "Click", "max_hit": 2, "post_delay": 1100,
+        "next": ["同心之兰-查搭档", "[JumpBack]同心之兰-关闭羁绊弹窗"],
+        "on_error": ["同心之兰-绑定未确认"]
+    },
+    "同心之兰-刷新好友": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"],
+        "post_delay": 3000, "max_hit": 34,
+        "next": ["同心之兰-接绑定邀请", "[JumpBack]同心之兰-展开绑定邀请", "同心之兰-查搭档"],
+        "on_error": ["同心之兰-绑定未确认"]
+    },
+    "同心之兰-记本轮": {
+        "recognition": "Custom", "custom_recognition": "BondProbe", "custom_recognition_param": {"kind": "active"},
+        "action": "Custom", "custom_action": "BondControl", "custom_action_param": {"op": "prepare"},
+        "anchor": {"同心后续": "同心之兰-无后续", "同心归庭终点": "同心之兰-刷本"},
+        "next": ["同心之兰-归庭"], "on_error": ["同心之兰-成长未满"]
+    },
+    "同心之兰-刷本": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"],
+        "action": "Custom", "custom_action": "BondControl", "custom_action_param": {"op": "party"},
+        "next": ["同心之兰-查搭档"], "on_error": ["同心之兰-组队未确认"]
+    },
+    "同心之兰-组队后": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"], "on_error": []
+    },
+    "同心之兰-冷却": {
+        "recognition": "And", "all_of": [
+            "同心之兰-好友页", "同心之兰-搭档好友名", "同心之兰-冷却文字"
+        ],
+        "anchor": {"同心归庭终点": "同心之兰-归庭冷却"},
+        "next": ["同心之兰-归庭"]
+    },
+    "同心之兰-冷却文字": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [695, 175, 440, 500],
+                "expected": ["^同心之[兰蘭](赠送|绑定)?(正处于|处于)?冷却中$", "^同心之[兰蘭].*冷却.*[后後]可(再次)?(赠送|绑定)[。！!]?$"]},
+            {"recognition": "And", "all_of": ["同心之兰-面板标题",
+                {"recognition": "OCR", "roi": [711, 553, 389, 114], "expected": "^(赠送|绑定)?冷却中([：:]\\s*[0-9]+[:：][0-9]{2}([:：][0-9]{2})?)?$"}]}
+        ]
+    },
+    "同心之兰-今日已领": {
+        "recognition": "And", "all_of": [
+            "同心之兰-好友页", "同心之兰-搭档好友名", "同心之兰-今日已领文字"
+        ],
+        "anchor": {"同心归庭终点": "同心之兰-归庭已领"},
+        "next": ["同心之兰-归庭"]
+    },
+    "同心之兰-今日已领文字": {
+        "recognition": "OCR", "roi": [695, 175, 440, 500],
+        "expected": ["^(今日)?同心之[兰蘭](成长)?奖励(已全部领取|已领取完毕)[。！!]?$", "^(今日)?同心之[兰蘭]20点(成长)?奖励已领取[。！!]?$"]
+    },
+    "同心之兰-关闭图标": {
+        "recognition": "TemplateMatch", "roi": [1135, 75, 84, 79],
+        "template": ["通用图标/关闭.png", "通用图标/关闭_2.png", "通用/返回庭院_识别叉.png"],
+        "threshold": 0.78
+    },
+    "同心之兰-关闭羁绊弹窗": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [374, 92, 507, 301], "expected": "^(好友羁绊提升|羁绊提升|缘之种)$"},
+            {"recognition": "TemplateMatch", "roi": [1100, 38, 114, 126], "template": ["通用图标/关闭.png", "通用图标/关闭_2.png", "通用/返回庭院_识别叉.png"], "threshold": 0.78}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 550, "max_hit": 4
+    },
+    "同心之兰-关闭礼袋面板": {
+        "recognition": "And", "all_of": ["同心之兰-面板标题", "同心之兰-关闭图标"],
+        "box_index": 1, "action": "Click", "post_delay": 650, "max_hit": 42
+    },
+    "同心之兰-退出好友": {
+        "recognition": "And", "all_of": ["同心之兰-好友页", "同心之兰-非面板", "同心之兰-关闭图标"],
+        "box_index": 2, "action": "Click", "post_delay": 700, "max_hit": 42
+    },
+    "同心之兰-归庭": {
+        "next": [
+            "[Anchor]同心归庭终点", "[JumpBack]同心之兰-关闭羁绊弹窗", "[JumpBack]同心之兰-关闭礼袋面板",
+            "[JumpBack]同心之兰-退出好友", "[JumpBack]同心之兰-返回主庭院"
+        ],
+        "timeout": 9000, "on_error": ["同心之兰-归庭未确认"]
+    },
+    "同心之兰-归庭冷却": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"], "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "skipped", "reason": "bond_cooldown"}
+    },
+    "同心之兰-归庭已领": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"], "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "skipped", "reason": "bond_rewards_already_claimed"}
+    },
+    "同心之兰-归庭零场次": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"], "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "skipped", "reason": "bond_zero_budget"}
+    },
+    "同心之兰-归庭领奖完成": {
+        "recognition": "And", "all_of": ["同心之兰-庭院"], "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "completed", "reason": "bond_growth_reward_claimed"}
+    },
+    "同心之兰-参数无效": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_invalid_parameters"}
+    },
+    "同心之兰-好友未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_partner_unconfirmed"}
+    },
+    "同心之兰-状态未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_panel_unconfirmed"}
+    },
+    "同心之兰-赠送未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_gift_unconfirmed"}
+    },
+    "同心之兰-领奖未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_reward_unconfirmed"}
+    },
+    "同心之兰-绑定未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_binding_unconfirmed"}
+    },
+    "同心之兰-成长未满": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_growth_not_reached"}
+    },
+    "同心之兰-组队未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_party_unconfirmed"}
+    },
+    "同心之兰-归庭未确认": {
+        "on_error": [],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "bond_courtyard_unconfirmed"}
+    }
+}

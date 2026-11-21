@@ -1,0 +1,36 @@
+{
+    "task": [{
+        "name": "同心之兰",
+        "label": "同心之兰",
+        "entry": "同心之兰",
+        "group": ["standalone"],
+        "description": "两号同时运行。队长赠送、队员接收，完成第一档后由队员回赠、队长接收；原队长继续带第二轮魂十。每次赠送最多支付 30 勾玉。两档成长目标为 10 / 20；每轮最多刷设定次数，未满成长不领奖。",
+        "option": ["同心之兰-party_role", "同心之兰-每轮场次"]
+    }],
+    "option": {
+        "同心之兰-party_role": {
+            "type": "select", "label": "组队身份", "default_case": "captain",
+            "cases": [
+                {"name": "captain", "label": "队长", "option": ["同心之兰-队友"],
+                    "pipeline_override": {"同心之兰": {"custom_action_param": {"role": "captain"}}}},
+                {"name": "member", "label": "队员", "option": ["同心之兰-队长"],
+                    "pipeline_override": {"同心之兰": {"custom_action_param": {"role": "member"}}}}
+            ]
+        },
+        "同心之兰-队友": {
+            "type": "input", "label": "队友昵称",
+            "inputs": [{"name": "teammate_names", "label": "队友昵称（仅一名好友）", "default": "", "pipeline_type": "string"}],
+            "pipeline_override": {"同心之兰": {"custom_action_param": {"teammate_names": "{teammate_names}"}}}
+        },
+        "同心之兰-队长": {
+            "type": "input", "label": "队长昵称",
+            "inputs": [{"name": "captain_names", "label": "队长昵称（仅一名好友）", "default": "", "pipeline_type": "string"}],
+            "pipeline_override": {"同心之兰": {"custom_action_param": {"captain_names": "{captain_names}"}}}
+        },
+        "同心之兰-每轮场次": {
+            "type": "input", "label": "每轮场次上限",
+            "inputs": [{"name": "limit_count", "label": "魂十场次（0 不赠送、不刷本）", "default": "10", "pipeline_type": "int"}],
+            "pipeline_override": {"同心之兰": {"custom_action_param": {"limit_count": "{limit_count}"}}}
+        }
+    }
+}

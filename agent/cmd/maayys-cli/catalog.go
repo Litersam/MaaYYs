@@ -135,7 +135,7 @@ func loadTaskDefinitions(repoRoot string) ([]resolvedTask, map[string]resolvedTa
 					Entry:    t.Entry,
 					Category: cat,
 					Group:    t.Group,
-					Options:  collectReachableOptions(t.Option, parsed.Option),
+					Options:  catalogOptionIDs(t.Name, collectReachableOptions(t.Option, parsed.Option)),
 					File:     relFile,
 				},
 				RawTask:    t,
@@ -246,11 +246,12 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 			}
 			switch strings.ToLower(strings.TrimSpace(opt.Type)) {
 			case "switch", "select":
-				active, found := selectOptionCase(opt, optName, params)
+				active, found := selectOptionCase(opt, publicOptionID(task.Name, optName), params)
 				if found {
 					if active.PipelineOverride != nil {
 						mergeMap(merged, active.PipelineOverride)
 					}
+
 					evalList(opt.Option)
 					evalList(opt.SubOptions)
 					evalList(active.Option)
@@ -288,6 +289,27 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 		mergeMap(merged, task.RawTask.PipelineOverride)
 	}
 	return merged
+}
+
+// PI v2 imports merge options in a shared namespace. Keep distinct MXU IDs
+// for options whose choices differ by task, without changing the CLI contract.
+func publicOptionID(task, id string) string {
+	if task == "组队刷本" || task == "觉醒" || task == "同心之兰" {
+		switch id {
+		case task + "-party_role":
+			return "party_role"
+		case task + "-dungeon_layer":
+			return "dungeon_layer"
+		}
+	}
+	return id
+}
+
+func catalogOptionIDs(task string, ids []string) []string {
+	for i, id := range ids {
+		ids[i] = publicOptionID(task, id)
+	}
+	return ids
 }
 
 func withLegacyDokanPreset(task string, params map[string]any) map[string]any {

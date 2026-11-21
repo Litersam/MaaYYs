@@ -18,44 +18,391 @@
         "recognition": "OCR",
         "roi": [344, 570, 636, 150]
     },
-    "契灵结契-卡住了": {
-        "focus": {
-            "Node.Recognition.Succeeded": "救命!!! 好像卡住了"
-        },
-        "recognition": "DirectHit"
-    },
     "契灵结契-开始": {
-        "next": ["契灵结契-计数", "[JumpBack]契灵结契-开始战斗"],
         "recognition": "DirectHit",
-        "timeout": -1
+        "action": "Custom",
+        "custom_action": "BondlingRun",
+        "custom_action_param": {"max_summon_stones": 0},
+        "on_error": []
+    },
+    "契灵结契-执行子图": {
+        "recognition": "DirectHit",
+        "timeout": 2500,
+        "on_error": []
+    },
+    "契灵结契-前置导航": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-召唤确认文案", "契灵结契-低式盘提示", "[JumpBack]契灵结契-关闭召唤窗", "契灵结契-在地图", "[JumpBack]契灵结契-退出挑战", "[JumpBack]契灵结契-点契灵之境", "[JumpBack]契灵结契-点地图路牌", "[JumpBack]契灵结契-展开探索入口", "[JumpBack]契灵结契-庭院点探索"],
+        "timeout": 15000,
+        "on_error": []
+    },
+    "契灵结契-在庭院": {
+        "recognition": "Or",
+        "any_of": ["导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院-模型识别", "导航-庭院-识别是否位于庭院"]
+    },
+    "契灵结契-探索地图": {
+        "recognition": "OCR",
+        "roi": [5, 614, 1208, 106],
+        "expected": ["觉醒材料|结界突破|御灵|式神委派|秘闻副本|地域鬼王|契灵之境|英杰试炼|六道之门|妖气探索"]
+    },
+    "契灵结契-庭院点探索": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在庭院", "导航-探索界面-识别探索灯笼"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1700
+    },
+    "契灵结契-点契灵之境": {
+        "recognition": "And",
+        "all_of": ["契灵结契-探索地图", "导航-契灵之境-点击契灵之境"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1700
+    },
+    "契灵结契-点地图路牌": {
+        "recognition": "And",
+        "all_of": ["契灵结契-探索地图", {"recognition": "OCR", "roi": [491, 205, 185, 216], "expected": ["^契灵之境$"]}],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1700
+    },
+    "契灵结契-展开探索入口": {
+        "recognition": "And",
+        "all_of": ["契灵结契-探索地图", "导航-探索界面-展开所有导航入口"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 800
+    },
+    "契灵结契-地图标题": {
+        "recognition": "OCR",
+        "roi": [139, 6, 167, 62],
+        "expected": ["^契灵之境$"]
+    },
+    "契灵结契-契忆商店入口": {
+        "recognition": "OCR",
+        "roi": [222, 646, 140, 66],
+        "expected": ["^契忆商店$"]
+    },
+    "契灵结契-在地图": {
+        "recognition": "And",
+        "all_of": ["契灵结契-地图标题", "契灵结契-契忆商店入口"]
+    },
+    "契灵结契-挑战标题": {
+        "recognition": "OCR",
+        "roi": [139, 6, 168, 62],
+        "expected": ["^契灵结契$"]
+    },
+    "契灵结契-在挑战": {
+        "recognition": "And",
+        "all_of": ["契灵结契-挑战标题", "契灵结契-开始战斗"]
+    },
+    "契灵结契-退出挑战": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在挑战", "寮活动-返回箭头"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 750
+    },
+    "契灵结契-查看契忆": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-在契忆商店", "[JumpBack]契灵结契-点契忆商店"],
+        "timeout": 7000,
+        "on_error": []
+    },
+    "契灵结契-点契忆商店": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在地图", "契灵结契-契忆商店入口"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1200
+    },
+    "契灵结契-在契忆商店": {
+        "recognition": "And",
+        "all_of": ["契灵结契-契忆库存", "契灵结契-商店式盘一库存", "契灵结契-商店式盘三库存"]
+    },
+    "契灵结契-契忆库存": {
+        "recognition": "OCR",
+        "roi": [1134, 8, 136, 42],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*4000$"]
+    },
+    "契灵结契-式盘一库存": {
+        "recognition": "OCR",
+        "roi": [530, 11, 110, 36],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*200$"]
+    },
+    "契灵结契-式盘二库存": {
+        "recognition": "OCR",
+        "roi": [731, 11, 103, 36],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*200$"]
+    },
+    "契灵结契-式盘三库存": {
+        "recognition": "OCR",
+        "roi": [927, 11, 102, 36],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*200$"]
+    },
+    "契灵结契-商店式盘一库存": {
+        "recognition": "OCR",
+        "roi": [368, 9, 108, 38],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*200$"]
+    },
+    "契灵结契-商店式盘二库存": {
+        "recognition": "OCR",
+        "roi": [555, 9, 117, 38],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*200$"]
+    },
+    "契灵结契-商店式盘三库存": {
+        "recognition": "OCR",
+        "roi": [758, 9, 112, 38],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*200$"]
+    },
+    "契灵结契-退出商店": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在契忆商店", "寮活动-返回箭头"],
+        "box_index": 1,
+        "action": "Click",
+        "next": ["契灵结契-在地图", "契灵结契-在庭院", "契灵结契-探索地图"],
+        "post_delay": 750,
+        "timeout": 5500,
+        "on_error": []
+    },
+    "契灵结契-盘上剩余": {
+        "recognition": "OCR",
+        "roi": [1128, 662, 141, 38],
+        "expected": ["^(剩余)?[ ]*[0-9]+[ ]*/[ ]*99$"]
+    },
+    "契灵结契-检查契灵盘": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-召唤确认文案", "契灵结契-低式盘提示", "契灵结契-在召唤数量窗", "契灵结契-在挑战"],
+        "timeout": 5500,
+        "on_error": []
+    },
+    "契灵结契-寻找可挑战": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-召唤确认文案", "契灵结契-低式盘提示", "[JumpBack]契灵结契-关闭召唤窗", "契灵结契-在挑战", "契灵结契-在地图"],
+        "timeout": 5500,
+        "on_error": []
+    },
+    "契灵结契-盘位一": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在地图"],
+        "action": "Click",
+        "target": [235, 525, 12, 15],
+        "next": ["契灵结契-检查契灵盘"]
+    },
+    "契灵结契-盘位二": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在地图"],
+        "action": "Click",
+        "target": [446, 546, 12, 15],
+        "next": ["契灵结契-检查契灵盘"]
+    },
+    "契灵结契-盘位三": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在地图"],
+        "action": "Click",
+        "target": [694, 526, 12, 15],
+        "next": ["契灵结契-检查契灵盘"]
+    },
+    "契灵结契-盘位四": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在地图"],
+        "action": "Click",
+        "target": [950, 516, 12, 15],
+        "next": ["契灵结契-检查契灵盘"]
+    },
+    "契灵结契-返回地图": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-召唤确认文案", "契灵结契-低式盘提示", "[JumpBack]契灵结契-关闭召唤窗", "契灵结契-在地图", "[JumpBack]契灵结契-退出挑战"],
+        "timeout": 6500,
+        "on_error": []
+    },
+    "契灵结契-回庭院": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-召唤确认文案", "契灵结契-低式盘提示", "契灵结契-在庭院", "[JumpBack]契灵结契-关闭召唤窗", "[JumpBack]契灵结契-退出挑战", "[JumpBack]契灵结契-退出地图", "[JumpBack]契灵结契-退出探索"],
+        "timeout": 11000,
+        "on_error": []
+    },
+    "契灵结契-退出地图": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在地图", "寮活动-返回箭头"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1100
+    },
+    "契灵结契-退出探索": {
+        "recognition": "And",
+        "all_of": ["契灵结契-探索地图", "寮活动-返回箭头"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1100
+    },
+    "契灵结契-在召唤数量窗": {
+        "recognition": "OCR",
+        "roi": [480, 57, 365, 49],
+        "expected": ["^请选择鸣契的契灵数量$"]
+    },
+    "契灵结契-关闭召唤窗": {
+        "recognition": "OCR",
+        "roi": [480, 57, 365, 49],
+        "expected": ["^请选择鸣契的契灵数量$"],
+        "action": "Click",
+        "target": [921, 62, 24, 24],
+        "max_hit": 1,
+        "post_delay": 800
+    },
+    "契灵结契-召唤窗石库存": {
+        "recognition": "OCR",
+        "roi": [1134, 11, 78, 38],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*30$"]
+    },
+    "契灵结契-地图石库存": {
+        "recognition": "OCR",
+        "roi": [850, 19, 87, 31],
+        "only_rec": true,
+        "expected": ["^[0-9]+[ ]*/[ ]*30$"]
+    },
+    "契灵结契-召唤数量": {
+        "recognition": "OCR",
+        "roi": [550, 542, 87, 43],
+        "only_rec": true,
+        "expected": ["^[0-9]+$"]
+    },
+    "契灵结契-数量减一": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在召唤数量窗", "契灵结契-召唤数量"],
+        "action": "Click",
+        "target": [482, 552, 22, 20],
+        "post_delay": 350
+    },
+    "契灵结契-数量加一": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在召唤数量窗", "契灵结契-召唤数量"],
+        "action": "Click",
+        "target": [692, 552, 22, 20],
+        "post_delay": 350
+    },
+    "契灵结契-单只数量": {
+        "recognition": "OCR",
+        "roi": [550, 542, 87, 43],
+        "only_rec": true,
+        "expected": ["^(1|１)$"]
+    },
+    "契灵结契-鸣契按钮": {
+        "recognition": "OCR",
+        "roi": [598, 613, 161, 67],
+        "expected": ["^(1|１)[ ]*鸣契$"]
+    },
+    "契灵结契-唤起单次确认": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在召唤数量窗", "契灵结契-单只数量", "契灵结契-鸣契按钮"],
+        "box_index": 2,
+        "action": "Click",
+        "next": ["契灵结契-单石确认窗"],
+        "timeout": 4200,
+        "on_error": []
+    },
+    "契灵结契-召唤确认文案": {
+        "recognition": "OCR",
+        "roi": [424, 285, 432, 62],
+        "expected": ["是否消耗.*鸣契石召唤"]
+    },
+    "契灵结契-单石确认窗": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "roi": [424, 285, 432, 62], "expected": ["^是否消耗[ ]*(1|１)[ ]*个鸣契石召唤.+$"]},
+            {"recognition": "OCR", "roi": [655, 407, 192, 65], "expected": ["^确定$"]}
+        ],
+        "box_index": 1
+    },
+    "契灵结契-确认只用一石": {
+        "recognition": "And",
+        "all_of": ["契灵结契-单石确认窗"],
+        "action": "Click",
+        "post_delay": 1200,
+        "on_error": []
+    },
+    "契灵结契-低式盘提示": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "roi": [421, 242, 445, 104], "expected": ["自动结契所需|影响契灵结契"]},
+            {"recognition": "OCR", "roi": [668, 410, 168, 59], "expected": ["^继续挑战$"]}
+        ]
+    },
+    "契灵结契-试一场": {
+        "recognition": "DirectHit",
+        "next": ["契灵结契-低式盘提示", "契灵结契-挑战可点击"],
+        "timeout": 5000,
+        "on_error": []
+    },
+    "契灵结契-挑战可点击": {
+        "recognition": "And",
+        "all_of": ["契灵结契-在挑战"],
+        "next": ["契灵结契-低式盘提示", "契灵结契-点击挑战"],
+        "timeout": 3000,
+        "on_error": []
+    },
+    "契灵结契-战斗中点准备": {
+        "recognition": "OCR",
+        "roi": [963, 509, 317, 194],
+        "expected": ["^准备$"],
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 1001
+    },
+    "契灵结契-结算已返回": {
+        "recognition": "Or",
+        "any_of": ["契灵结契-在地图", {"recognition": "And", "all_of": ["契灵结契-在挑战", "契灵结契-识别是否返回挑战界面"]}]
     },
     "契灵结契-开始战斗": {
         "expected": "挑战|准备",
-        "next": ["[JumpBack]契灵结契-点击挑战", "契灵结契-识别点击屏幕继续后随机等待", "[JumpBack]契灵结契-放弃结契", "[JumpBack]契灵结契-结契成功"],
         "recognition": "OCR",
-        "roi": [963, 509, 317, 194],
-        "timeout": 600000
+        "roi": [963, 509, 317, 194]
     },
     "契灵结契-放弃结契": {
         "action": "Click",
         "expected": "放弃结契",
         "post_delay": 1000,
         "recognition": "OCR",
-        "roi": [400, 599, 184, 54]
+        "roi": [400, 599, 184, 54],
+        "next": ["契灵结契-结算已返回", "[JumpBack]契灵结契-退出战斗界面"],
+        "timeout": 18000,
+        "on_error": []
     },
     "契灵结契-点击挑战": {
         "action": "Click",
         "expected": "挑战|准备",
         "post_delay": 1001,
         "recognition": "OCR",
-        "roi": [963, 509, 317, 194]
+        "roi": [963, 509, 317, 194],
+        "next": ["契灵结契-低式盘提示", "契灵结契-结契成功", "契灵结契-放弃结契", "契灵结契-识别点击屏幕继续后随机等待", "[JumpBack]契灵结契-战斗中点准备"],
+        "timeout": 600000,
+        "on_error": []
     },
     "契灵结契-结契成功": {
         "action": "Click",
         "expected": "升至10级解锁",
         "recognition": "OCR",
         "roi": [803, 487, 467, 218],
-        "target": [257, 509, 275, 167]
+        "target": [257, 509, 275, 167],
+        "next": ["契灵结契-结算已返回", "[JumpBack]契灵结契-退出战斗界面"],
+        "timeout": 18000,
+        "on_error": []
     },
     "契灵结契-计数": {
         "custom_recognition": "TaskCounterRecognition",
@@ -81,16 +428,18 @@
             "node_name": "契灵结契-先等待"
         },
         "expected": "点击屏幕继续",
-        "next": ["契灵结契-识别是否返回挑战界面", "[JumpBack]契灵结契-先等待", "[JumpBack]契灵结契-退出战斗界面", "[JumpBack]契灵结契-放弃结契", "[JumpBack]契灵结契-结契成功"],
-        "on_error": ["契灵结契-卡住了"],
+        "next": ["契灵结契-低式盘提示", "契灵结契-结契成功", "契灵结契-放弃结契", "契灵结契-结算已返回", "[JumpBack]契灵结契-先等待", "[JumpBack]契灵结契-退出战斗界面"],
         "recognition": "OCR",
         "roi": [344, 570, 636, 150],
-        "timeout": 600000
+        "timeout": 600000,
+        "on_error": []
     },
     "契灵结契-退出战斗界面": {
         "action": "Click",
         "expected": "点击屏幕继续",
         "recognition": "OCR",
-        "roi": [344, 570, 636, 150]
+        "roi": [344, 570, 636, 150],
+        "max_hit": 2,
+        "post_delay": 750
     }
 }

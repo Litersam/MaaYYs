@@ -8,6 +8,8 @@ import (
 	"maa-yys-agent/actions/auto_foster"
 	"maa-yys-agent/actions/battle_flow"
 	"maa-yys-agent/actions/battle_team"
+	"maa-yys-agent/actions/bond"
+	"maa-yys-agent/actions/bondling"
 	"maa-yys-agent/actions/bonus_toggle"
 	"maa-yys-agent/actions/bounty_monster_recognition"
 	"maa-yys-agent/actions/breakthrough"
@@ -22,6 +24,7 @@ import (
 	"maa-yys-agent/actions/kun28"
 	"maa-yys-agent/actions/loop_action"
 	"maa-yys-agent/actions/mystery_shop"
+	"maa-yys-agent/actions/party"
 	"maa-yys-agent/actions/question_matcher"
 	"maa-yys-agent/actions/random_swipe"
 	"maa-yys-agent/actions/random_task"
@@ -101,6 +104,11 @@ var CustomActions = []ActionRegistration{
 	{"AbyssDamageGuard", &abyss_shadows.Battle{}},
 	{"DokanBudget", &dokan.BudgetAction{}},
 	{"GuildDonation", &guild_donation.Donate{}},
+	{"PartyCreateAndInvite", &party.CreateAndInvite{}},
+	{"PartyWaitAndAccept", &party.WaitAndAccept{}},
+	{"PartyStateAction", &party.StateAction{}},
+	{"BondControl", &bond.Control{}},
+	{"BondlingRun", &bondling.Action{}},
 }
 
 var CustomRecognitions = []RecognitionRegistration{
@@ -122,6 +130,9 @@ var CustomRecognitions = []RecognitionRegistration{
 	{"AbyssWindow", &abyss_shadows.Window{}},
 	{"AbyssProgress", &abyss_shadows.Progress{}},
 	{"DokanBudgetGate", &dokan.BudgetGate{}},
+	{"PartyState", &party.StateRecognition{}},
+	{"PartyGlyph", &party.GlyphRecognition{}},
+	{"BondProbe", &bond.Probe{}},
 }
 
 // RegisterAgentServer registers all custom actions and recognitions with MaaAgentServer.

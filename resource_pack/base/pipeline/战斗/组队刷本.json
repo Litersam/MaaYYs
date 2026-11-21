@@ -3,11 +3,24 @@
         "focus": {
             "Node.Recognition.Succeeded": "次数达标任务结束！！！"
         },
-        "recognition": "DirectHit"
+        "recognition": "DirectHit",
+        "next": ["组队刷本-旧版归庭"]
     },
     "组队刷本-开局": {
         "next": ["组队刷本-房主", "组队刷本-队友"],
         "recognition": "DirectHit"
+    },
+    "组队刷本-旧版归庭": {
+        "next": ["组队刷本-旧版完成", "[JumpBack]组队管控-确认退出房间", "[JumpBack]组队管控-退出房间", "[JumpBack]导航-庭院"],
+        "timeout": 18000,
+        "on_error": ["组队刷本-旧版归庭失败"]
+    },
+    "组队刷本-旧版完成": {
+        "recognition": "And", "all_of": ["组队管控-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "completed", "reason": "party_manual_budget_reached"}
+    },
+    "组队刷本-旧版归庭失败": {
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "party_courtyard_or_bonus_unconfirmed"}
     },
     "组队刷本-房主": {
         "enabled": true,
@@ -247,8 +260,9 @@
         "target": [633, 656, 373, 64]
     },
     "组队刷本-队友-结束": {
-        "action": "StopTask",
-        "recognition": "DirectHit"
+        "action": "Custom",
+        "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "deferred", "reason": "party_manual_member_idle"}
     },
     "组队刷本-队友-获得宝藏": {
         "action": "Click",

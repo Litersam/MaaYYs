@@ -1,0 +1,126 @@
+{
+    "task": [
+        {
+            "name": "觉醒",
+            "label": "觉醒",
+            "entry": "觉醒",
+            "group": ["standalone"],
+            "option": ["觉醒-party_role", "觉醒-场次", "awakening_element", "觉醒-dungeon_layer", "switch_soul", "drop_awake"]
+        }
+    ],
+    "option": {
+        "觉醒-party_role": {
+            "type": "select",
+            "label": "组队身份",
+            "default_case": "solo",
+            "cases": [
+                {
+                    "name": "solo", "label": "单人",
+                    "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"role": "solo"}}}
+                },
+                {
+                    "name": "captain", "label": "队长",
+                    "option": ["觉醒-队友"],
+                    "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"role": "captain"}}}
+                },
+                {
+                    "name": "member", "label": "队员",
+                    "option": ["觉醒-队长"],
+                    "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"role": "member"}}}
+                }
+            ]
+        },
+        "觉醒-队友": {
+            "type": "input",
+            "label": "邀请队友",
+            "inputs": [
+                {"name": "teammate_names", "label": "队友游戏昵称", "description": "填写 1～2 个完整昵称，以逗号分隔。", "default": "", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"teammate_names": "{teammate_names}"}}}
+        },
+        "觉醒-队长": {
+            "type": "input",
+            "label": "接邀白名单",
+            "inputs": [
+                {"name": "captain_names", "label": "队长游戏昵称", "description": "仅接受这些完整昵称发出的邀请，以逗号分隔。", "default": "", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"captain_names": "{captain_names}"}}}
+        },
+        "觉醒-场次": {
+            "type": "input",
+            "label": "挑战场次",
+            "inputs": [
+                {"name": "limit_count", "label": "挑战场次", "description": "填 0 立即跳过，不进行导航、预设或加成操作。", "default": "10", "pipeline_type": "int"}
+            ],
+            "pipeline_override": {"组队管控-初始化": {"custom_action_param": {"flow": "awake", "limit_count": "{limit_count}"}}}
+        },
+        "awakening_element": {
+            "type": "select",
+            "label": "觉醒材料种类",
+            "description": "供单人和队长选本；队员接受白名单内队长的邀请。",
+            "default_case": "fire",
+            "cases": [
+                {"name": "fire", "label": "火麒麟", "pipeline_override": {"觉醒-选层入口": {"next": ["觉醒-火麒麟", "[JumpBack]导航-觉醒材料"]}}},
+                {"name": "wind", "label": "风麒麟", "pipeline_override": {"觉醒-选层入口": {"next": ["觉醒-风麒麟", "[JumpBack]导航-觉醒材料"]}}},
+                {"name": "water", "label": "水麒麟", "pipeline_override": {"觉醒-选层入口": {"next": ["觉醒-水麒麟", "[JumpBack]导航-觉醒材料"]}}},
+                {"name": "lightning", "label": "雷麒麟", "pipeline_override": {"觉醒-选层入口": {"next": ["觉醒-雷麒麟", "[JumpBack]导航-觉醒材料"]}}}
+            ]
+        },
+        "觉醒-dungeon_layer": {
+            "type": "select",
+            "label": "挑战层数",
+            "description": "供单人和队长选层。",
+            "default_case": "10",
+            "cases": [
+                {"name": "1", "label": "壹层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(壹|一)层?$"]}, "觉醒-当前层标题": {"expected": ["^(壹|一)层$"]}}},
+                {"name": "2", "label": "贰层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(贰|二)层?$"]}, "觉醒-当前层标题": {"expected": ["^(贰|二)层$"]}}},
+                {"name": "3", "label": "叁层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(叁|三)层?$"]}, "觉醒-当前层标题": {"expected": ["^(叁|三)层$"]}}},
+                {"name": "4", "label": "肆层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(肆|四)层?$"]}, "觉醒-当前层标题": {"expected": ["^(肆|四)层$"]}}},
+                {"name": "5", "label": "伍层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(伍|五)层?$"]}, "觉醒-当前层标题": {"expected": ["^(伍|五)层$"]}}},
+                {"name": "6", "label": "陆层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(陆|六)层?$"]}, "觉醒-当前层标题": {"expected": ["^(陆|六)层$"]}}},
+                {"name": "7", "label": "柒层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(柒|七)层?$"]}, "觉醒-当前层标题": {"expected": ["^(柒|七)层$"]}}},
+                {"name": "8", "label": "捌层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(捌|八)层?$"]}, "觉醒-当前层标题": {"expected": ["^(捌|八)层$"]}}},
+                {"name": "9", "label": "玖层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(玖|九)层?$"]}, "觉醒-当前层标题": {"expected": ["^(玖|九)层$"]}}},
+                {"name": "10", "label": "拾层", "pipeline_override": {"觉醒-目标层标签": {"expected": ["^(拾|十)层?$"]}, "觉醒-当前层标题": {"expected": ["^(拾|十)层$"]}}}
+            ]
+        },
+        "switch_soul": {
+            "type": "switch",
+            "label": "使用御魂预设",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "Yes", "label": "是",
+                    "option": ["觉醒-御魂预设名称"],
+                    "pipeline_override": {"组队管控-准备": {"next": ["觉醒-御魂准备"]}}
+                },
+                {"name": "No", "label": "否"}
+            ]
+        },
+        "觉醒-御魂预设名称": {
+            "type": "input",
+            "label": "觉醒御魂预设",
+            "inputs": [
+                {"name": "group_name", "label": "御魂分组名称", "default": "默认分组", "pipeline_type": "string"},
+                {"name": "team_name", "label": "御魂队伍名称", "default": "默认队伍", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {"觉醒-切换御魂": {"custom_action_param": {"group_name": "{group_name}", "team_name": "{team_name}"}}}
+        },
+        "drop_awake": {
+            "type": "switch",
+            "label": "使用觉醒材料掉落加成",
+            "description": "仅关闭本任务开启的加成，保留原已开启的加成。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "Yes", "label": "是",
+                    "pipeline_override": {
+                        "组队管控-开启加成": {"next": ["组队管控-加成入口"]},
+                        "组队管控-拨动加成": {"custom_action_param": {"drop_awake": true}}
+                    }
+                },
+                {"name": "No", "label": "否"}
+            ]
+        }
+    }
+}

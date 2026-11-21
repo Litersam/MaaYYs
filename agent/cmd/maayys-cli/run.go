@@ -154,9 +154,11 @@ func bareTaskName(task string) string {
 
 var guildActivityTasks = []string{"狭间暗域", "自动道馆突破", "寮三十捐材料", "寮宴会", "自动麒麟"}
 
+var partyActivityTasks = []string{"组队刷本", "觉醒", "同心之兰", "契灵结契"}
+
 func requiresStepOutcome(task string) bool {
 	name := bareTaskName(task)
-	if slices.Contains(guildActivityTasks, name) {
+	if slices.Contains(guildActivityTasks, name) || slices.Contains(partyActivityTasks, name) {
 		return true
 	}
 	switch name {

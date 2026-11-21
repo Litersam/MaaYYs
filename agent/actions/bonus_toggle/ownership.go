@@ -10,6 +10,16 @@ import (
 
 const ownedAnchor = "通用加成-本轮已开启-"
 
+func OwnsAny(ctx *maa.Context) bool {
+	o := ownership{anchors: ctx}
+	for name := range labels {
+		if o.contains(name) {
+			return true
+		}
+	}
+	return false
+}
+
 type taskAnchors interface {
 	GetAnchor(string) (string, error)
 	SetAnchor(string, string) error

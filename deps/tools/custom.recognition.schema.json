@@ -25,7 +25,10 @@
         "RealmActivateButton",
         "AbyssWindow",
         "AbyssProgress",
-        "DokanBudgetGate"
+        "DokanBudgetGate",
+        "PartyState",
+        "PartyGlyph",
+        "BondProbe"
       ]
     }
   },
@@ -49,10 +52,55 @@
       { "$ref": "#/$defs/RealmActivateButton" },
       { "$ref": "#/$defs/AbyssWindow" },
       { "$ref": "#/$defs/AbyssProgress" },
-      { "$ref": "#/$defs/DokanBudgetGate" }
+      { "$ref": "#/$defs/DokanBudgetGate" },
+      { "$ref": "#/$defs/PartyState" },
+      { "$ref": "#/$defs/PartyGlyph" },
+      { "$ref": "#/$defs/BondProbe" }
     ]
   },
   "$defs": {
+    "BondProbe": {
+      "properties": {
+        "custom_recognition": { "const": "BondProbe" },
+        "custom_recognition_param": {
+          "type": "object",
+          "properties": {
+            "kind": { "enum": ["zero", "row", "header", "ready", "captain", "member", "expand", "accept", "active"] },
+            "target": { "enum": [10, 20] }
+          },
+          "required": ["kind"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_recognition", "custom_recognition_param"]
+    },
+    "PartyState": {
+      "properties": {
+        "custom_recognition": { "const": "PartyState" },
+        "custom_recognition_param": {
+          "type": "object",
+          "properties": { "is": { "enum": ["manual", "solo", "captain", "member", "awake", "sea", "zero", "done", "has_bonus", "bond_done", "selected", "missing"] } },
+          "required": ["is"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_recognition", "custom_recognition_param"]
+    },
+    "PartyGlyph": {
+      "properties": {
+        "custom_recognition": { "const": "PartyGlyph" },
+        "custom_recognition_param": {
+          "type": "object",
+          "properties": {
+            "kind": { "enum": ["private_checked", "private_unchecked", "default_off", "default_on", "empty", "full"] },
+            "box": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "minItems": 4, "maxItems": 4 }
+          },
+          "required": ["kind", "box"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_recognition", "custom_recognition_param"]
+    },
     "AbyssWindow": {
       "properties": {
         "custom_recognition": { "const": "AbyssWindow" },
