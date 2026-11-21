@@ -55,17 +55,20 @@ type rawTaskDef struct {
 }
 
 type rawOptionDef struct {
-	Type             string         `json:"type"`
-	DefaultCase      string         `json:"default_case"`
-	Cases            []rawCaseDef   `json:"cases"`
-	Inputs           []rawInputDef  `json:"inputs"`
-	Option           []string       `json:"option"`
-	PipelineOverride map[string]any `json:"pipeline_override"`
+	Type             string          `json:"type"`
+	DefaultCase      string          `json:"default_case"`
+	DefaultSelection json.RawMessage `json:"default"`
+	Cases            []rawCaseDef    `json:"cases"`
+	Inputs           []rawInputDef   `json:"inputs"`
+	Option           []string        `json:"option"`
+	SubOptions       []string        `json:"sub_options"`
+	PipelineOverride map[string]any  `json:"pipeline_override"`
 }
 
 type rawCaseDef struct {
 	Name             string         `json:"name"`
 	Option           []string       `json:"option"`
+	SubOptions       []string       `json:"sub_options"`
 	PipelineOverride map[string]any `json:"pipeline_override"`
 }
 
@@ -211,8 +214,10 @@ func collectReachableOptions(rootOpts []string, opts map[string]rawOptionDef) []
 				continue
 			}
 			visit(opt.Option)
+			visit(opt.SubOptions)
 			for _, c := range opt.Cases {
 				visit(c.Option)
+				visit(c.SubOptions)
 			}
 		}
 	}
@@ -221,7 +226,7 @@ func collectReachableOptions(rootOpts []string, opts map[string]rawOptionDef) []
 }
 
 // resolveTaskOverride evaluates a task's conditional ProjectInterface v2 option tree
-// (including v4.1.3 nested case.option chains and typed input placeholders) for the given params.
+// (including multi-select cases, nested options and typed input placeholders).
 func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]any {
 	merged := make(map[string]any)
 	visited := make(map[string]bool)
@@ -245,7 +250,17 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 						mergeMap(merged, active.PipelineOverride)
 					}
 					evalList(opt.Option)
+					evalList(opt.SubOptions)
 					evalList(active.Option)
+					evalList(active.SubOptions)
+				}
+			case "checkbox":
+				for _, active := range selectedCheckboxCases(opt, params[optName]) {
+					mergeMap(merged, active.PipelineOverride)
+					evalList(opt.Option)
+					evalList(opt.SubOptions)
+					evalList(active.Option)
+					evalList(active.SubOptions)
 				}
 			case "input":
 				if opt.PipelineOverride != nil && task.Name != "账号登录" {
@@ -255,11 +270,13 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 					}
 				}
 				evalList(opt.Option)
+				evalList(opt.SubOptions)
 			default:
 				if opt.PipelineOverride != nil {
 					mergeMap(merged, opt.PipelineOverride)
 				}
 				evalList(opt.Option)
+				evalList(opt.SubOptions)
 			}
 		}
 	}
@@ -269,6 +286,36 @@ func resolveTaskOverride(task resolvedTask, params map[string]any) map[string]an
 		mergeMap(merged, task.RawTask.PipelineOverride)
 	}
 	return merged
+}
+
+func selectedCheckboxCases(opt rawOptionDef, selected any) []rawCaseDef {
+	var names []string
+	switch values := selected.(type) {
+	case nil:
+		if len(opt.DefaultSelection) != 0 && json.Unmarshal(opt.DefaultSelection, &names) != nil {
+			return nil
+		}
+	case []string:
+		names = values
+	case []any:
+		for _, item := range values {
+			if name, ok := item.(string); ok {
+				names = append(names, name)
+			}
+		}
+	}
+	var cases []rawCaseDef
+	seen := make(map[string]bool, len(names))
+	for _, name := range names {
+		for _, c := range opt.Cases {
+			if strings.EqualFold(c.Name, name) && !seen[c.Name] {
+				cases = append(cases, c)
+				seen[c.Name] = true
+				break
+			}
+		}
+	}
+	return cases
 }
 
 func selectOptionCase(opt rawOptionDef, optName string, params map[string]any) (rawCaseDef, bool) {

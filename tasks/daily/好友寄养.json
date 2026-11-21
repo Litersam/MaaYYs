@@ -1,0 +1,38 @@
+{
+    "task": [
+        {
+            "name": "好友寄养",
+            "label": "好友寄养",
+            "entry": "好友寄养",
+            "group": ["daily"],
+            "option": ["好友寄养_寄养设置", "好友寄养_是否领取寄养奖励"],
+            "description": "先领取已到期的奖励，再检查同服、跨区各前 10 位好友；4 星及以上才入选，默认太鼓优先、斗鱼兜底，同类按收益排序。"
+        }
+    ],
+    "option": {
+        "好友寄养_寄养设置": {
+            "type": "select",
+            "label": "寄养设置",
+            "default_case": "勾玉优先",
+            "cases": [
+                {
+                    "name": "勾玉优先", "label": "勾玉优先",
+                    "pipeline_override": {"好友寄养_扫描选择": {"custom_action_param": {"FosterTarget": 1}}}
+                },
+                {
+                    "name": "体力优先", "label": "体力优先",
+                    "pipeline_override": {"好友寄养_扫描选择": {"custom_action_param": {"FosterTarget": 2}}}
+                }
+            ]
+        },
+        "好友寄养_是否领取寄养奖励": {
+            "type": "switch",
+            "label": "是否领取寄养奖励",
+            "default_case": "Yes",
+            "cases": [
+                {"name": "Yes", "label": "是", "pipeline_override": {"好友寄养_领取到期奖励": {"enabled": true}}},
+                {"name": "No", "label": "否", "pipeline_override": {"好友寄养_领取到期奖励": {"enabled": false}}}
+            ]
+        }
+    }
+}

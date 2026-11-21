@@ -1,0 +1,203 @@
+{
+    "结界挂卡": {
+        "next": ["结界挂卡_进入卡页", "[JumpBack]通用弹窗-寄养归来-稍后", "[JumpBack]导航-阴阳寮结界"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_进入卡页": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "FeatureMatch", "template": "阴阳寮/阴阳寮_结界_结界换装.png"},
+            {"recognition": "NeuralNetworkDetect", "model": "Barrier_v1.onnx", "expected": 1, "threshold": 0.6}
+        ],
+        "box_index": 1,
+        "action": "Click",
+        "post_delay": 1000,
+        "next": ["结界挂卡_卡页就绪"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_卡页标题": {
+        "recognition": "OCR", "expected": "^结界卡$", "roi": [563, 30, 136, 67]
+    },
+    "结界挂卡_卡页就绪": {
+        "recognition": "OCR", "expected": "^结界卡$", "roi": [563, 30, 136, 67],
+        "pre_wait_freezes": 300,
+        "next": ["结界挂卡_已有生效卡", "结界挂卡_已有卡等待计时", "结界挂卡_先检查育成"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_计时OCR": {
+        "recognition": "OCR",
+        "expected": "^[0-9]{2}[:：][0-9]{2}[:：][0-9]{2}$",
+        "roi": [879, 242, 164, 60]
+    },
+    "结界挂卡_计时": {
+        "recognition": "Custom", "custom_recognition": "RealmTimerProbe",
+        "custom_recognition_param": {"kind": "card"}
+    },
+    "结界挂卡_邀请按钮": {
+        "recognition": "TemplateMatch", "template": "阴阳寮奖励/阴阳寮奖励32.png",
+        "roi": [998, 500, 194, 198]
+    },
+    "结界挂卡_已有生效卡": {
+        "recognition": "And",
+        "all_of": ["结界挂卡_卡页标题", "结界挂卡_邀请按钮", "结界挂卡_计时"],
+        "box_index": 2,
+        "action": "Custom", "custom_action": "RealmFinish",
+        "custom_action_param": {"status": "skipped", "metric": "realm_card_remaining_sec"}
+    },
+    "结界挂卡_已有卡等待计时": {
+        "recognition": "And", "all_of": ["结界挂卡_卡页标题", "结界挂卡_邀请按钮"],
+        "next": ["结界挂卡_已有生效卡"],
+        "timeout": 5000,
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_关闭卡页": {
+        "recognition": "And",
+        "all_of": [
+            "结界挂卡_卡页标题",
+            {"recognition": "TemplateMatch", "template": "通用图标/关闭.png", "roi": [1060, 31, 207, 143]}
+        ],
+        "box_index": 1,
+        "action": "Click", "post_delay": 700
+    },
+    "结界挂卡_先检查育成": {
+        "next": ["[JumpBack]结界挂卡_处理育成", "结界挂卡_回卡页", "[JumpBack]结界挂卡_关闭卡页"],
+        "timeout": 10000,
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_处理育成": {
+        "max_hit": 1,
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "FeatureMatch", "template": "阴阳寮/阴阳寮_结界_结界换装.png"},
+            {"recognition": "NeuralNetworkDetect", "model": "Barrier_v1.onnx", "expected": 0, "threshold": 0.6}
+        ],
+        "box_index": 1,
+        "action": "Click",
+        "post_delay": 800,
+        "next": ["结界挂卡_育成就绪"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_育成就绪": {
+        "recognition": "OCR", "expected": "式神育成", "roi": [0, 8, 344, 92],
+        "pre_wait_freezes": 500,
+        "next": ["结界挂卡_选择育成候补", "结界挂卡_退出育成"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_选择育成候补": {
+        "recognition": "And",
+        "all_of": [
+            "好友寄养_育成标题",
+            {"recognition": "OCR", "expected": "放入|智能", "roi": [1111, 476, 139, 97]}
+        ],
+        "action": "Custom", "custom_action": "RealmGrowthSelect",
+        "custom_action_param": {"growth_shikigami_order": 7},
+        "post_delay": 650,
+        "next": ["结界挂卡_确认育成", "结界挂卡_退出育成"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_确认育成": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "expected": "育成|候补", "roi": [419, 135, 439, 289]},
+            {"recognition": "OCR", "expected": "确定", "roi": [645, 380, 240, 205]}
+        ],
+        "box_index": 1,
+        "action": "Click", "post_delay": 650,
+        "next": ["结界挂卡_退出育成"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_退出育成": {
+        "recognition": "And", "all_of": ["好友寄养_育成标题", "好友寄养_蓝色返回"],
+        "box_index": 1, "action": "Click", "post_delay": 800
+    },
+    "结界挂卡_回卡页": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "FeatureMatch", "template": "阴阳寮/阴阳寮_结界_结界换装.png"},
+            {"recognition": "NeuralNetworkDetect", "model": "Barrier_v1.onnx", "expected": 1, "threshold": 0.6}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 900,
+        "next": ["结界挂卡_已有生效卡", "结界挂卡_已有卡等待计时", "结界挂卡_选择库存卡"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_选择库存卡": {
+        "recognition": "OCR", "expected": "^结界卡$", "roi": [563, 30, 136, 67],
+        "next": ["结界挂卡_筛选已生效", "[JumpBack]结界挂卡_打开分类"],
+        "timeout": 7500,
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_打开分类": {
+        "recognition": "OCR", "expected": "全部|斗鱼|太鼓|变异|伞室内|太阴",
+        "roi": [349, 76, 170, 79], "action": "Click", "post_delay": 400,
+        "next": ["结界挂卡_点分类"]
+    },
+    "结界挂卡_点分类": {
+        "recognition": "OCR", "expected": "^太鼓$", "roi": [370, 149, 151, 410],
+        "action": "Click", "post_delay": 650
+    },
+    "结界挂卡_筛选已生效": {
+        "recognition": "And",
+        "all_of": ["结界挂卡_卡页标题", "结界挂卡_卡筛选类型"],
+        "next": ["结界挂卡_无可挂卡", "结界挂卡_点库存卡", "[JumpBack]结界挂卡_翻页", "结界挂卡_遍历结束"],
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_卡筛选类型": {
+        "recognition": "OCR", "expected": "^太鼓$", "roi": [356, 93, 166, 62]
+    },
+    "结界挂卡_点库存卡": {
+        "recognition": "NeuralNetworkDetect", "model": "BarrierCard.onnx",
+        "expected": [0, 1, 2, 3, 4], "threshold": 0.8,
+        "roi": [156, 156, 474, 497], "action": "Click", "post_delay": 650,
+        "next": ["结界挂卡_点激活"],
+        "timeout": 5500,
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_翻页": {
+        "recognition": "And", "all_of": ["结界挂卡_卡页标题", "结界挂卡_筛选已生效"],
+        "action": "Swipe", "begin": [320, 605], "end": [320, 211], "duration": 800,
+        "post_delay": 450, "max_hit": 4
+    },
+    "结界挂卡_无可挂卡": {
+        "recognition": "OCR", "expected": "未获得结界卡|可以通过|没有结界卡",
+        "roi": [174, 258, 375, 167],
+        "action": "Custom", "custom_action": "RealmFinish",
+        "custom_action_param": {"status": "skipped"}
+    },
+    "结界挂卡_遍历结束": {
+        "recognition": "And", "all_of": ["结界挂卡_卡页标题", "结界挂卡_筛选已生效"],
+        "action": "Custom", "custom_action": "RealmFinish",
+        "custom_action_param": {"status": "skipped"}
+    },
+    "结界挂卡_已选卡": {
+        "recognition": "OCR", "expected": "太鼓", "roi": [787, 234, 230, 141]
+    },
+    "结界挂卡_激活按钮模板": {
+        "recognition": "TemplateMatch", "template": "阴阳寮奖励/阴阳寮奖励5.png",
+        "roi": [993, 494, 196, 198], "threshold": 0.65
+    },
+    "结界挂卡_点激活": {
+        "recognition": "And",
+        "all_of": ["结界挂卡_卡页标题", "结界挂卡_已选卡",
+            {"recognition": "Custom", "custom_recognition": "RealmActivateButton"}],
+        "box_index": 2,
+        "action": "Click", "post_delay": 900, "max_hit": 1,
+        "next": ["结界挂卡_挂卡成功", "[JumpBack]结界挂卡_确认激活"],
+        "timeout": 11000,
+        "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_确认激活": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "expected": "是否将|是否激活", "roi": [431, 266, 423, 93]},
+            {"recognition": "OCR", "expected": "确定", "roi": [641, 394, 234, 88]}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 1200
+    },
+    "结界挂卡_挂卡成功": {
+        "recognition": "And",
+        "all_of": ["结界挂卡_卡页标题", "结界挂卡_邀请按钮", "结界挂卡_计时"],
+        "box_index": 2,
+        "action": "Custom", "custom_action": "RealmFinish",
+        "custom_action_param": {"status": "completed", "metric": "realm_card_remaining_sec"}
+    }
+}

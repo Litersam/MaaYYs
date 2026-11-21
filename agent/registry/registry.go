@@ -8,18 +8,22 @@ import (
 	"maa-yys-agent/actions/battle_team"
 	"maa-yys-agent/actions/bonus_toggle"
 	"maa-yys-agent/actions/bounty_monster_recognition"
+	"maa-yys-agent/actions/breakthrough"
 	"maa-yys-agent/actions/challenge_dungeon_boss"
 	"maa-yys-agent/actions/clear_hit_count"
 	"maa-yys-agent/actions/count_action"
+	"maa-yys-agent/actions/demon_encounter"
 	"maa-yys-agent/actions/guess"
 	"maa-yys-agent/actions/human_touch"
 	"maa-yys-agent/actions/kun28"
 	"maa-yys-agent/actions/loop_action"
+	"maa-yys-agent/actions/mystery_shop"
 	"maa-yys-agent/actions/question_matcher"
 	"maa-yys-agent/actions/random_swipe"
 	"maa-yys-agent/actions/random_task"
 	"maa-yys-agent/actions/random_touch"
 	"maa-yys-agent/actions/random_wait"
+	"maa-yys-agent/actions/realm"
 	"maa-yys-agent/actions/repeat_challenge_n_times"
 	"maa-yys-agent/actions/restart"
 	"maa-yys-agent/actions/restartgame"
@@ -81,6 +85,11 @@ var CustomActions = []ActionRegistration{
 	{"QuestionMatcher", &question_matcher.QuestionMatcher{}},
 	{"Guess", &guess.Guess{}},
 	{"TimeCheck", &time_check.TimeCheck{}},
+	{"BreakthroughPolicy", &breakthrough.PolicyAction{}},
+	{"DemonEncounterSkipped", &demon_encounter.Skipped{}},
+	{"Kun28ReserveGuard", &kun28.ReserveGuard{}},
+	{"RealmFinish", &realm.Finish{}},
+	{"RealmGrowthSelect", &realm.GrowthSelect{}},
 }
 
 var CustomRecognitions = []RecognitionRegistration{
@@ -93,6 +102,11 @@ var CustomRecognitions = []RecognitionRegistration{
 	{"OCRResultCounterRecognition", &ocr_result_counter_recognition.OCRResultCounterRecognition{}},
 	{"TaskCounterRecognition", &task_counter_recognition.TaskCounterRecognition{}},
 	{"TimeCheckRecognition", &time_check_recognition.TimeCheckRecognition{}},
+	{"BountyInviteWhitelist", &bounty_monster_recognition.InviteWhitelist{}},
+	{"AreaBossChallengeButton", &challenge_dungeon_boss.ChallengeButton{}},
+	{"MysteryShopPrice", &mystery_shop.Price{}},
+	{"RealmTimerProbe", &realm.TimerProbe{}},
+	{"RealmActivateButton", &realm.ActivateButton{}},
 }
 
 // RegisterAgentServer registers all custom actions and recognitions with MaaAgentServer.

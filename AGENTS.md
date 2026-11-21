@@ -5,16 +5,17 @@
 
 ## Git Remotes & Branch Workflow (`main` + `custom`)
 - **Dual-Remote Convention**:
-  - `upstream` -> `https://github.com/TanyaShue/MaaYYs.git`
-  - `origin` -> `https://github.com/Litersam/MaaYYs.git`
+  - `origin` -> `https://github.com/TanyaShue/MaaYYs.git` (upstream mirror)
+  - `fork` -> `https://github.com/Litersam/MaaYYs.git` (personal fork; `remote.pushDefault=fork`)
 - **Branch Roles**:
-  - `main`: Pure mirror tracking `upstream/main` (synced verbatim to `origin/main`). Never commit custom changes directly to `main`.
-  - `custom`: Primary integration branch (`origin/custom`), rebased cleanly onto upstream releases (currently `v4.1.3`). All custom actions, CLI enhancements, and custom task definitions live on `custom` (or short-lived topic branches rebased onto `custom`).
+  - `main`: Pure mirror tracking `origin/main`. Never commit custom changes directly to `main`.
+  - `custom`: Primary integration branch (`fork/custom`), rebased cleanly onto upstream releases (currently `v4.1.3`). Develop changes on topic branches based on `custom`.
 
 ## Repository & Task Architecture
 - `agent/`: Go 1.24 module (`maa-yys-agent`) built on `github.com/MaaXYZ/maa-framework-go/v4`.
   - `main.go`, `register.go`: MXU AgentServer socket entrypoint (`agent\agent.exe`).
   - `registry/`: Shared registration list of `CustomActions` and `CustomRecognitions` for both `agent.exe` and `maayys-cli.exe`.
+  - `internal/`: Shared frame/ROI/color utilities and task-scoped runtime outcome reporting for the CLI.
   - `actions/` & `recognition/`: Custom action and recognition runners (including `actions/switch_account` and upstream `actions/switch_soul_by_week`).
   - `cmd/maayys-cli/`: Single-binary in-process headless CLI (`bin\maayys-cli.exe`).
 - `resource_pack/`: 1280x720 declarative pipelines (`base/pipeline/**`), channel overrides (`official/`, `bilibili/`, `taptap/`, etc.), templates (`base/image/**`), and OCR/ONNX models (`base/model/**`).
@@ -35,6 +36,8 @@
    - Gate Win32 syscalls behind `//go:build windows` and `//go:build !windows` stubs so cross-platform builds stay green.
    - Bind strictly to the requested `adb_address` / `mumu_index`; never probe or touch unrelated emulator instances.
 
+For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` separately. `结界奖励领取` and its original option keys remain accepted for existing plans; it does not return the split tasks' timer metrics. Successful timer reads on the split tasks emit `foster_remaining_sec` or `realm_card_remaining_sec` even when the slot was already active (`skipped`).
+
 ## `maayys-cli.exe` Headless Subprocess Protocol
 Build and verify offline from `agent/`:
 ```powershell
@@ -45,7 +48,7 @@ go build -o ..\bin\maayys-cli.exe .\cmd\maayys-cli
 
 ### Subcommands
 Both bare subcommands and `--` flag forms are accepted:
-1. `bin\maayys-cli.exe catalog` (`--catalog`): Recursively scans `tasks/{daily,standalone,promotion}`, resolves ProjectInterface v2 options (including `v4.1.3` nested `case.option` trees and typed `pipeline_type` placeholders), and writes `{"ok": true, "tasks": [{"name": "...", "category": "daily"|"standalone"|"promotion", ...}]}` to `stdout`.
+1. `bin\maayys-cli.exe catalog` (`--catalog`): Recursively scans `tasks/{daily,standalone,promotion}`, resolves ProjectInterface v2 options (including checkbox case-name arrays, nested options and typed `pipeline_type` placeholders), and writes `{"ok": true, "tasks": [{"name": "...", "category": "daily"|"standalone"|"promotion", ...}]}` to `stdout`.
 2. `bin\maayys-cli.exe check-resources [paths...]` (`--check-resources`): Offline-loads `resource_pack/base` + `resource_pack/official` via `MaaFramework` and verifies core pipeline nodes without connecting to any emulator.
 3. `bin\maayys-cli.exe run` (`--run`): Reads a single UTF-8 JSON request from `stdin` (tasks may be referenced by bare `name` such as `"账号登录"` for backward compatibility, or `<category>/<name>`):
    ```json
@@ -74,6 +77,8 @@ Both bare subcommands and `--` flag forms are accepted:
    ```
    - Streams flushed JSONL events to `stdout` (secrets redacted; framework/internal logs go to `stderr`):
      - `{"type":"log","time":"05:30:01","level":"info","message":"..."}`
-     - `{"type":"step","id":"step-login","status":"running"|"complete"|"error","detail":"..."}`
-     - `{"type":"result","ok":true,"displaced":false,"error":null,"screenshot_saved":false}`
-   - Exit code `0` indicates all steps succeeded. On failure (exit code `1`), captures the last frame to `failure_screenshot_path` via controller cache or `adb -s <adb_address> exec-out screencap -p` and sets `"screenshot_saved": true`.
+     - `{"type":"step","id":"step-login","status":"running"|"complete"|"skipped"|"deferred"|"error","detail":"..."}`; terminal events also carry that step's `metrics` when non-empty.
+     - `{"type":"result","ok":true,"status":"completed","metrics":{},"displaced":false,"error":null,"screenshot_saved":false}`
+   - Overall status is `failed` on an execution error, otherwise `deferred` if any step asks to retry, `completed` if any work step completed, or `skipped` if all work was skipped. Login/open/close alone do not mask a skipped plan. Later observations replace earlier metrics with the same key.
+   - `completed`, `skipped`, and `deferred` exit with code `0`. On failure (exit code `1`), attempts to capture the last frame to `failure_screenshot_path` only when a controller exists and no displacement/risk prompt was detected.
+   - On task failure or a catchable interrupt, the CLI tries to close only the bonuses it enabled for the step, before returning its result. A forced process kill cannot execute cleanup.

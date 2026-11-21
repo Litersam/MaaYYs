@@ -1,17 +1,23 @@
 {
     "出战队伍预设": {
-        "expected": "出战",
+        "next": ["出战队伍预设-面板已打开", "[JumpBack]出战队伍预设-打开备战预设"],
+        "recognition": "DirectHit",
+        "timeout": 5000
+    },
+    "出战队伍预设-面板已打开": {
+        "expected": "^出战$",
         "next": ["出战队伍预设-点击分组", "[JumpBack]出战队伍预设-滑动分组到最上方", "[JumpBack]出战队伍预设-向上滑动"],
-        "on_error": ["出战队伍预设-分组错误"],
         "recognition": "OCR",
         "roi": [590, 140, 560, 400],
         "roi_offset": [246, 323, -405, -336]
     },
-    "出战队伍预设-分组错误": {
-        "focus": {
-            "Node.Recognition.Succeeded": "出战分组识别失败,分组或队伍名称尽量不要使用符号"
-        },
-        "recognition": "DirectHit"
+    "出战队伍预设-打开备战预设": {
+        "action": "Click",
+        "expected": ["^预设$", "^队伍预设$"],
+        "max_hit": 2,
+        "post_delay": 1000,
+        "recognition": "OCR",
+        "roi": [16, 597, 145, 120]
     },
     "出战队伍预设-向上滑动": {
         "action": "Swipe",
@@ -63,7 +69,6 @@
         "action": "Click",
         "expected": "默认分组",
         "next": ["出战队伍预设-识别出战队伍", "[JumpBack]出战队伍预设-滑动队伍到最上方", "[JumpBack]出战队伍预设-向上滑动队伍"],
-        "on_error": ["出战队伍预设-队伍错误"],
         "post_delay": 2000,
         "pre_wait_freezes": 1000,
         "recognition": "OCR",
@@ -136,12 +141,6 @@
         "roi_offset": [177, -12, 216, 24],
         "template": ["通用/出战队伍预设-识别出战队伍-装备御魂_1.png"],
         "timeout": 5000
-    },
-    "出战队伍预设-队伍错误": {
-        "focus": {
-            "Node.Recognition.Succeeded": "出战分组识别失败,分组或队伍名称尽量不要使用符号"
-        },
-        "recognition": "DirectHit"
     },
     "左滑一下屏幕": {
         "action": "Custom",

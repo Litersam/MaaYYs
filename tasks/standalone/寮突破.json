@@ -6,11 +6,23 @@
             "entry": "寮突",
             "group": ["standalone"],
             "option": [
+                "寮突破挑战限额",
                 "寮突-是否切换御魂阵容"
             ]
         }
     ],
     "option": {
+        "寮突破挑战限额": {
+            "type": "input",
+            "label": "寮突破挑战限额",
+            "description": "按寮突破界面自身的剩余挑战次数停止，不使用个人突破券或退四策略。次数上限为 0 则跳过；尚未进攻且挑战次数已用完则等待恢复。",
+            "inputs": [
+                {"name": "limit_count", "label": "进攻次数上限（0 不进攻）", "default": "50", "pipeline_type": "int"}
+            ],
+            "pipeline_override": {
+                "寮突-策略": {"custom_action_param": {"mode": "guild", "limit_count": "{limit_count}"}}
+            }
+        },
         "寮突-是否切换御魂阵容": {
             "type": "switch",
             "label": "是否切换御魂阵容",

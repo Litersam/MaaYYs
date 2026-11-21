@@ -3,6 +3,7 @@
         {
             "name": "结界奖励领取",
             "label": "结界奖励领取",
+            "description": "兼容旧计划和参数，继续运行原合并流程（阴阳寮奖励领取）。新计划请使用好友寄养、结界挂卡和结界收菜，以分别获得状态和倒计时指标。",
             "entry": "阴阳寮奖励领取",
             "group": ["daily"],
             "option": [
@@ -28,7 +29,8 @@
                         "阴阳寮奖励领取_结界奖励领取_寄养式神_选择最优寄养": {
                             "custom_action_param": {
                                 "FosterTarget": 1,
-                                "DirectSelectThreshold": 76
+                                "DirectSelectThreshold": 76,
+                                "legacy_select_only": true
                             }
                         }
                     },
@@ -40,7 +42,8 @@
                     "pipeline_override": {
                         "阴阳寮奖励领取_结界奖励领取_寄养式神_选择最优寄养": {
                             "custom_action_param": {
-                                "FosterTarget": 2
+                                "FosterTarget": 2,
+                                "legacy_select_only": true
                             }
                         }
                     }
@@ -60,7 +63,8 @@
                         "阴阳寮奖励领取_结界奖励领取_寄养式神_选择最优寄养": {
                             "custom_action_param": {
                                 "FosterTarget": 1,
-                                "DirectSelectThreshold": 76
+                                "DirectSelectThreshold": 76,
+                                "legacy_select_only": true
                             }
                         }
                     }
@@ -72,7 +76,8 @@
                         "阴阳寮奖励领取_结界奖励领取_寄养式神_选择最优寄养": {
                             "custom_action_param": {
                                 "FosterTarget": 1,
-                                "DirectSelectThreshold": 67
+                                "DirectSelectThreshold": 67,
+                                "legacy_select_only": true
                             }
                         }
                     }
@@ -84,7 +89,8 @@
                         "阴阳寮奖励领取_结界奖励领取_寄养式神_选择最优寄养": {
                             "custom_action_param": {
                                 "FosterTarget": 1,
-                                "DirectSelectThreshold": 59
+                                "DirectSelectThreshold": 59,
+                                "legacy_select_only": true
                             }
                         }
                     }

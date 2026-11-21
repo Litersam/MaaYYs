@@ -5,11 +5,45 @@
       "label": "结界突破",
       "entry": "自动结界",
       "group": ["standalone"],
-      "option": ["结界突破是否装备御魂"],
-      "description": "自动卡57，卡57是什么自行搜索反正不会亏东西"
+      "option": ["结界突破挑战限额", "结界突破策略", "结界突破是否装备御魂"],
+      "description": "可选择全清九胜，或在本轮最后一格先主动退场四次再挑战。普通进攻达到次数上限或剩余券数达到保留线时停止；未进攻即停止则记为跳过。"
     }
   ],
   "option": {
+    "结界突破挑战限额": {
+      "type": "input",
+      "label": "挑战限额与保留券数",
+      "inputs": [
+        {"name": "limit_count", "label": "普通进攻次数上限（0 不进攻）", "default": "30", "pipeline_type": "int"},
+        {"name": "keep_tickets", "label": "保留突破券（0–30）", "default": "0", "pipeline_type": "int"}
+      ],
+      "pipeline_override": {
+        "结界突破-策略": {
+          "custom_action_param": {"mode": "realm", "limit_count": "{limit_count}", "keep_tickets": "{keep_tickets}"}
+        }
+      }
+    },
+    "结界突破策略": {
+      "type": "select",
+      "label": "个人结界突破策略",
+      "default_case": "retreat_four",
+      "cases": [
+        {
+          "name": "retreat_four",
+          "label": "退四保护",
+          "pipeline_override": {
+            "结界突破-策略": {"custom_action_param": {"strategy": "retreat_four"}}
+          }
+        },
+        {
+          "name": "full_clear",
+          "label": "全清九胜",
+          "pipeline_override": {
+            "结界突破-策略": {"custom_action_param": {"strategy": "full_clear"}}
+          }
+        }
+      ]
+    },
     "结界突破是否装备御魂": {
       "type": "switch",
       "label": "结界突破是否装备御魂",

@@ -683,7 +683,8 @@
     "custom_action": "AutoFoster",
     "custom_action_param": {
       "DirectSelectThreshold": 76,
-      "FosterTarget": 1
+      "FosterTarget": 1,
+      "legacy_select_only": true
     },
     "expected": "好友|跨区",
     "next": [

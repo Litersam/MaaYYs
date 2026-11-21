@@ -52,13 +52,13 @@
                         "地鬼-开始自动挑战鬼王": {
                             "custom_action_param": {
                                 "count": 1,
-                                "IsReward": false
+                                "isReward": false
                             }
                         },
                         "地鬼-开始自动挑战鬼王-悬赏":{
                             "custom_action_param": {
                                 "count": 1,
-                                 "IsReward": true
+                                "isReward": true
                             }
                         }
                     }
@@ -70,13 +70,13 @@
                         "地鬼-开始自动挑战鬼王": {
                             "custom_action_param": {
                                 "count": 2,
-                                "IsReward": false
+                                "isReward": false
                             }
                         },
                         "地鬼-开始自动挑战鬼王-悬赏":{
                             "custom_action_param": {
                                 "count": 2,
-                                 "IsReward": true
+                                "isReward": true
                             }
                         }
                     }
@@ -88,13 +88,13 @@
                         "地鬼-开始自动挑战鬼王": {
                             "custom_action_param": {
                                 "count": 3,
-                                "IsReward": false
+                                "isReward": false
                             }
                         },
                         "地鬼-开始自动挑战鬼王-悬赏":{
                             "custom_action_param": {
                                 "count": 3,
-                                 "IsReward": true
+                                "isReward": true
                             }
                         }
                     }
@@ -144,7 +144,7 @@
                     "label": "是",
                     "pipeline_override": {
                         "自动地鬼3_锁定阵容": {
-                            "enable": true
+                            "enabled": true
                         },
                         "自动地鬼12_装备预设": {
                             "enabled": false
@@ -156,7 +156,7 @@
                     "label": "否",
                     "pipeline_override": {
                         "自动地鬼3_锁定阵容": {
-                            "enable": false
+                            "enabled": false
                         },
                         "自动地鬼12_装备预设": {
                             "enabled": true
@@ -175,16 +175,10 @@
                     "label": "是",
                     "pipeline_override": {
                         "地鬼-开始自动挑战鬼王-悬赏": {
-                            "enable": true
+                            "enabled": true
                         },
                         "地鬼-开始自动挑战鬼王": {
                             "enabled": false
-                        },
-                        "地鬼-挑战一次悬赏":{
-                            "enable": true
-                        },
-                        "自动地鬼-不开悬赏-识别挑战":{
-                            "enable": false
                         }
                     }
                 },
@@ -197,12 +191,6 @@
                         },
                         "地鬼-开始自动挑战鬼王": {
                             "enabled": true
-                        },
-                        "地鬼-挑战一次悬赏":{
-                            "enable": false
-                        },
-                        "自动地鬼-不开悬赏-识别挑战":{
-                            "enable": true
                         }
                     }
                 }

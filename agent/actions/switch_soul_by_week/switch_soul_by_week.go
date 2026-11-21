@@ -8,13 +8,8 @@ import (
 	"time"
 
 	"github.com/MaaXYZ/maa-framework-go/v4"
-)
 
-const (
-	// 复用「切换御魂」使用的装备御魂流程。
-	soulTaskName      = "装备御魂"
-	soulGroupNodeName = "装备御魂-识别目标分组"
-	soulTeamNodeName  = "装备御魂-识别队伍名称"
+	"maa-yys-agent/actions/switch_soul"
 )
 
 // SwitchSoulByWeek 按当前星期选择御魂预设并装备御魂。
@@ -79,35 +74,20 @@ func (a *SwitchSoulByWeek) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool 
 
 	params, err := parseParams(rawParam)
 	if err != nil {
-		fmt.Printf("按周切换御魂参数解析失败: %v\n", err)
-		return false
+		return switch_soul.Abort(ctx, arg, fmt.Errorf("按周切换御魂参数解析失败: %w", err))
 	}
 
 	now := time.Now()
 	preset, source, ok := params.resolve(now.Weekday())
 	if !ok {
-		fmt.Printf("按周切换御魂失败：今天%s没有任何可用的御魂配置，请至少传入当天、default 或某一天的 group_name 与 team_name\n",
-			weekdayLabels[now.Weekday()])
-		return false
+		return switch_soul.Abort(ctx, arg, fmt.Errorf("按周切换御魂失败：今天%s没有任何可用的御魂配置，请至少传入当天、default 或某一天的 group_name 与 team_name",
+			weekdayLabels[now.Weekday()]))
 	}
 
 	fmt.Printf("按周切换御魂：今天%s，使用分组 %s、队伍 %s（%s）\n",
 		weekdayLabels[now.Weekday()], preset.GroupName, preset.TeamName, source)
 
-	result, err := ctx.RunTask(soulTaskName, map[string]any{
-		soulGroupNodeName: map[string]any{
-			"expected": preset.GroupName,
-		},
-		soulTeamNodeName: map[string]any{
-			"expected": preset.TeamName,
-		},
-	})
-	if err != nil {
-		fmt.Printf("执行任务 %s 失败: %v\n", soulTaskName, err)
-		return false
-	}
-
-	return result != nil
+	return switch_soul.Equip(ctx, arg, preset.GroupName, preset.TeamName)
 }
 
 // parseParams 按固定格式解析参数：只允许 default 与 monday~sunday 八个键。

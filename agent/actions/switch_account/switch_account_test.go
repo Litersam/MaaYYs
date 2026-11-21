@@ -2,8 +2,12 @@ package switch_account
 
 import (
 	"fmt"
+	"image"
 	"strings"
 	"testing"
+
+	"maa-yys-agent/internal/redact"
+	"maa-yys-agent/internal/vision"
 
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
 )
@@ -26,7 +30,7 @@ func TestNormalizeParamsAndRedaction(t *testing.T) {
 		t.Fatal("Params String/GoString leaked password")
 	}
 
-	redacted := RedactSecrets("failed with super-secret-password on login", "super-secret-password")
+	redacted := redact.Secrets("failed with super-secret-password on login", "super-secret-password")
 	if strings.Contains(redacted, "super-secret-password") {
 		t.Fatalf("RedactSecrets leaked secret: %s", redacted)
 	}
@@ -118,19 +122,29 @@ func TestParseMuMuInfoJSON(t *testing.T) {
 	}
 }
 
-func TestBoxInROIAndCachedRegexp(t *testing.T) {
-	if !boxInROI(maa.Rect{490, 420, 84, 30}, maa.Rect{360, 340, 560, 170}) {
-		t.Fatal("expected left button box inside modal ROI")
-	}
-	if boxInROI(maa.Rect{250, 135, 20, 20}, maa.Rect{360, 340, 560, 170}) {
-		t.Fatal("safe CG tap area (260, 140) must not intersect central modal ROI")
-	}
-	if boxInROI(maa.Rect{250, 135, 20, 20}, maa.Rect{1, 547, 241, 105}) {
-		t.Fatal("safe CG tap area (260, 140) must not intersect bottom-left 8+ badge")
-	}
+func TestCachedRegexp(t *testing.T) {
 	re1 := cachedRegexp(`^(同意|同意并继续|同意并登录)$`)
 	re2 := cachedRegexp(`^(同意|同意并继续|同意并登录)$`)
 	if re1 == nil || re1 != re2 || !re1.MatchString("同意并登录") {
 		t.Fatal("expected cachedRegexp to return identical compiled regexp matching 同意并登录")
+	}
+}
+
+func TestFrameBlockerCatchesSecurityTitleWithoutBody(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		box  maa.Rect
+		want error
+	}{
+		{"登录安全验证", maa.Rect{500, 30, 120, 30}, errSecurityVerify},
+		{"账号在其他设备登录", maa.Rect{450, 300, 200, 20}, errDisplaced},
+		{"退出登录", maa.Rect{450, 300, 180, 20}, nil},
+	} {
+		f := vision.NewFrame(image.NewGray(image.Rect(0, 0, 1280, 720)), func(image.Image) []maa.OCRResult {
+			return []maa.OCRResult{{Text: tc.text, Box: tc.box}}
+		})
+		if got := frameBlocker(f); got != tc.want {
+			t.Errorf("%q got %v, want %v", tc.text, got, tc.want)
+		}
 	}
 }

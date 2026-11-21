@@ -9,7 +9,7 @@
     },
     "寮突-开始战斗": {
         "expected": "击败次数",
-        "next": ["寮突12", "[JumpBack]寮突11", "寮突6", "寮突-识别是否已经攻破", "[JumpBack]寮突10"],
+        "next": ["寮突12", "[JumpBack]寮突10", "寮突-策略", "寮突-识别是否已经攻破"],
         "post_delay": 2000,
         "pre_delay": 2000,
         "recognition": "OCR",
@@ -126,12 +126,14 @@
         "recognition": "OCR",
         "roi": [314, 621, 603, 98]
     },
-    "寮突11": {
-        "expected": "1/6|2/6|3/6|4/6|5/6|6/6",
-        "next": ["寮突18_从上往下打"],
-        "on_error": ["跳过"],
+    "寮突-策略": {
+        "action": "Custom",
+        "custom_action": "BreakthroughPolicy",
+        "custom_action_param": {"mode": "guild"},
+        "expected": "^[0-6]\\s*[/／]\\s*6$",
         "recognition": "OCR",
-        "roi": [262, 547, 66, 54]
+        "roi": [262, 547, 66, 54],
+        "threshold": 0.7
     },
     "寮突12": {
         "next": ["寮突24", "[JumpBack]寮突23"],
@@ -283,7 +285,7 @@
         "roi": [510, 41, 235, 84]
     },
     "寮突20": {
-        "expected": "1/6|2/6|3/6|4/6|5/6|6/6",
+        "expected": "^[1-6]\\s*[/／]\\s*6$",
         "next": ["[JumpBack]寮突-开始装备御魂", "寮突-开始战斗"],
         "post_delay": 2000,
         "pre_delay": 1000,
@@ -327,7 +329,7 @@
     },
     "寮突4": {
         "expected": "突破进度",
-        "next": ["寮突12", "寮突20", "寮突6", "寮突-识别是否已经攻破", "[JumpBack]寮突10"],
+        "next": ["寮突12", "寮突20", "寮突-策略", "寮突-识别是否已经攻破", "[JumpBack]寮突10"],
         "recognition": "OCR",
         "roi": [127, 293, 235, 63]
     },
@@ -369,6 +371,7 @@
             "node_name": "寮突-记录最后一个名字并进攻"
         },
         "expected": "击败次数",
+        "next": ["寮突-开始战斗"],
         "post_delay": 1000,
         "pre_delay": 1000,
         "recognition": "OCR",

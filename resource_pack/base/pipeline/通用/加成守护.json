@@ -1,0 +1,76 @@
+{
+    "通用加成-归位": {
+        "recognition": "DirectHit",
+        "next": ["通用加成-关闭本轮加成", "[JumpBack]通用加成-打开面板", "[JumpBack]通用加成-打开房间面板", "[JumpBack]通用加成-归位回庭院"],
+        "timeout": 12000
+    },
+    "通用加成-归位回庭院": {
+        "recognition": "DirectHit",
+        "max_hit": 1,
+        "next": ["导航-庭院"],
+        "timeout": 8000
+    },
+    "通用加成-打开面板": {
+        "recognition": "TemplateMatch",
+        "template": ["通用图标/加成.png", "组队副本/组队副本3.png", "组队副本/组队副本.png"],
+        "roi": [267, 0, 263, 137],
+        "action": "Click",
+        "target": [377, 45, 10, 23],
+        "max_hit": 2,
+        "post_wait_freezes": 250
+    },
+    "通用加成-打开房间面板": {
+        "recognition": "OCR",
+        "roi": [1120, 15, 130, 95],
+        "expected": "^加成$",
+        "action": "Click",
+        "post_wait_freezes": 250,
+        "max_hit": 1
+    },
+    "通用加成-关闭本轮加成": {
+        "recognition": "OCR",
+        "roi": [414, 109, 357, 361],
+        "expected": ["觉醒材料", "八岐大蛇", "御魂材料", "战斗胜利"],
+        "action": "Custom",
+        "custom_action": "BonusToggleAction",
+        "custom_action_param": {},
+        "next": ["通用加成-收起面板"],
+        "timeout": 2000
+    },
+    "通用加成-收起面板": {
+        "recognition": "OCR",
+        "roi": [414, 109, 357, 361],
+        "expected": ["觉醒材料", "八岐大蛇", "御魂材料", "战斗胜利"],
+        "action": "Click",
+        "target": [1032, 239, 78, 255],
+        "next": ["通用加成-确认收起"],
+        "timeout": 2000
+    },
+    "通用加成-确认收起": {
+        "recognition": "OCR",
+        "roi": [414, 109, 357, 361],
+        "expected": ["觉醒材料", "八岐大蛇", "御魂材料", "战斗胜利"],
+        "inverse": true
+    },
+    "通用加成-拨动": {
+        "action": "Click",
+        "post_wait_freezes": 250
+    },
+    "通用加成-启用色": {
+        "recognition": "ColorMatch",
+        "count": 4,
+        "lower": [222, 130, 0],
+        "upper": [230, 163, 0]
+    },
+    "通用加成-停用色": {
+        "recognition": "ColorMatch",
+        "count": 4,
+        "lower": [175, 10, 31],
+        "upper": [187, 13, 48]
+    },
+    "通用加成-新手冲突": {
+        "recognition": "OCR",
+        "roi": [200, 210, 900, 80],
+        "expected": ["无法启动同类型加成"]
+    }
+}

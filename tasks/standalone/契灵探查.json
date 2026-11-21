@@ -62,14 +62,15 @@
         "是否切换御魂": {
             "type": "switch",
             "label": "是否切换御魂",
-            "description": "切换御魂以及出战队伍",
+            "description": "在备战页使用指定的御魂预设并切换出战队伍。",
+            "default_case": "No",
             "cases": [
                 {
                     "name": "Yes",
                     "label": "是",
                     "pipeline_override": {
                         "契灵-装备出战御魂": {
-                            "enable":true
+                            "enabled": true
                         }
                     },
                     "option": ["契灵探查阵容"]
@@ -79,7 +80,7 @@
                     "label": "否",
                     "pipeline_override": {
                         "契灵-装备出战御魂": {
-                            "enable":false
+                            "enabled": false
                         }
                     }
                 }
@@ -108,7 +109,7 @@
             "pipeline_override": {
                 "契灵之境-识别是否打开队伍预设": {
                     "custom_action_param": {
-                        "位置": "契灵",
+                        "position": "契灵",
                         "group_name": "{group_name}",
                         "team_name": "{team_name}"
                     }

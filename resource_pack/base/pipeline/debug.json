@@ -13,30 +13,11 @@
         "timeout": -1
     },
     "悬赏封印_协助战斗1": {
-        "expected": "^协助?悬赏封印$",
-        "focus": {
-            "Node.Recognition.Succeeded": "发现悬赏协助!!!"
-        },
-        "next": ["确定关闭悬赏封印协助", "[JumpBack]悬赏封印_拒绝邀请"],
-        "rate_limit": 6000,
-        "recognition": "OCR",
-        "roi": [499, 36, 281, 72],
+        "all_of": ["悬赏-协作邀请标题", "悬赏封印_拒绝邀请"],
+        "next": ["悬赏-确认并接邀", "悬赏封印_拒绝邀请", "确定关闭悬赏封印协助"],
+        "rate_limit": 2000,
+        "recognition": "And",
         "timeout": 3000
-    },
-    "悬赏封印_拒绝邀请": {
-        "action": "Click",
-        "expected": "拒绝",
-        "post_delay": 2000,
-        "recognition": "OCR",
-        "roi": [811, 441, 210, 188],
-        "target_offset": [-32, 3, -14, -1],
-        "threshold": 0.6
-    },
-    "确定关闭悬赏封印协助": {
-        "expected": "拒绝",
-        "inverse": true,
-        "recognition": "OCR",
-        "roi": [806, 426, 248, 210]
     },
     "超时_切换御魂失败": {
         "action": "Custom",

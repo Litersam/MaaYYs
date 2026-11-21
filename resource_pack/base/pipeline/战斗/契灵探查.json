@@ -53,6 +53,7 @@
         "roi": [348, 554, 284, 112]
     },
     "契灵-装备出战御魂": {
+        "enabled": false,
         "max_hit": 1,
         "next": ["契灵之境-识别是否打开队伍预设", "[JumpBack]契灵之境-点击队伍预设", "[JumpBack]契灵之境-点击队伍预设-模板匹配"],
         "recognition": "DirectHit"
@@ -97,9 +98,9 @@
         "action": "Custom",
         "custom_action": "BattleTeam",
         "custom_action_param": {
-            "位置": "契灵",
-            "分组名称": "契灵",
-            "队伍名称": "探查"
+            "position": "契灵",
+            "group_name": "契灵",
+            "team_name": "探查"
         },
         "expected": "出战",
         "recognition": "OCR",

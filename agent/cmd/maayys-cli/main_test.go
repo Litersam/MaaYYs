@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -11,12 +12,11 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unsafe"
 
 	"maa-yys-agent/actions/switch_account"
+	"maa-yys-agent/internal/runstate"
 
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
-	"github.com/MaaXYZ/maa-framework-go/v4/controller/win32"
 )
 
 func testRepoRoot(t *testing.T) string {
@@ -50,6 +50,9 @@ func TestCatalogLoadsTasksIncludingLogin(t *testing.T) {
 	}
 	want := map[string]wantMeta{
 		"账号登录":    {"账号登录", "standalone", "tasks/standalone/账号登录.json"},
+		"好友寄养":    {"好友寄养", "daily", "tasks/daily/好友寄养.json"},
+		"结界挂卡":    {"结界挂卡", "daily", "tasks/daily/结界挂卡.json"},
+		"结界收菜":    {"结界收菜", "daily", "tasks/daily/结界收菜.json"},
 		"打开游戏":    {"启动游戏", "daily", "tasks/daily/打开游戏.json"},
 		"关闭游戏":    {"关闭阴阳师", "daily", "tasks/daily/关闭游戏.json"},
 		"日常奖励领取":  {"日常-开始执行日常任务", "daily", "tasks/daily/日常奖励领取.json"},
@@ -158,7 +161,7 @@ func TestV413NestedOptionsAndBackwardCompatLookup(t *testing.T) {
 	}
 
 	weekOv := resolveTaskOverride(fengmo, map[string]any{
-		"逢魔-每日不同分组":    "Yes",
+		"逢魔-每日不同分组":     "Yes",
 		"default_group": "逢魔组",
 		"monday_group":  "歌伎组",
 	})
@@ -185,9 +188,9 @@ func TestV413NestedOptionsAndBackwardCompatLookup(t *testing.T) {
 		t.Fatal("missing 契灵结契 task")
 	}
 	qlOv := resolveTaskOverride(qiling, map[string]any{
-		"挑战次数":            25,
+		"挑战次数": 25,
 		"契灵结契-自定义点击策略设置": "Yes",
-		"short_max":       15,
+		"short_max": 15,
 	})
 	cntNode, _ := qlOv["契灵结契-计数"].(map[string]any)
 	cntParam, _ := cntNode["custom_recognition_param"].(map[string]any)
@@ -201,15 +204,42 @@ func TestV413NestedOptionsAndBackwardCompatLookup(t *testing.T) {
 	}
 }
 
+func TestBattleTeamOptInEnablesPreparationPreset(t *testing.T) {
+	_, tasks, err := loadTaskDefinitions(testRepoRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := tasks["契灵探查"]
+	def, _ := resolveTaskOverride(task, nil)["契灵-装备出战御魂"].(map[string]any)
+	if def["enabled"] != false {
+		t.Fatal("preparation preset must be disabled by default")
+	}
+	opts := resolveTaskOverride(task, map[string]any{
+		"是否切换御魂":     true,
+		"group_name": "我的分组",
+		"team_name":  "我的队伍",
+	})
+	switchNode, _ := opts["契灵-装备出战御魂"].(map[string]any)
+	battleNode, _ := opts["契灵之境-识别是否打开队伍预设"].(map[string]any)
+	params, _ := battleNode["custom_action_param"].(map[string]any)
+	if switchNode["enabled"] != true || params["position"] != "契灵" ||
+		params["group_name"] != "我的分组" || params["team_name"] != "我的队伍" {
+		t.Fatalf("invalid BattleTeam opt-in: %v, %v", switchNode, params)
+	}
+}
+
 func TestJSONLWriterFormatAndSecretRedaction(t *testing.T) {
 	var buf bytes.Buffer
 	w := &jsonlWriter{out: &buf}
 	w.addSecret("my$ecretP@ss")
 
 	w.Log("info", "login test with my$ecretP@ss")
-	w.Step("step-login", "running", "正在切换账号 my$ecretP@ss")
-	w.Step("step-login", "complete", "已进入庭院")
-	w.Result(true, false, "", false)
+	w.Step("step-login", "running", "正在切换账号 my$ecretP@ss", nil)
+	w.EndStep("step-login", "已进入庭院", runstate.Outcome{Status: runstate.Completed}, nil)
+	w.Result(runstate.Outcome{Status: runstate.Skipped, Metrics: map[string]any{
+		"foster_remaining_sec": 3600,
+		"nested":               map[string]any{"value": []any{"my$ecretP@ss"}},
+	}}, false, "", false)
 
 	raw := buf.String()
 	if strings.Contains(raw, "my$ecretP@ss") {
@@ -219,9 +249,123 @@ func TestJSONLWriterFormatAndSecretRedaction(t *testing.T) {
 	if len(lines) != 4 {
 		t.Fatalf("expected 4 JSONL lines, got %d: %s", len(lines), raw)
 	}
-	if !strings.Contains(lines[3], `"type":"result"`) || !strings.Contains(lines[3], `"error":null`) {
+	if !strings.Contains(lines[3], `"type":"result"`) || !strings.Contains(lines[3], `"error":null`) ||
+		!strings.Contains(lines[3], `"status":"skipped"`) || !strings.Contains(lines[3], `"foster_remaining_sec":3600`) {
 		t.Fatalf("unexpected result JSONL line: %s", lines[3])
 	}
+}
+
+func TestCheckboxMergesOrderedSelectionsAndTheirSubOptions(t *testing.T) {
+	var options map[string]rawOptionDef
+	if err := json.Unmarshal([]byte(`{
+			"products": {"type":"checkbox","default":["one","two"],"cases":[
+				{"name":"one","pipeline_override":{"buy":{"one":true,"last":"one"}},"sub_options":["one-options"]},
+				{"name":"two","pipeline_override":{"buy":{"two":true,"last":"two"}}},
+				{"name":"three","pipeline_override":{"buy":{"three":true}},"option":["inactive"]}
+			]},
+			"one-options":{"pipeline_override":{"buy":{"quantity":1}}},
+			"inactive":{"pipeline_override":{"buy":{"quantity":3}}}
+		}`), &options); err != nil {
+		t.Fatal(err)
+	}
+	task := resolvedTask{RawTask: rawTaskDef{Option: []string{"products"}}, OptionsMap: options}
+	for _, tc := range []struct {
+		desc string
+		val  any
+		last string
+	}{
+		{"defaults", nil, "two"},
+		{"decoded request", []any{"two", "unknown", "one"}, "one"},
+		{"Go request", []string{"one", "two"}, "two"},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			merged := resolveTaskOverride(task, map[string]any{"products": tc.val})
+			buy, _ := merged["buy"].(map[string]any)
+			if buy["one"] != true || buy["two"] != true || buy["last"] != tc.last ||
+				buy["three"] != nil || buy["quantity"] != float64(1) {
+				t.Fatalf("unexpected merged selection: %+v", buy)
+			}
+		})
+	}
+	if merged := resolveTaskOverride(task, map[string]any{"products": []any{}}); len(merged) != 0 {
+		t.Fatalf("explicit empty selection must not apply defaults: %v", merged)
+	}
+}
+
+func TestTerminalStepStatusAndMetricsBelongToTheirOwnID(t *testing.T) {
+	var output bytes.Buffer
+	w := &jsonlWriter{out: &output}
+	var plan runstate.Outcome
+	daily := runstate.Outcome{Status: runstate.Skipped, Metrics: map[string]any{"foster_remaining_sec": 120}}
+	mergeStepOutcome(&plan, "好友寄养", daily)
+	w.EndStep("daily", "", daily, nil)
+	closeApp := runstate.Outcome{Status: runstate.Completed}
+	mergeStepOutcome(&plan, "关闭游戏", closeApp)
+	w.EndStep("close", "", closeApp, nil)
+	w.EndStep("deferred", "", runstate.Outcome{Status: runstate.Deferred}, nil)
+	w.EndStep("failure", "", runstate.Outcome{Status: runstate.Completed}, fmt.Errorf("test error"))
+	w.Result(plan, false, "", false)
+
+	dec := json.NewDecoder(&output)
+	for index, want := range []struct {
+		id, status string
+		timer      bool
+	}{
+		{"daily", "skipped", true},
+		{"close", "complete", false},
+		{"deferred", "deferred", false},
+		{"failure", "error", false},
+		{"", "skipped", true},
+	} {
+		var event struct {
+			ID      string         `json:"id"`
+			Status  string         `json:"status"`
+			Metrics map[string]any `json:"metrics"`
+		}
+		if err := dec.Decode(&event); err != nil {
+			t.Fatal(err)
+		}
+		if event.ID != want.id || event.Status != want.status ||
+			(want.timer && event.Metrics["foster_remaining_sec"] != float64(120)) ||
+			(!want.timer && event.Metrics != nil) {
+			t.Errorf("unexpected event %d: %+v", index, event)
+		}
+	}
+}
+
+func TestInvalidRequestEmitsFailedResultWithoutDevice(t *testing.T) {
+	var buf bytes.Buffer
+	if code := runStepsFromStdin(context.Background(), testRepoRoot(t), strings.NewReader(`{}`), &buf); code != 1 {
+		t.Fatalf("invalid input exit = %d", code)
+	}
+	for _, field := range []string{`"status":"failed"`, `"ok":false`, `"metrics":{}`, `"screenshot_saved":false`} {
+		if !strings.Contains(buf.String(), field) {
+			t.Fatalf("missing %s in invalid request result: %s", field, &buf)
+		}
+	}
+}
+
+func TestRunOutcomeIgnoresSuccessfulLoginAndClose(t *testing.T) {
+	var o runstate.Outcome
+	mergeStepOutcome(&o, "standalone/账号登录", runstate.Outcome{Status: runstate.Completed})
+	mergeStepOutcome(&o, "每日测试", runstate.Outcome{Status: runstate.Skipped})
+	mergeStepOutcome(&o, "daily/关闭游戏", runstate.Outcome{Status: runstate.Completed})
+	if o.Status != runstate.Skipped {
+		t.Fatalf("got %q after skipped daily step", o.Status)
+	}
+	mergeStepOutcome(&o, "每日测试", runstate.Outcome{Status: runstate.Completed})
+	mergeStepOutcome(&o, "每日测试", runstate.Outcome{Status: runstate.Deferred})
+	if o.Status != runstate.Deferred {
+		t.Fatalf("got %q after a deferred step", o.Status)
+	}
+}
+
+type reportFixture struct{}
+
+func (reportFixture) Run(ctx *maa.Context, _ *maa.CustomActionArg) bool {
+	runstate.Report(ctx, runstate.Deferred)
+	runstate.SetMetric(ctx, "observations", 1)
+	return true
 }
 
 func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
@@ -268,28 +412,10 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 		t.Fatalf("unexpected 账号登录 retry config: max_hit=%v on_error=%v", loginNode.MaxHit, loginNode.OnError)
 	}
 
-	windows, err := maa.FindDesktopWindows()
-	var safeHandle unsafe.Pointer
-	for _, w := range windows {
-		sig := strings.ToLower(w.WindowName + " " + w.ClassName)
-		if strings.Contains(sig, "mumu") || strings.Contains(sig, "nemu") {
-			continue
-		}
-		if w.Handle != nil {
-			safeHandle = w.Handle
-			break
-		}
-	}
-	if err != nil || safeHandle == nil {
-		t.Skip("no non-emulator desktop window available for offline Tasker OCR test")
-	}
-	ctrl, err := maa.NewWin32Controller(safeHandle, win32.ScreencapGDI, win32.InputNone, win32.InputNone)
-	if err != nil {
-		t.Skipf("Win32 GDI controller unavailable in headless CI: %v", err)
-	}
+	ctrl := newOfflineController(t)
 	defer ctrl.Destroy()
 	if !ctrl.PostConnect().Wait().Success() {
-		t.Skip("Win32 GDI controller connect skipped")
+		t.Fatal("synthetic controller connect failed")
 	}
 
 	tasker, err := maa.NewTasker()
@@ -321,8 +447,24 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 	if elapsed > 3*time.Second {
 		t.Fatalf("账号登录 failure entered retry loop (elapsed=%v, want <3s)", elapsed)
 	}
+	if err := res.RegisterCustomAction("ReportFixture", reportFixture{}); err != nil {
+		t.Fatalf("register offline result fixture: %v", err)
+	}
+	collector, release := runstate.Bind(tasker)
+	reported := waitTask(context.Background(), tasker, "账号登录", map[string]any{
+		"账号登录": map[string]any{"custom_action": "ReportFixture", "custom_action_param": map[string]any{}},
+	})
+	release()
+	outcome := collector.Outcome()
+	metric, _ := outcome.Metrics["observations"].(json.RawMessage)
+	if !reported || outcome.Status != runstate.Deferred || string(metric) != "1" {
+		t.Fatalf("native callback wasn't routed to the CLI step: success=%v outcome=%+v", reported, outcome)
+	}
 
-	// If live screenshots exist locally, verify exact OCR ROIs for engine update, session expired, and 6-char server name.
+	// Optional saved-frame regression checks also use the synthetic controller.
+	if os.Getenv("MAAYYS_LOGIN_SCREENSHOT_REGRESSION") != "1" {
+		return
+	}
 	engineShot := `D:\projs\game-desk-next\.data\screenshots\e63baece-ada4-462c-8db4-ef014478b0cc.png`
 	if img, err := loadPNG(engineShot); err == nil {
 		reco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{

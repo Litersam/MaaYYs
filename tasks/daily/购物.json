@@ -7,6 +7,7 @@
             "group": ["daily"],
             "option": [
                 "商店购物-每周仅执行一次",
+                "秘魂屋限价购买",
                 "特殊商店购买",
                 "荣誉商店购买",
                 "友情商店购买",
@@ -16,6 +17,22 @@
         }
     ],
     "option": {
+        "秘魂屋限价购买": {
+            "type": "switch",
+            "label": "秘魂屋限价购买蓝票",
+            "description": "可选；仅在弹窗确认勾玉单价与数量1时购买一张。不改变其他商店的购买方式。",
+            "default_case": "No",
+            "cases": [
+                {"name": "Yes", "label": "购买", "pipeline_override": {"秘魂屋-限价购买入口": {"enabled": true}}, "option": ["秘魂屋单价上限"]},
+                {"name": "No", "label": "不购买", "pipeline_override": {"秘魂屋-限价购买入口": {"enabled": false}}}
+            ]
+        },
+        "秘魂屋单价上限": {
+            "type": "input",
+            "label": "秘魂屋蓝票单价上限",
+            "inputs": [{"name": "max_price", "label": "最高勾玉单价", "default": "85", "pipeline_type": "int"}],
+            "pipeline_override": {"秘魂屋-核验限价及数量": {"custom_recognition_param": {"max_price": "{max_price}"}}}
+        },
         "商店购物-每周仅执行一次":{
             "type": "switch",
             "label": "每周仅执行一次",

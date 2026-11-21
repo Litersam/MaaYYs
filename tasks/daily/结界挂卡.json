@@ -1,0 +1,56 @@
+{
+    "task": [
+        {
+            "name": "结界挂卡",
+            "label": "结界挂卡",
+            "entry": "结界挂卡",
+            "group": ["daily"],
+            "option": ["结界挂卡_自动挂卡类型设置", "结界挂卡_挂卡星级设置", "结界挂卡_育成式神序号"],
+            "description": "按种类和最高星级选择库存结界卡；已有生效卡时仅核验倒计时。"
+        }
+    ],
+    "option": {
+        "结界挂卡_自动挂卡类型设置": {
+            "type": "select",
+            "label": "自动挂卡类型设置",
+            "default_case": "太鼓",
+            "cases": [
+                {
+                    "name": "太鼓", "label": "太鼓",
+                    "pipeline_override": {
+                        "结界挂卡_点分类": {"expected": "^太鼓$"},
+                        "结界挂卡_卡筛选类型": {"expected": "^太鼓$"},
+                        "结界挂卡_已选卡": {"expected": "太鼓"}
+                    }
+                },
+                {
+                    "name": "斗鱼", "label": "斗鱼",
+                    "pipeline_override": {
+                        "结界挂卡_点分类": {"expected": "^斗鱼$"},
+                        "结界挂卡_卡筛选类型": {"expected": "^斗鱼$"},
+                        "结界挂卡_已选卡": {"expected": "斗鱼"}
+                    }
+                }
+            ]
+        },
+        "结界挂卡_挂卡星级设置": {
+            "type": "select",
+            "label": "挂卡星级设置",
+            "default_case": "5星及以下",
+            "cases": [
+                {"name": "6星及以下", "label": "6星及以下", "pipeline_override": {"结界挂卡_点库存卡": {"expected": [0, 1, 2, 3, 4, 5], "threshold": 0.3}}},
+                {"name": "5星及以下", "label": "5星及以下", "pipeline_override": {"结界挂卡_点库存卡": {"expected": [0, 1, 2, 3, 4], "threshold": 0.3}}},
+                {"name": "4星及以下", "label": "4星及以下", "pipeline_override": {"结界挂卡_点库存卡": {"expected": [0, 1, 2, 3], "threshold": 0.3}}},
+                {"name": "3星及以下", "label": "3星及以下", "pipeline_override": {"结界挂卡_点库存卡": {"expected": [0, 1, 2], "threshold": 0.3}}}
+            ]
+        },
+        "结界挂卡_育成式神序号": {
+            "type": "input",
+            "label": "育成式神序号",
+            "inputs": [
+                {"name": "growth_shikigami_order", "label": "育成式神序号", "description": "从左往右选择 1 至 7 号候补式神。", "default": "7", "pipeline_type": "int", "verify": "^[1-7]$"}
+            ],
+            "pipeline_override": {"结界挂卡_选择育成候补": {"custom_action_param": {"growth_shikigami_order": "{growth_shikigami_order}"}}}
+        }
+    }
+}

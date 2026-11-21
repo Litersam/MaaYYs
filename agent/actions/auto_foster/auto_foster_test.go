@@ -3,7 +3,6 @@ package auto_foster
 import "testing"
 
 func TestParseRewardText(t *testing.T) {
-	a := &AutoFoster{}
 	tests := []struct {
 		name      string
 		text      string
@@ -20,7 +19,7 @@ func TestParseRewardText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotType, gotValue := a.parseRewardText(tt.text)
+			gotType, gotValue := parseRewardText(tt.text)
 			if gotType != tt.wantType || gotValue != tt.wantValue {
 				t.Fatalf("parseRewardText(%q) = (%q, %d), want (%q, %d)", tt.text, gotType, gotValue, tt.wantType, tt.wantValue)
 			}

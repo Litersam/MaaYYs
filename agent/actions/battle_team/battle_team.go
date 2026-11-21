@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/MaaXYZ/maa-framework-go/v4"
+
+	"maa-yys-agent/actions/switch_soul"
 )
 
 const (
@@ -24,16 +26,16 @@ type BattleTeamParams struct {
 }
 
 var (
-	defaultBattleTeamBox = []int{400,150,560,400}
+	defaultBattleTeamBox = []int{400, 150, 560, 400}
 
 	positionBoxes = map[string][]int{
-		"御魂":   {400,150,560,400},
-		"契灵":   {590, 140, 560, 400},
-		"麒麟":   {400,150,560,400},
+		"御魂": {400, 150, 560, 400},
+		"契灵": {590, 140, 560, 400},
+		"麒麟": {400, 150, 560, 400},
 	}
 
 	presetBoxFields = map[string][]string{
-		"出战队伍预设":             {"roi"},
+		"出战队伍预设-面板已打开":       {"roi"},
 		"出战队伍预设-向上滑动":        {"begin", "end"},
 		"出战队伍预设-向上滑动队伍":      {"begin", "end"},
 		"出战队伍预设-滑动分组到最上方":    {"begin", "end"},
@@ -62,19 +64,18 @@ func (p *BattleTeamParams) normalize() {
 	}
 }
 
+// Run selects the lineup from a supported preparation screen; callers opt in separately from SwitchSoul.
 func (a *BattleTeam) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	params := BattleTeamParams{}
-	if arg.CustomActionParam != "" {
+	if arg != nil && arg.CustomActionParam != "" {
 		if err := json.Unmarshal([]byte(arg.CustomActionParam), &params); err != nil {
-			fmt.Printf("出战队伍参数解析失败: %v\n", err)
-			return false
+			return switch_soul.Abort(ctx, arg, fmt.Errorf("出战队伍参数解析失败: %w", err))
 		}
 	}
 
 	params.normalize()
 	if params.GroupName == "" || params.TeamName == "" {
-		fmt.Println("出战队伍参数错误：分组名称和队伍名称不能为空")
-		return false
+		return switch_soul.Abort(ctx, arg, fmt.Errorf("出战队伍参数错误：分组名称和队伍名称不能为空"))
 	}
 
 	box := resolvePositionBox(params.Position)
@@ -82,13 +83,13 @@ func (a *BattleTeam) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		params.Position, params.GroupName, params.TeamName, box)
 
 	result, err := ctx.RunTask(presetTaskName, buildPresetOverride(box, params.GroupName, params.TeamName))
-	if err != nil {
-		fmt.Printf("执行任务 %s 失败: %v\n", presetTaskName, err)
-		return false
-	}
-	if result == nil {
-		fmt.Printf("执行任务 %s 未返回结果\n", presetTaskName)
-		return false
+	switch {
+	case err != nil:
+		return switch_soul.Abort(ctx, arg, fmt.Errorf("执行任务 %s 失败: %w", presetTaskName, err))
+	case result == nil:
+		return switch_soul.Abort(ctx, arg, fmt.Errorf("执行任务 %s 未返回结果", presetTaskName))
+	case !result.Status.Success():
+		return switch_soul.Abort(ctx, arg, fmt.Errorf("执行任务 %s 失败: %s", presetTaskName, result.Status))
 	}
 
 	fmt.Println("出战队伍完成")

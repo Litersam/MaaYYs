@@ -17,19 +17,12 @@
         "账号登录配置": {
             "type": "input",
             "label": "账号登录配置",
-            "description": "配置要切换登录的邮箱、平台（android 或 ios）与目标区服",
+            "description": "选择已保存的邮箱账号、平台和目标区服。需要密码重新登录时请使用控制面。",
             "inputs": [
                 {
                     "name": "email",
                     "label": "邮箱账号",
                     "description": "目标网易邮箱（如 user@163.com）",
-                    "default": "",
-                    "pipeline_type": "string"
-                },
-                {
-                    "name": "password",
-                    "label": "登录密码（可选）",
-                    "description": "历史列表不存在或登录过期时使用的密码兜底",
                     "default": "",
                     "pipeline_type": "string"
                 },
@@ -52,7 +45,6 @@
                 "账号登录": {
                     "custom_action_param": {
                         "email": "{email}",
-                        "password": "{password}",
                         "platform": "{platform}",
                         "server": "{server}"
                     }

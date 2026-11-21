@@ -34,7 +34,12 @@
         "BonusToggleAction",
         "QuestionMatcher",
         "Guess",
-        "TimeCheck"
+        "TimeCheck",
+        "BreakthroughPolicy",
+        "DemonEncounterSkipped",
+        "Kun28ReserveGuard",
+        "RealmFinish",
+        "RealmGrowthSelect"
       ]
     }
   },
@@ -67,10 +72,67 @@
       { "$ref": "#/$defs/BonusToggleAction" },
       { "$ref": "#/$defs/QuestionMatcher" },
       { "$ref": "#/$defs/Guess" },
-      { "$ref": "#/$defs/TimeCheck" }
+      { "$ref": "#/$defs/TimeCheck" },
+      { "$ref": "#/$defs/BreakthroughPolicy" },
+      { "$ref": "#/$defs/DemonEncounterSkipped" },
+      { "$ref": "#/$defs/Kun28ReserveGuard" },
+      { "$ref": "#/$defs/RealmFinish" },
+      { "$ref": "#/$defs/RealmGrowthSelect" }
     ]
   },
   "$defs": {
+    "BreakthroughPolicy": {
+      "properties": {
+        "custom_action": { "const": "BreakthroughPolicy" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "mode": { "enum": ["realm", "guild"] },
+            "limit_count": { "type": "integer", "minimum": 0 },
+            "keep_tickets": { "type": "integer", "minimum": 0, "maximum": 30 },
+            "strategy": { "enum": ["full_clear", "retreat_four"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action"]
+    },
+    "DemonEncounterSkipped": {
+      "properties": { "custom_action": { "const": "DemonEncounterSkipped" } },
+      "required": ["custom_action"]
+    },
+    "Kun28ReserveGuard": {
+      "properties": { "custom_action": { "const": "Kun28ReserveGuard" } },
+      "required": ["custom_action"]
+    },
+    "RealmFinish": {
+      "properties": {
+        "custom_action": { "const": "RealmFinish" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["completed", "skipped", "failed"] },
+            "metric": { "enum": ["foster_remaining_sec", "realm_card_remaining_sec"] }
+          },
+          "required": ["status"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "RealmGrowthSelect": {
+      "properties": {
+        "custom_action": { "const": "RealmGrowthSelect" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "growth_shikigami_order": { "type": "integer", "minimum": 1, "maximum": 7, "default": 7 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action"]
+    },
     "RequiredParam": {
       "anyOf": [
         { "required": ["custom_action_param"] },
@@ -315,7 +377,9 @@
         "custom_action_param": {
           "type": "object",
           "properties": {
-            "FosterTarget": { "type": "integer", "enum": [1, 2], "default": 1, "description": "1 优先勾玉，2 优先体力" }
+            "FosterTarget": { "type": "integer", "enum": [1, 2], "default": 1, "description": "1 优先勾玉，2 优先体力" },
+            "DirectSelectThreshold": { "type": "integer", "minimum": 0, "description": "仅用于旧合并流程的勾玉直选阈值" },
+            "legacy_select_only": { "type": "boolean", "default": false, "description": "兼容旧合并流程，由其后续节点负责提交寄养" }
           },
           "additionalProperties": false
         }
@@ -483,6 +547,7 @@
             "exp_50%": { "type": "boolean", "description": "经验增加 50%" },
             "gold_100%": { "type": "boolean", "description": "金币增加 100%" },
             "gold_50%": { "type": "boolean", "description": "金币增加 50%" },
+            "remaining": { "type": "integer", "minimum": 0, "description": "剩余挑战次数；为零时不启用任何加成。" },
             "drop_awake": { "type": "boolean", "description": "觉醒材料额外掉落" },
             "drop_soul": { "type": "boolean", "description": "御魂材料额外掉落" }
           },
@@ -561,7 +626,6 @@
           "type": "object",
           "properties": {
             "email": { "$ref": "#/$defs/NonEmptyString", "description": "目标网易邮箱账号" },
-            "password": { "type": "string", "description": "密码兜底凭证（日志严禁输出）" },
             "platform": { "type": "string", "enum": ["ios", "android"], "description": "登录平台" },
             "server": { "$ref": "#/$defs/NonEmptyString", "description": "目标区服名称" },
             "character": { "type": "string", "description": "可选目标角色名称" },

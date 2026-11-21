@@ -19,7 +19,48 @@
         "recognition": "DirectHit"
     },
     "悬赏-开始正式探索": {
-        "next": ["[JumpBack]探索_悬赏_导航到探索", "[JumpBack]悬赏封印-关闭追踪列表", "[JumpBack]悬赏-探索-滑动目标到最下方", "[JumpBack]悬赏-领取是否有宝箱", "[JumpBack]悬赏-判断是否有宝箱", "[JumpBack]悬赏封印-识别最下方第一个是不是妖怪", "[JumpBack]悬赏封印-识别最下方第二个是不是妖怪", "[JumpBack]悬赏封印-识别最下方第三个是不是妖怪", "导航-庭院"],
+        "next": ["[JumpBack]探索_悬赏_导航到探索", "[JumpBack]悬赏封印-关闭追踪列表", "[JumpBack]悬赏-探索-滑动目标到最下方", "[JumpBack]悬赏-领取是否有宝箱", "[JumpBack]悬赏-判断是否有宝箱", "悬赏-筛选未处理妖怪"],
+        "recognition": "DirectHit"
+    },
+    "悬赏-筛选未处理妖怪": {
+        "action": "Custom",
+        "custom_action": "BountyMonsterRecognition",
+        "recognition": "DirectHit"
+    },
+    "悬赏-执行待选行": {
+        "max_hit": 1,
+        "on_error": ["悬赏-跳过当前行"],
+        "recognition": "DirectHit"
+    },
+    "悬赏-继续筛选": {
+        "next": ["悬赏-开始正式探索"],
+        "recognition": "DirectHit"
+    },
+    "悬赏-侧栏未知线索": {
+        "expected": "^[?？]+$",
+        "recognition": "OCR",
+        "threshold": 0.65
+    },
+    "悬赏-追踪列表未知线索": {
+        "expected": "^[?？]+$|^未发现$|^未解锁$",
+        "next": ["悬赏-跳过当前行"],
+        "recognition": "OCR",
+        "roi": [245, 185, 191, 284],
+        "threshold": 0.7
+    },
+    "悬赏-跳过当前行": {
+        "recognition": "DirectHit"
+    },
+    "悬赏-第一行已跳过": {
+        "next": ["[JumpBack]悬赏封印-关闭追踪列表", "悬赏封印-空节点"],
+        "recognition": "DirectHit"
+    },
+    "悬赏-第二行已跳过": {
+        "next": ["[JumpBack]悬赏封印-关闭追踪列表", "悬赏封印-空节点"],
+        "recognition": "DirectHit"
+    },
+    "悬赏-第三行已跳过": {
+        "next": ["[JumpBack]悬赏封印-关闭追踪列表", "悬赏封印-空节点"],
         "recognition": "DirectHit"
     },
     "悬赏-探索-再次滑动目标到最下方": {
@@ -141,10 +182,10 @@
         "action": "Custom",
         "custom_action": "ClearHitCount",
         "custom_action_param": {
-            "node_names": ["悬赏封印-判断是否是协战的目标"]
+            "node_names": ["悬赏封印-判断是否是协战的目标", "悬赏封印-向上滑动一点"]
         },
         "expected": "悬赏目标",
-        "next": ["悬赏封印-判断是否是协战的目标", "悬赏封印-查找式神碎片副本", "悬赏封印-查找探索副本", "悬赏封印-查找秘闻副本", "[JumpBack]悬赏封印-向上滑动一点"],
+        "next": ["悬赏-追踪列表未知线索", "悬赏封印-判断是否是协战的目标", "悬赏封印-查找式神碎片副本", "悬赏封印-查找探索副本", "悬赏封印-查找秘闻副本", "[JumpBack]悬赏封印-向上滑动一点", "悬赏-跳过当前行"],
         "recognition": "OCR",
         "roi": [617, 155, 144, 58]
     },
@@ -252,6 +293,7 @@
         "begin": [773, 506, 36, 33],
         "duration": 1000,
         "end": [778, 366, 22, 21],
+        "max_hit": 3,
         "post_delay": 2000,
         "recognition": "DirectHit"
     },
@@ -365,7 +407,7 @@
         "expected": "悬赏封印",
         "max_hit": 10,
         "next": ["悬赏封印-判断是否在追踪列表"],
-        "on_error": ["悬赏封印-空节点"],
+        "on_error": ["悬赏-跳过当前行"],
         "post_delay": 2000,
         "pre_delay": 1000,
         "recognition": "OCR",
@@ -377,7 +419,7 @@
         "expected": "悬赏封印",
         "max_hit": 10,
         "next": ["悬赏封印-判断是否在追踪列表"],
-        "on_error": ["悬赏封印-空节点"],
+        "on_error": ["悬赏-跳过当前行"],
         "post_delay": 2000,
         "pre_delay": 1000,
         "recognition": "OCR",
@@ -389,7 +431,7 @@
         "expected": "悬赏封印",
         "max_hit": 10,
         "next": ["悬赏封印-判断是否在追踪列表"],
-        "on_error": ["悬赏封印-空节点"],
+        "on_error": ["悬赏-跳过当前行"],
         "post_delay": 2000,
         "pre_delay": 1000,
         "recognition": "OCR",
@@ -548,8 +590,55 @@
         "roi": [879, 508, 130, 60],
         "timeout": 3000
     },
+    "悬赏-协作邀请标题": {
+        "expected": "^(协助?悬赏封印|悬赏封印协助|悬赏封印协作邀请)$",
+        "recognition": "OCR",
+        "roi": [499, 36, 281, 72],
+        "threshold": 0.75
+    },
+    "悬赏-协作邀请发送方": {
+        "expected": "^.+$",
+        "recognition": "OCR",
+        "roi": [314, 127, 397, 98],
+        "threshold": 0.8
+    },
+    "悬赏-协作邀请接受按钮": {
+        "expected": "^(接受|同意)$",
+        "recognition": "OCR",
+        "roi": [240, 441, 420, 188],
+        "threshold": 0.75
+    },
+    "悬赏-白名单接邀": {
+        "custom_recognition": "BountyInviteWhitelist",
+        "custom_recognition_param": {"whitelist": ""},
+        "recognition": "Custom"
+    },
+    "悬赏-确认并接邀": {
+        "action": "Click",
+        "all_of": ["悬赏-协作邀请标题", "悬赏封印_拒绝邀请", "悬赏-白名单接邀", "悬赏-协作邀请接受按钮"],
+        "box_index": 3,
+        "next": ["确定关闭悬赏封印协助"],
+        "post_delay": 600,
+        "recognition": "And"
+    },
+    "悬赏封印_拒绝邀请": {
+        "action": "Click",
+        "expected": "^拒绝$",
+        "next": ["确定关闭悬赏封印协助"],
+        "post_delay": 600,
+        "recognition": "OCR",
+        "roi": [811, 441, 210, 188],
+        "target_offset": [-32, 3, -14, -1],
+        "threshold": 0.7
+    },
+    "确定关闭悬赏封印协助": {
+        "expected": "^(协助?悬赏封印|悬赏封印协助|悬赏封印协作邀请)$",
+        "inverse": true,
+        "recognition": "OCR",
+        "roi": [499, 36, 281, 72]
+    },
     "自动悬赏封印": {
-        "next": ["悬赏封印-识别是否位于悬赏界面", "[JumpBack]导航-悬赏封印"],
+        "next": ["[JumpBack]悬赏封印_协助战斗1", "悬赏封印-识别是否位于悬赏界面", "[JumpBack]导航-悬赏封印"],
         "recognition": "DirectHit"
     },
     "识别探索目标": {

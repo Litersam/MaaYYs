@@ -27,8 +27,9 @@
   },
   "开始现世逢魔": {
     "next": [
+      "逢魔-今日挑战已用完",
       "识别是否用完现世逢魔次数",
-      "[JumpBack]现世逢魔"
+      "[JumpBack]逢魔-仍可挑战时发现事件"
     ],
     "recognition": "DirectHit"
   },
@@ -62,6 +63,7 @@
       "Node.Action.Starting": "[info]开始检查时间..."
     },
     "next": [
+      "逢魔-今日挑战已用完",
       "[JumpBack]自动逢魔-开始装备御魂",
       "自动逢魔"
     ],
@@ -148,6 +150,7 @@
   "现世逢魔_点击一下屏幕下方": {
     "action": "Click",
     "expected": "获得奖励",
+    "next": ["逢魔-等待现世地图恢复"],
     "post_delay": 1000,
     "recognition": "OCR",
     "roi": [
@@ -173,6 +176,73 @@
       106,
       112
     ]
+  },
+  "逢魔-今日挑战已用完": {
+    "recognition": "And",
+    "all_of": [
+      "逢魔-识别现世地图",
+      {"recognition": "OCR", "expected": "^0\\s*[/／]\\s*[12]$", "roi": [705, 68, 45, 36]}
+    ],
+    "action": "Custom",
+    "custom_action": "DemonEncounterSkipped",
+    "next": ["导航-庭院"]
+  },
+  "逢魔-识别现世地图": {
+    "recognition": "OCR",
+    "expected": "^现世逢魔$",
+    "roi": [1104, 685, 106, 34]
+  },
+  "逢魔-今日仍可挑战": {
+    "recognition": "OCR",
+    "expected": "^[1-2]\\s*[/／]\\s*2$|^1\\s*[/／]\\s*1$",
+    "roi": [705, 68, 45, 36]
+  },
+  "逢魔-仍可挑战时发现事件": {
+    "recognition": "And",
+    "all_of": ["逢魔-识别现世地图", "逢魔-今日仍可挑战"],
+    "action": "Click",
+    "target": [1132, 605, 95, 81],
+    "post_delay": 1000
+  },
+  "逢魔-等待现世地图恢复": {
+    "recognition": "And",
+    "all_of": ["逢魔-识别现世地图", "逢魔-今日仍可挑战"],
+    "post_wait_freezes": {"time": 600, "target": [1104, 685, 106, 34], "timeout": 5000},
+    "timeout": 8000
+  },
+  "逢魔-宝箱蓝票图标": {
+    "recognition": "FeatureMatch",
+    "template": "非战斗/商店购买/商店购买-魅力商店购买-神秘的符咒_1.png",
+    "roi": [581, 294, 115, 116],
+    "count": 8
+  },
+  "逢魔-宝箱五十勾玉": {
+    "recognition": "OCR",
+    "expected": "^50$",
+    "roi": [548, 405, 182, 83]
+  },
+  "逢魔-宝箱勾玉图标": {
+    "recognition": "FeatureMatch",
+    "template": ["通用图标/勾玉.png", "通用图标/勾玉_2.png"],
+    "roi": [548, 405, 182, 83],
+    "count": 6
+  },
+  "逢魔-购买50勾玉宝箱蓝票": {
+    "enabled": false,
+    "recognition": "And",
+    "all_of": ["逢魔-宝箱蓝票图标", "逢魔-宝箱勾玉图标", "逢魔-宝箱五十勾玉"],
+    "box_index": 2,
+    "action": "Click",
+    "max_hit": 1,
+    "post_delay": 1000
+  },
+  "逢魔-跳过五十勾玉宝箱": {
+    "recognition": "And",
+    "all_of": ["逢魔-识别现世地图", "逢魔-宝箱勾玉图标", "逢魔-宝箱五十勾玉"],
+    "action": "Click",
+    "target": [1132, 605, 95, 81],
+    "max_hit": 2,
+    "post_delay": 1000
   },
   "现世逢魔_点击参加": {
     "action": "Click",
@@ -974,6 +1044,8 @@
   "自动逢魔9": {
     "next": [
       "识别集结挑战",
+      "[JumpBack]逢魔-购买50勾玉宝箱蓝票",
+      "[JumpBack]逢魔-跳过五十勾玉宝箱",
       "[JumpBack]现世逢魔_点击首领",
       "[JumpBack]自动逢魔-点击首领-模板匹配"
     ],
@@ -1039,24 +1111,24 @@
     ]
   },
   "识别是否用完现世逢魔次数": {
-    "action": "Click",
-    "expected": "0/4",
+    "recognition": "And",
+    "all_of": [
+      "逢魔-识别现世地图",
+      "逢魔-今日仍可挑战",
+      {"recognition": "OCR", "expected": "^0\\s*[/／]\\s*4$", "roi": [1202, 683, 60, 36]}
+    ],
     "next": [
+      "逢魔-今日挑战已用完",
       "[JumpBack]现世逢魔_领取奖励",
-      "自动逢魔9",
-      "[JumpBack]现世逢魔"
+      "逢魔-进入首领前地图稳定"
     ],
-    "on_error": [
-      "跳过"
-    ],
-    "post_delay": 1000,
-    "recognition": "OCR",
-    "roi": [
-      1202,
-      683,
-      60,
-      36
-    ]
+    "timeout": 8000
+  },
+  "逢魔-进入首领前地图稳定": {
+    "recognition": "And",
+    "all_of": ["逢魔-识别现世地图", "逢魔-今日仍可挑战"],
+    "post_wait_freezes": {"time": 600, "target": [1104, 685, 106, 34], "timeout": 5000},
+    "next": ["自动逢魔9"]
   },
   "识别集结挑战": {
     "action": "Click",

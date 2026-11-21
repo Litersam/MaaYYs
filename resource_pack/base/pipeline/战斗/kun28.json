@@ -27,9 +27,117 @@
     },
     "困28-位于章节界面": {
         "expected": "第二十八章",
-        "next": ["战斗-探索副本"],
+        "next": ["困28-进入探索检查候补"],
         "recognition": "OCR",
         "roi": [0, 0, 415, 97]
+    },
+    "困28-进入探索检查候补": {
+        "recognition": "DirectHit",
+        "next": ["困28-打开候补设置", "[JumpBack]战斗-探索副本-点击进入探索"],
+        "timeout": 8000
+    },
+    "困28-打开候补设置": {
+        "recognition": "OCR",
+        "expected": "^设置$",
+        "roi": [37, 692, 53, 28],
+        "action": "Click",
+        "target": [55, 662, 21, 21],
+        "post_delay": 500,
+        "next": ["困28-检查候补余量"],
+        "timeout": 5000
+    },
+    "困28-候补设置标题": {
+        "recognition": "OCR",
+        "expected": "^候补出战$",
+        "roi": [466, 110, 170, 50]
+    },
+    "困28-候补计数": {
+        "recognition": "OCR",
+        "roi": [1092, 122, 69, 32]
+    },
+    "困28-检查候补余量": {
+        "recognition": "And",
+        "all_of": ["困28-候补设置标题"],
+        "action": "Custom",
+        "custom_action": "Kun28ReserveGuard",
+        "next": ["困28-关闭候补设置"]
+    },
+    "困28-关闭候补设置": {
+        "recognition": "And",
+        "all_of": ["困28-候补设置标题"],
+        "action": "Click",
+        "target": [1131, 425, 43, 37],
+        "post_delay": 500,
+        "next": ["战斗-探索副本-识别进入副本"]
+    },
+    "困28-补充候补狗粮": {
+        "recognition": "DirectHit",
+        "next": ["困28-选择候补区"],
+        "timeout": 3000
+    },
+    "困28-选择候补区": {
+        "recognition": "And",
+        "all_of": [
+            "困28-候补设置标题",
+            {"recognition": "OCR", "expected": "^0\\s*[/／]\\s*50$", "roi": [1092, 122, 69, 32]}
+        ],
+        "action": "Click",
+        "target": [545, 222, 506, 100],
+        "post_delay": 500,
+        "next": ["困28-滑到下一个素材", "[JumpBack]困28-选择素材分类", "[JumpBack]困28-打开式神分类"],
+        "timeout": 6000
+    },
+    "困28-打开式神分类": {
+        "recognition": "And",
+        "all_of": ["困28-候补设置标题"],
+        "action": "Click",
+        "target": [31, 618, 66, 64],
+        "max_hit": 1,
+        "post_delay": 600
+    },
+    "困28-选择素材分类": {
+        "recognition": "And",
+        "all_of": [
+            "困28-候补设置标题",
+            {"recognition": "OCR", "expected": "^素材$", "roi": [0, 265, 1072, 350]}
+        ],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "post_delay": 600
+    },
+    "困28-候补素材已选": {
+        "recognition": "OCR",
+        "expected": "^素材$",
+        "roi": [27, 620, 68, 65]
+    },
+    "困28-滑到下一个素材": {
+        "recognition": "And",
+        "all_of": ["困28-候补设置标题", "困28-候补素材已选"],
+        "action": "Swipe",
+        "begin": [977, 582, 21, 21],
+        "end": [889, 584, 21, 22],
+        "duration": 400,
+        "post_delay": 500,
+        "next": ["困28-添加一个候补素材"],
+        "timeout": 4000
+    },
+    "困28-添加一个候补素材": {
+        "recognition": "And",
+        "all_of": ["困28-候补设置标题", "困28-候补素材已选"],
+        "action": "LongPress",
+        "target": [516, 582, 22, 21],
+        "duration": 1500,
+        "post_delay": 600,
+        "next": ["困28-确认补充后有候补"],
+        "timeout": 5000
+    },
+    "困28-确认补充后有候补": {
+        "recognition": "And",
+        "all_of": [
+            "困28-候补设置标题",
+            {"recognition": "OCR", "expected": "^(?:[1-9]|[1-4][0-9]|50)\\s*[/／]\\s*50$", "roi": [1092, 122, 69, 32]}
+        ]
     },
     "困28-关闭妖气封印界面": {
         "action": "Click",

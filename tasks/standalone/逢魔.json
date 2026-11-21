@@ -6,11 +6,22 @@
             "entry": "开始逢魔-检查时间",
             "group": ["standalone"],
             "option": [
-                "逢魔-切换御魂阵容"
+                "逢魔-切换御魂阵容",
+                "box_buy_amulet"
             ]
         }
     ],
     "option": {
+        "box_buy_amulet": {
+            "type": "switch",
+            "label": "花50勾玉购买逢魔宝箱蓝票",
+            "description": "默认不购买。开启后仍须同时识别蓝票、勾玉图标与50价格。",
+            "default_case": "No",
+            "cases": [
+                {"name": "Yes", "label": "购买", "pipeline_override": {"逢魔-购买50勾玉宝箱蓝票": {"enabled": true}}},
+                {"name": "No", "label": "不购买", "pipeline_override": {"逢魔-购买50勾玉宝箱蓝票": {"enabled": false}}}
+            ]
+        },
         "逢魔答题同步题目": {
             "type": "switch",
             "label": "逢魔答题同步题目",

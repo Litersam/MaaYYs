@@ -1,0 +1,30 @@
+{
+    "通用弹窗-寄养归来-稍后": {
+        "action": "Click",
+        "all_of": [
+            { "recognition": "OCR", "expected": ["寄养的式神.*已经回", "寄养归来"], "roi": [430, 265, 420, 110] },
+            { "recognition": "OCR", "expected": "^稍后$", "roi": [450, 375, 175, 95] }
+        ],
+        "box_index": 1,
+        "post_delay": 800,
+        "recognition": "And"
+    },
+    "通用弹窗-智能助手-返回": {
+        "action": "Click",
+        "expected": "^智能助手$",
+        "post_delay": 800,
+        "recognition": "OCR",
+        "roi": [64, 8, 164, 58],
+        "target": [24, 22, 30, 30]
+    },
+    "通用弹窗-御魂溢出-知道了": {
+        "action": "Click",
+        "all_of": [
+            { "recognition": "OCR", "expected": ["持有御魂过多", "御魂.*(?:上限|溢出)"], "roi": [380, 210, 520, 155] },
+            { "recognition": "OCR", "expected": "^知道了$", "roi": [610, 365, 220, 114] }
+        ],
+        "box_index": 1,
+        "post_delay": 800,
+        "recognition": "And"
+    }
+}

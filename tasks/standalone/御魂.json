@@ -451,6 +451,12 @@
                 }
             ],
             "pipeline_override": {
+                "自动御魂8": {
+                    "custom_action_param": {
+                        "drop_soul": true,
+                        "remaining": "{挑战次数}"
+                    }
+                },
                 "自动御魂-设置次数": {
                     "custom_action_param": {
                         "expected_number": "{挑战次数}",

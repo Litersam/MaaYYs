@@ -1,7 +1,118 @@
 {
     "商店购买": {
-        "next": ["商店购买-检查本周是否已完成", "[JumpBack]通用-拒绝下载-识别到下载二字", "[JumpBack]商店购买-导航到商店界面", "[JumpBack]商店购买-购买特殊商店物品", "[JumpBack]商店购买-购买荣誉商店物品", "[JumpBack]商店购买-购买友情商店物品", "[JumpBack]商店购买-购买勋章商店物品", "[JumpBack]商店购买-购买魅力商店物品", "商店购买-写入本周购物完成"],
+        "next": ["[JumpBack]秘魂屋-限价购买入口", "商店购买-检查本周是否已完成", "[JumpBack]通用-拒绝下载-识别到下载二字", "[JumpBack]商店购买-导航到商店界面", "[JumpBack]商店购买-购买特殊商店物品", "[JumpBack]商店购买-购买荣誉商店物品", "[JumpBack]商店购买-购买友情商店物品", "[JumpBack]商店购买-购买勋章商店物品", "[JumpBack]商店购买-购买魅力商店物品", "商店购买-写入本周购物完成"],
         "recognition": "DirectHit"
+    },
+    "秘魂屋-限价购买入口": {
+        "enabled": false,
+        "recognition": "DirectHit",
+        "max_hit": 1,
+        "next": ["秘魂屋-等待店内", "[JumpBack]秘魂屋-打开店面", "[JumpBack]秘魂屋-导航到商店"],
+        "timeout": 10000,
+        "on_error": ["导航-商店-识别是否位于商店"]
+    },
+    "秘魂屋-导航到商店": {
+        "recognition": "DirectHit",
+        "max_hit": 1,
+        "next": ["导航-商店"]
+    },
+    "秘魂屋-打开店面": {
+        "recognition": "And",
+        "all_of": [
+            "导航-商店-识别是否位于商店",
+            {"recognition": "OCR", "expected": "^秘魂屋$|^神秘商店$"}
+        ],
+        "box_index": 1,
+        "action": "Click",
+        "post_delay": 1200,
+        "max_hit": 1
+    },
+    "秘魂屋-店内标题": {
+        "recognition": "OCR",
+        "expected": "^分享$",
+        "roi": [24, 571, 100, 100]
+    },
+    "秘魂屋-等待店内": {
+        "recognition": "And",
+        "all_of": ["秘魂屋-店内标题"],
+        "next": ["秘魂屋-打开蓝票订单"],
+        "timeout": 5000,
+        "on_error": ["秘魂屋-退出店面"]
+    },
+    "秘魂屋-蓝票商品": {
+        "recognition": "FeatureMatch",
+        "template": "非战斗/商店购买/商店购买-魅力商店购买-神秘的符咒_1.png",
+        "count": 8,
+        "roi": [179, 81, 829, 471]
+    },
+    "秘魂屋-打开蓝票订单": {
+        "recognition": "And",
+        "all_of": ["秘魂屋-店内标题", "秘魂屋-蓝票商品"],
+        "box_index": 1,
+        "action": "Click",
+        "post_delay": 600,
+        "next": ["秘魂屋-确认下单"],
+        "timeout": 3000,
+        "on_error": ["秘魂屋-取消订单"]
+    },
+    "秘魂屋-订单蓝票": {
+        "recognition": "FeatureMatch",
+        "template": "非战斗/商店购买/商店购买-魅力商店购买-神秘的符咒_1.png",
+        "count": 8,
+        "roi": [455, 235, 261, 146]
+    },
+    "秘魂屋-确认按钮勾玉": {
+        "recognition": "FeatureMatch",
+        "template": ["通用图标/勾玉.png", "通用图标/勾玉_2.png"],
+        "count": 6,
+        "roi": [540, 480, 200, 120]
+    },
+    "秘魂屋-购买数量": {
+        "recognition": "OCR",
+        "roi": [578, 416, 52, 71]
+    },
+    "秘魂屋-确认按钮单价": {
+        "recognition": "OCR",
+        "roi": [646, 537, 60, 52]
+    },
+    "秘魂屋-确认下单": {
+        "recognition": "And",
+        "all_of": ["秘魂屋-订单蓝票", "秘魂屋-核验限价及数量"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 1,
+        "next": ["秘魂屋-核销购买成功"],
+        "timeout": 5000
+    },
+    "秘魂屋-核验限价及数量": {
+        "recognition": "Custom",
+        "custom_recognition": "MysteryShopPrice",
+        "custom_recognition_param": {"max_price": 85}
+    },
+    "秘魂屋-核销购买成功": {
+        "recognition": "OCR",
+        "expected": ["^购买成功$", "^获得奖励$"],
+        "roi": [449, 0, 405, 167],
+        "action": "Click",
+        "target": [121, 2, 100, 22],
+        "post_delay": 600,
+        "next": ["秘魂屋-退出店面"]
+    },
+    "秘魂屋-取消订单": {
+        "recognition": "And",
+        "all_of": [
+            "秘魂屋-订单蓝票",
+            {"recognition": "OCR", "expected": "^分享$", "roi": [24, 571, 100, 100], "inverse": true}
+        ],
+        "action": "Click",
+        "target": [121, 2, 100, 22],
+        "post_delay": 1000,
+        "next": ["秘魂屋-退出店面"]
+    },
+    "秘魂屋-退出店面": {
+        "recognition": "DirectHit",
+        "next": ["导航-商店-识别是否位于商店", "[JumpBack]导航-庭院-点击返回按钮-模板匹配"],
+        "timeout": 5000
     },
     "商店购买-写入本周购物完成": {
         "custom_recognition": "WeekStatusWriteRecognition",
