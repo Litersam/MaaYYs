@@ -2,10 +2,12 @@ package realm
 
 import (
 	"encoding/json"
+	"fmt"
 	"image"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"maa-yys-agent/internal/runstate"
 	"maa-yys-agent/internal/vision"
@@ -13,11 +15,22 @@ import (
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
 )
 
-const maxRemainingSeconds = 6*60*60 + 120
+type timerKind string
+
+func (kind timerKind) limit() int {
+	switch kind {
+	case "foster":
+		return 6*3600 + 120
+	case "realm_card":
+		return 72 * 3600
+	default:
+		return 0
+	}
+}
 
 var timerPattern = regexp.MustCompile(`^([0-9]{2}):([0-9]{2}):([0-9]{2})$`)
 
-func remainingSeconds(text string) (int, bool) {
+func remainingSeconds(kind timerKind, text string) (int, bool) {
 	parts := timerPattern.FindStringSubmatch(strings.ReplaceAll(strings.TrimSpace(text), "：", ":"))
 	if len(parts) != 4 {
 		return 0, false
@@ -26,30 +39,52 @@ func remainingSeconds(text string) (int, bool) {
 	m, _ := strconv.Atoi(parts[2])
 	s, _ := strconv.Atoi(parts[3])
 	seconds := h*3600 + m*60 + s
-	if m >= 60 || s >= 60 || seconds <= 0 || seconds > maxRemainingSeconds {
+	if m >= 60 || s >= 60 || seconds <= 0 || seconds > kind.limit() {
 		return 0, false
 	}
 	return seconds, true
 }
 
+type timerObservation struct {
+	Kind       timerKind `json:"kind"`
+	Remaining  int       `json:"remaining"`
+	ObservedAt int64     `json:"observed_at"`
+}
+
+func (o timerObservation) validFor(kind timerKind) bool {
+	return o.Kind == kind && o.Remaining > 0 && o.Remaining <= kind.limit() && o.ObservedAt > 0
+}
+
+func (o timerObservation) metrics() map[string]int64 {
+	prefix := string(o.Kind)
+	// Remaining is an observation, not a countdown rebased to task completion.
+	return map[string]int64{
+		prefix + "_remaining_sec": int64(o.Remaining),
+		prefix + "_due_at":        o.ObservedAt + int64(o.Remaining),
+	}
+}
+
 type TimerProbe struct{}
 
 func (*TimerProbe) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.CustomRecognitionResult, bool) {
-	var p struct {
+	var params struct {
 		Kind string `json:"kind"`
 	}
-	if json.Unmarshal([]byte(arg.CustomRecognitionParam), &p) != nil {
+	if json.Unmarshal([]byte(arg.CustomRecognitionParam), &params) != nil {
 		return nil, false
 	}
-	node := ""
-	switch p.Kind {
+	var node string
+	kind := timerKind(params.Kind)
+	switch params.Kind {
 	case "foster":
 		node = "好友寄养_计时OCR"
 	case "card":
 		node = "结界挂卡_计时OCR"
+		kind = "realm_card"
 	default:
 		return nil, false
 	}
+	observedAt := time.Now().Unix()
 	d, err := ctx.RunRecognition(node, arg.Img)
 	if err != nil || d == nil || !d.Hit || d.Results == nil || d.Results.Best == nil {
 		return nil, false
@@ -58,14 +93,21 @@ func (*TimerProbe) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*maa.Cu
 	if !ok {
 		return nil, false
 	}
-	seconds, ok := remainingSeconds(r.Text)
+	seconds, ok := remainingSeconds(kind, r.Text)
 	if !ok {
 		return nil, false
 	}
-	return &maa.CustomRecognitionResult{Box: r.Box, Detail: strconv.Itoa(seconds)}, true
+	data, err := json.Marshal(timerObservation{kind, seconds, observedAt})
+	if err != nil {
+		return nil, false
+	}
+	return &maa.CustomRecognitionResult{Box: r.Box, Detail: string(data)}, true
 }
 
 type Finish struct{}
+
+const returnToCourtyard = "结界批次_返回庭院"
+const courtyardConfirmed = "结界批次_已确认庭院"
 
 func (*Finish) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	var p struct {
@@ -80,45 +122,59 @@ func (*Finish) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	default:
 		p.Status = runstate.Failed
 	}
-	seconds := 0
+	var observation timerObservation
 	if p.Metric != "" {
+		kind, supported := strings.CutSuffix(p.Metric, "_remaining_sec")
 		if arg.RecognitionDetail != nil && arg.RecognitionDetail.Hit {
-			seconds = timerResult(arg.RecognitionDetail)
+			observation = timerResult(arg.RecognitionDetail, timerKind(kind))
 		}
-		if seconds == 0 || (p.Metric != "foster_remaining_sec" && p.Metric != "realm_card_remaining_sec") {
+		if !supported || !observation.validFor(timerKind(kind)) {
 			p.Status = runstate.Failed
 		}
 	}
-	d, err := ctx.RunTask("结界批次_返回庭院")
-	if err != nil || d == nil || !d.Status.Success() {
-		p.Status = runstate.Failed
+	if p.Status != runstate.Failed {
+		d, err := ctx.RunTask(returnToCourtyard)
+		if err != nil || !confirmedReturn(d) || ctx.GetTasker().Stopping() {
+			fmt.Println("结界任务未能确认已返回庭院")
+			p.Status = runstate.Failed
+		}
 	}
-	if p.Status != runstate.Failed && seconds > 0 {
-		runstate.SetMetric(ctx, p.Metric, seconds)
+	if p.Status != runstate.Failed && observation.Remaining > 0 {
+		for key, value := range observation.metrics() {
+			runstate.SetMetric(ctx, key, value)
+		}
 	}
 	runstate.Report(ctx, p.Status)
 	return p.Status != runstate.Failed
 }
 
-func timerResult(d *maa.RecognitionDetail) int {
+func confirmedReturn(d *maa.TaskDetail) bool {
+	if d == nil || !d.Status.Success() || len(d.NodeDetails) == 0 {
+		return false
+	}
+	last := d.NodeDetails[len(d.NodeDetails)-1]
+	return last != nil && last.Name == courtyardConfirmed && last.RunCompleted
+}
+
+func timerResult(d *maa.RecognitionDetail, kind timerKind) timerObservation {
 	// The framework does not populate Hit on children of a successful And.
 	if d == nil {
-		return 0
+		return timerObservation{}
 	}
 	if d.Results != nil && d.Results.Best != nil {
 		if result, ok := d.Results.Best.AsCustom(); ok {
-			seconds, err := strconv.Atoi(result.Detail)
-			if err == nil && seconds > 0 && seconds <= maxRemainingSeconds {
-				return seconds
+			var o timerObservation
+			if json.Unmarshal([]byte(result.Detail), &o) == nil && o.validFor(kind) {
+				return o
 			}
 		}
 	}
 	for _, part := range d.CombinedResult {
-		if seconds := timerResult(part); seconds > 0 {
-			return seconds
+		if o := timerResult(part, kind); o.Remaining > 0 {
+			return o
 		}
 	}
-	return 0
+	return timerObservation{}
 }
 
 type ActivateButton struct{}

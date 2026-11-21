@@ -14,6 +14,7 @@ const (
 	realmLoss    = "突破-战败收尾"
 	guildPlan    = "寮突-策略"
 	guildAttack  = "寮突-点击进攻"
+	guildSwipe   = "寮突16_copy1"
 )
 
 var targetNodes = [realmSlots]string{
@@ -29,6 +30,9 @@ var _ maa.CustomActionRunner = (*PolicyAction)(nil)
 func (*PolicyAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	if arg == nil || ctx == nil {
 		return false
+	}
+	if arg.CurrentTaskName == guildSwipe {
+		return turnGuildPage(ctx)
 	}
 	if arg.CurrentTaskName == realmLoss {
 		if attempts, err := ctx.GetHitCount(realmAttack); err == nil {

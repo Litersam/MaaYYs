@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"maa-yys-agent/internal/vision"
@@ -34,6 +33,8 @@ const (
 	activeNode   = "通用加成-启用色"
 	inactiveNode = "通用加成-停用色"
 	newcomerNode = "通用加成-新手冲突"
+	cleanupEntry = "通用加成-归位"
+	cleanupNode  = "通用加成-关闭本轮加成"
 )
 
 type switchState uint8
@@ -43,63 +44,6 @@ const (
 	on
 	off
 )
-
-var scopes sync.Map // map[maa.Tasker]*Scope
-
-// Scope tracks only bonuses observed off before this step attempted to enable
-// them. An unconfirmed click is tracked too until cleanup proves it is off.
-type Scope struct {
-	mu    sync.Mutex
-	owned map[string]bool
-}
-
-func Track(tasker *maa.Tasker) (*Scope, func()) {
-	scope := &Scope{owned: make(map[string]bool)}
-	scopes.Store(*tasker, scope)
-	return scope, func() { scopes.CompareAndDelete(*tasker, scope) }
-}
-
-func (s *Scope) set(name string, owned bool) {
-	if s == nil {
-		return
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if owned {
-		s.owned[name] = true
-	} else {
-		delete(s.owned, name)
-	}
-}
-
-func (s *Scope) contains(name string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.owned[name]
-}
-
-func (s *Scope) clearParams() map[string]bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	params := make(map[string]bool, len(s.owned))
-	for k := range s.owned {
-		params[k] = false
-	}
-	return params
-}
-
-func (s *Scope) Cleanup(tasker *maa.Tasker, run func(*maa.Tasker, string, map[string]any) bool) error {
-	params := s.clearParams()
-	if len(params) == 0 {
-		return nil
-	}
-	if !run(tasker, "通用加成-归位", map[string]any{
-		"通用加成-关闭本轮加成": map[string]any{"custom_action_param": params},
-	}) || len(s.clearParams()) != 0 {
-		return errors.New("无法确认本轮开启的加成已关闭")
-	}
-	return nil
-}
 
 type request struct {
 	toggles   map[string]bool
@@ -141,15 +85,14 @@ func (*BonusToggleAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		log.Warn().Err(err).Msg("加成参数错误")
 		return false
 	}
-	value, _ := scopes.Load(*ctx.GetTasker())
-	scope, _ := value.(*Scope)
+	owned := ownershipFor(ctx, arg.CurrentTaskName)
 	ok := true
 	for _, name := range slices.Sorted(maps.Keys(req.toggles)) {
 		enable := req.toggles[name]
-		if scope != nil && !enable && !scope.contains(name) {
+		if !enable && !owned.contains(name) {
 			continue
 		}
-		if err := setBonus(ctx, scope, name, enable); err != nil {
+		if err := setBonus(ctx, owned, name, enable); err != nil {
 			log.Warn().Err(err).Str("bonus", name).Msg("加成状态未确认")
 			ok = false
 		}
@@ -157,7 +100,7 @@ func (*BonusToggleAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	return ok
 }
 
-func setBonus(ctx *maa.Context, scope *Scope, name string, enable bool) error {
+func setBonus(ctx *maa.Context, owned ownership, name string, enable bool) error {
 	img, err := screenshot(ctx)
 	if err != nil {
 		return err
@@ -169,19 +112,23 @@ func setBonus(ctx *maa.Context, scope *Scope, name string, enable bool) error {
 	}
 	if state == want {
 		if !enable {
-			scope.set(name, false)
+			return owned.set(name, false)
 		}
 		return nil
 	}
 	if state == unknown || at == nil {
 		return errors.New("未定位到唯一且可用的加成拨杆")
 	}
-	if enable {
-		scope.set(name, true)
-	}
 	action, err := ctx.RunAction(clickNode, *at, "")
 	if err != nil || action == nil || !action.Success {
 		return errors.New("点击加成拨杆失败")
+	}
+	// Only claim switches read as off before our successful click. If an
+	// interrupt arrives during verification, cleanup will re-read the switch.
+	if enable {
+		if err := owned.set(name, true); err != nil {
+			return err
+		}
 	}
 	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
 		img, err = screenshot(ctx)
@@ -191,14 +138,13 @@ func setBonus(ctx *maa.Context, scope *Scope, name string, enable bool) error {
 		after, _ := locate(ctx, img, name)
 		if after == want {
 			if !enable {
-				scope.set(name, false)
+				return owned.set(name, false)
 			}
 			return nil
 		}
 		if enable && after == off {
 			if detail, err := ctx.RunRecognition(newcomerNode, img); err == nil && detail != nil && detail.Hit {
-				scope.set(name, false)
-				return nil
+				return owned.set(name, false)
 			}
 		}
 		time.Sleep(150 * time.Millisecond)

@@ -66,9 +66,13 @@ func (*ReserveGuard) Run(ctx *maa.Context, _ *maa.CustomActionArg) bool {
 	}
 	if replenish {
 		result, err := ctx.RunTask("困28-补充候补狗粮")
+		// An empty/unreadable inventory or a press that did not add a card is
+		// not a prerequisite for exploration. The parent still has to confirm
+		// the settings panel before closing it and the exploration screen after.
 		if err != nil || result == nil || !result.Status.Success() {
-			runstate.Report(ctx, runstate.Failed)
-			return false
+			runstate.SetMetric(ctx, "kun28_reserve_replenished", false)
+		} else {
+			runstate.SetMetric(ctx, "kun28_reserve_replenished", true)
 		}
 	}
 	return true

@@ -131,9 +131,7 @@ func runStepsFromStdin(ctx context.Context, repoRoot string, in io.Reader, jsonl
 		untrack()
 		release()
 		stepOutcome := collector.Outcome()
-		if stepErr == nil && stepOutcome.Status == runstate.Failed {
-			stepErr = fmt.Errorf("任务 %s 报告失败", step.Task)
-		}
+		stepErr = validateStepCompletion(step.Task, stepOutcome, stepErr)
 		mergeStepOutcome(&outcome, step.Task, stepOutcome)
 		writer.EndStep(stepID, detail, stepOutcome, stepErr)
 		if stepErr != nil {
@@ -145,14 +143,34 @@ func runStepsFromStdin(ctx context.Context, repoRoot string, in io.Reader, jsonl
 	return 0
 }
 
-func mergeStepOutcome(outcome *runstate.Outcome, task string, stepOutcome runstate.Outcome) {
-	// Login/open/close shouldn't turn an otherwise skipped daily plan into a completed one.
+func bareTaskName(task string) string {
 	name := strings.TrimSpace(task)
 	if _, suffix, ok := strings.Cut(name, "/"); ok {
-		name = suffix
+		return strings.TrimSpace(suffix)
 	}
+	return name
+}
+
+func validateStepCompletion(task string, outcome runstate.Outcome, err error) error {
+	if err != nil {
+		return err
+	}
+	if outcome.Status == runstate.Failed {
+		return fmt.Errorf("任务 %s 报告失败", task)
+	}
+	switch bareTaskName(task) {
+	case "好友寄养", "结界挂卡", "结界收菜", "自动悬赏", "自动悬赏封印":
+		if !outcome.Reported {
+			return fmt.Errorf("任务 %s 未确认业务终态", task)
+		}
+	}
+	return nil
+}
+
+func mergeStepOutcome(outcome *runstate.Outcome, task string, stepOutcome runstate.Outcome) {
+	// Login/open/close shouldn't turn an otherwise skipped daily plan into a completed one.
 	if stepOutcome.Status == runstate.Completed {
-		switch name {
+		switch bareTaskName(task) {
 		case "账号登录", "打开游戏", "启动游戏", "关闭游戏", "关闭阴阳师":
 			stepOutcome.Status = ""
 		}

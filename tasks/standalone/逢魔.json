@@ -15,11 +15,11 @@
         "box_buy_amulet": {
             "type": "switch",
             "label": "花50勾玉购买逢魔宝箱蓝票",
-            "description": "默认不购买。开启后仍须同时识别蓝票、勾玉图标与50价格。",
+            "description": "默认不打开宝箱灯笼。开启后仅在宝箱同时出现蓝票、勾玉图标与50价格时购买一次。",
             "default_case": "No",
             "cases": [
-                {"name": "Yes", "label": "购买", "pipeline_override": {"逢魔-购买50勾玉宝箱蓝票": {"enabled": true}}},
-                {"name": "No", "label": "不购买", "pipeline_override": {"逢魔-购买50勾玉宝箱蓝票": {"enabled": false}}}
+                {"name": "Yes", "label": "购买", "pipeline_override": {"逢魔-打开宝箱灯笼": {"enabled": true}, "逢魔-购买50勾玉宝箱蓝票": {"enabled": true}}},
+                {"name": "No", "label": "不购买", "pipeline_override": {"逢魔-打开宝箱灯笼": {"enabled": false}, "逢魔-购买50勾玉宝箱蓝票": {"enabled": false}}}
             ]
         },
         "逢魔答题同步题目": {

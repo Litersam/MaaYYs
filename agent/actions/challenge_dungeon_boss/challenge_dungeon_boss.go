@@ -3,10 +3,8 @@ package challenge_dungeon_boss
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"maa-yys-agent/internal/runstate"
-	"maa-yys-agent/ocrtext"
 
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
 )
@@ -93,10 +91,8 @@ func selectBoss(ctx *maa.Context, node string, override map[string]any) (string,
 			if !task.Status.Success() {
 				break
 			}
-			for _, text := range ocrtext.Texts(detail.Recognition) {
-				if name := strings.Join(strings.Fields(text), ""); name != "" {
-					return name, true
-				}
+			if name := recognizedBossName(detail.Recognition); name != "" {
+				return name, true
 			}
 		}
 	}

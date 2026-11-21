@@ -2,6 +2,7 @@
     "开始自动结界": {
         "expected": "结界突破",
         "next": ["[JumpBack]结界-关闭意外打开的奖励预览", "[JumpBack]结界-关闭意外打开的好友面板", "[JumpBack]结界-关闭意外打开的名片", "[JumpBack]突破_领取奖励", "结界突破-策略", "[JumpBack]结界突破-点击个人标签"],
+        "on_error": ["结界突破-未确认个人界面"],
         "post_delay": 1000,
         "recognition": "OCR",
         "roi": [526, 54, 200, 86],
@@ -11,7 +12,7 @@
         "action": "Custom",
         "custom_action": "BreakthroughPolicy",
         "custom_action_param": {"mode": "realm"},
-        "expected": "^[0-9]{1,2}\\s*[/／]\\s*30$",
+        "expected": "^[0-9]{1,2}\\s*(?:/|／)\\s*30$",
         "recognition": "OCR",
         "roi": [1071, 0, 208, 66],
         "threshold": 0.7
@@ -19,10 +20,19 @@
     "结界突破-点击个人标签": {
         "action": "Click",
         "expected": "^个人$",
+        "max_hit": 2,
         "post_delay": 1000,
         "rate_limit": 1500,
         "recognition": "OCR",
         "roi": [1168, 117, 112, 212]
+    },
+    "结界突破-未确认个人界面": {
+        "action": "Custom",
+        "custom_action": "BattleOutcome",
+        "custom_action_param": {"status": "failed", "reason": "realm_quota_unconfirmed"},
+        "max_hit": 1,
+        "timeout": 1,
+        "recognition": "DirectHit"
     },
     "挑战第一个结界": {
         "action": "Click",

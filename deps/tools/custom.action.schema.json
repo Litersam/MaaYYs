@@ -36,6 +36,8 @@
         "Guess",
         "TimeCheck",
         "BreakthroughPolicy",
+        "BattleOutcome",
+        "SoulCountGate",
         "DemonEncounterSkipped",
         "Kun28ReserveGuard",
         "RealmFinish",
@@ -74,6 +76,8 @@
       { "$ref": "#/$defs/Guess" },
       { "$ref": "#/$defs/TimeCheck" },
       { "$ref": "#/$defs/BreakthroughPolicy" },
+      { "$ref": "#/$defs/BattleOutcome" },
+      { "$ref": "#/$defs/SoulCountGate" },
       { "$ref": "#/$defs/DemonEncounterSkipped" },
       { "$ref": "#/$defs/Kun28ReserveGuard" },
       { "$ref": "#/$defs/RealmFinish" },
@@ -81,6 +85,33 @@
     ]
   },
   "$defs": {
+    "BattleOutcome": {
+      "properties": {
+        "custom_action": { "const": "BattleOutcome" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["failed", "skipped", "deferred"] },
+            "reason": { "type": "string", "minLength": 1 }
+          },
+          "required": ["status", "reason"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "SoulCountGate": {
+      "properties": {
+        "custom_action": { "const": "SoulCountGate" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": { "count": { "type": "integer", "minimum": 0 } },
+          "required": ["count"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
     "BreakthroughPolicy": {
       "properties": {
         "custom_action": { "const": "BreakthroughPolicy" },
@@ -98,7 +129,19 @@
       "required": ["custom_action"]
     },
     "DemonEncounterSkipped": {
-      "properties": { "custom_action": { "const": "DemonEncounterSkipped" } },
+      "properties": {
+        "custom_action": { "const": "DemonEncounterSkipped" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "start": { "type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", "description": "开放时间（本地时区）" },
+            "end": { "type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", "description": "结束时间（本地时区）" },
+            "mode": { "const": "in", "description": "兼容原时段检查参数" }
+          },
+          "dependentRequired": {"start": ["end"], "end": ["start"]},
+          "additionalProperties": false
+        }
+      },
       "required": ["custom_action"]
     },
     "Kun28ReserveGuard": {
@@ -379,7 +422,8 @@
           "properties": {
             "FosterTarget": { "type": "integer", "enum": [1, 2], "default": 1, "description": "1 优先勾玉，2 优先体力" },
             "DirectSelectThreshold": { "type": "integer", "minimum": 0, "description": "仅用于旧合并流程的勾玉直选阈值" },
-            "legacy_select_only": { "type": "boolean", "default": false, "description": "兼容旧合并流程，由其后续节点负责提交寄养" }
+            "mode": { "type": "string", "enum": ["select_only", "ranked_submit"], "default": "select_only", "description": "默认仅选中好友；显式 ranked_submit 才核验并提交寄养" },
+            "legacy_select_only": { "type": "boolean", "default": false, "description": "兼容旧合并流程；true 强制仅选中好友" }
           },
           "additionalProperties": false
         }

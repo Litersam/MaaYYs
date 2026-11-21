@@ -1,33 +1,15 @@
 {
     "结界收菜": {
-        "next": ["结界收菜_结界就绪", "[JumpBack]通用弹窗-寄养归来-稍后", "[JumpBack]导航-阴阳寮结界"],
-        "on_error": ["结界批次_失败"]
+        "next": ["结界收菜_结界就绪", "[JumpBack]结界批次_进入结界"],
+        "timeout": 5000
     },
     "结界批次_失败": {
         "action": "Custom", "custom_action": "RealmFinish",
         "custom_action_param": {"status": "failed"}
     },
-    "结界批次_返回庭院": {
-        "next": [
-            "[JumpBack]通用弹窗-寄养归来-稍后",
-            "[JumpBack]通用弹窗-智能助手-返回",
-            "[JumpBack]通用弹窗-御魂溢出-知道了",
-            "导航-庭院-识别是否位于庭院-模型识别",
-            "导航-庭院-识别是否位于庭院",
-            "导航-庭院-识别是否位于庭院-模板匹配",
-            "[JumpBack]结界挂卡_关闭卡页",
-            "[JumpBack]阴阳寮奖励领取_结界奖励领取_关闭食盒界面",
-            "[JumpBack]导航-庭院-关闭当前弹窗",
-            "[JumpBack]好友寄养_蓝色返回",
-            "[JumpBack]导航-庭院-点击快捷返回庭院按钮",
-            "[JumpBack]识别黄色返回_模板识别",
-            "[JumpBack]导航-庭院-点击返回按钮-特征匹配"
-        ],
-        "timeout": 22000
-    },
     "结界收菜_结界就绪": {
         "recognition": "FeatureMatch", "template": "阴阳寮/阴阳寮_结界_结界换装.png",
-        "next": ["结界收菜_打开食盒", "结界收菜_打开经验酒壶"],
+        "next": ["结界收菜_打开食盒"],
         "on_error": ["结界批次_失败"]
     },
     "结界收菜_打开食盒": {
@@ -41,43 +23,108 @@
             "阴阳寮奖励/阴阳寮奖励领取_结界奖励领取_点击结界奖励_4.png"
         ],
         "action": "Click", "post_delay": 800,
-        "next": ["结界收菜_取体力", "结界收菜_体力未到", "[JumpBack]阴阳寮结界_食盒_领取体力_点击体力食盒"],
+        "next": ["结界收菜_体力页已确认", "[JumpBack]结界收菜_切换体力"],
+        "timeout": 5000,
         "on_error": ["结界批次_失败"]
+    },
+    "结界收菜_体力页": {
+        "recognition": "And",
+        "all_of": [
+            "阴阳寮奖励领取_结界奖励领取_关闭食盒界面",
+            "结界收菜_体力标签文字",
+            "结界收菜_体力选中色"
+        ]
+    },
+    "结界收菜_经验页": {
+        "recognition": "And",
+        "all_of": [
+            "阴阳寮奖励领取_结界奖励领取_关闭食盒界面",
+            "结界收菜_经验标签文字",
+            "结界收菜_经验选中色"
+        ]
+    },
+    "结界收菜_体力标签文字": {
+        "recognition": "OCR", "expected": "^体力食盒$", "roi": [487, 618, 136, 65]
+    },
+    "结界收菜_经验标签文字": {
+        "recognition": "OCR", "expected": "^经验酒壶$", "roi": [738, 618, 136, 65]
+    },
+    "结界收菜_体力选中色": {
+        "recognition": "ColorMatch", "roi": [609, 637, 13, 36], "method": 40,
+        "lower": [8, 52, 184], "upper": [28, 180, 255], "count": 235
+    },
+    "结界收菜_经验选中色": {
+        "recognition": "ColorMatch", "roi": [861, 637, 13, 36], "method": 40,
+        "lower": [8, 52, 184], "upper": [28, 180, 255], "count": 235
+    },
+    "结界收菜_切换体力": {
+        "recognition": "And", "all_of": ["结界收菜_经验页", "阴阳寮结界_食盒_领取体力_点击体力食盒"],
+        "box_index": 1, "action": "Click", "post_delay": 800, "max_hit": 2
+    },
+    "结界收菜_体力页已确认": {
+        "recognition": "And", "all_of": ["结界收菜_体力页"],
+        "next": ["结界收菜_体力未到", "结界收菜_取体力"], "timeout": 4500,
+        "on_error": ["结界批次_失败"]
+    },
+    "结界收菜_计数为零": {
+        "recognition": "OCR", "expected": "^0\\s*[/／]\\s*[1-9][0-9]*$",
+        "roi": [610, 494, 255, 87]
+    },
+    "结界收菜_计数为正": {
+        "recognition": "OCR", "expected": "^[1-9][0-9]*\\s*[/／]\\s*[1-9][0-9]*$",
+        "roi": [610, 494, 255, 87]
+    },
+    "结界收菜_取出按钮": {
+        "recognition": "OCR", "expected": "^取出$", "roi": [531, 488, 196, 98]
     },
     "结界收菜_取体力": {
         "recognition": "And",
         "all_of": [
-            {"recognition": "OCR", "expected": "体力", "roi": [496, 184, 333, 161]},
-            {"recognition": "OCR", "expected": "取出", "roi": [531, 488, 196, 98]}
+            "结界收菜_体力页", "结界收菜_计数为正", "结界收菜_取出按钮"
         ],
-        "box_index": 1, "action": "Click", "post_delay": 750,
-        "next": ["结界收菜_打开经验酒壶", "[JumpBack]结界收菜_收下奖励"],
+        "box_index": 2, "action": "Click", "post_delay": 750,
+        "next": ["[JumpBack]结界收菜_收下奖励", "结界收菜_体力未到", "结界收菜_打开经验酒壶"],
+        "timeout": 5000,
         "on_error": ["结界批次_失败"]
     },
     "结界收菜_体力未到": {
-        "recognition": "OCR", "expected": "暂无|没有可|尚未|0\\s*[/／]", "roi": [398, 184, 506, 384],
-        "next": ["结界收菜_打开经验酒壶", "[JumpBack]结界收菜_收下奖励"],
+        "recognition": "And", "all_of": ["结界收菜_体力页", "结界收菜_计数为零"],
+        "next": ["结界收菜_打开经验酒壶", "[JumpBack]结界批次_关食盒"],
+        "timeout": 5000,
         "on_error": ["结界批次_失败"]
     },
     "结界收菜_收下奖励": {
         "recognition": "OCR", "expected": "获得奖励|获得体力", "roi": [377, 118, 607, 200],
-        "action": "Click", "target": [825, 515, 125, 59], "post_delay": 650
+        "action": "Click", "target": [825, 515, 125, 59], "post_delay": 650, "max_hit": 2
     },
     "结界收菜_打开经验酒壶": {
-        "recognition": "TemplateMatch", "roi": [379, 605, 598, 108],
-        "template": "阴阳寮/阴阳寮结界_经验酒壶__655_616_226_79__605_566_326_154.png",
-        "action": "Click", "post_delay": 800,
-        "next": ["结界收菜_提取经验", "结界收菜_经验未到"],
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "Or", "any_of": ["结界批次_自家结界", "结界收菜_体力页"]},
+            "结界收菜_经验标签"
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 800,
+        "next": ["结界收菜_经验未到", "结界收菜_提取经验", "[JumpBack]结界收菜_重试经验标签"],
+        "timeout": 5000,
         "on_error": ["结界批次_失败"]
+    },
+    "结界收菜_经验标签": {
+        "recognition": "TemplateMatch", "roi": [379, 605, 598, 108],
+        "template": "阴阳寮/阴阳寮结界_经验酒壶__655_616_226_79__605_566_326_154.png"
+    },
+    "结界收菜_重试经验标签": {
+        "recognition": "And", "all_of": ["结界收菜_体力页", "结界收菜_经验标签"],
+        "box_index": 1, "action": "Click", "post_delay": 800, "max_hit": 2
     },
     "结界收菜_提取经验": {
         "recognition": "And",
         "all_of": [
-            {"recognition": "OCR", "expected": "经验", "roi": [479, 229, 311, 78]},
+            "结界收菜_经验页", "结界收菜_计数为正",
             {"recognition": "TemplateMatch", "template": "阴阳寮/阴阳寮_结界_经验_提取.png"}
         ],
-        "box_index": 1, "action": "Click", "post_delay": 850,
-        "next": ["结界收菜_已完成", "[JumpBack]结界收菜_确认溢出", "[JumpBack]结界收菜_收下奖励", "[JumpBack]阴阳寮奖励领取_结界奖励领取_关闭食盒界面"],
+        "box_index": 2, "action": "Click", "post_delay": 850,
+        "next": ["[JumpBack]结界收菜_确认溢出", "[JumpBack]结界收菜_收下奖励", "结界收菜_经验未到", "结界收菜_食盒已关闭"],
+        "timeout": 5000,
         "on_error": ["结界批次_失败"]
     },
     "结界收菜_确认溢出": {
@@ -86,15 +133,20 @@
             {"recognition": "OCR", "expected": "经验.*溢出|溢出.*经验|提取经验", "roi": [369, 210, 542, 191]},
             {"recognition": "OCR", "expected": "确定", "roi": [662, 387, 190, 85]}
         ],
-        "box_index": 1, "action": "Click", "post_delay": 850
+        "box_index": 1, "action": "Click", "post_delay": 850, "max_hit": 2
     },
     "结界收菜_经验未到": {
-        "recognition": "OCR", "expected": "暂无|没有可|尚未|0\\s*[/／]", "roi": [398, 184, 506, 384],
+        "recognition": "And", "all_of": ["结界收菜_经验页", "结界收菜_计数为零"],
         "action": "Custom", "custom_action": "RealmFinish",
         "custom_action_param": {"status": "completed"}
     },
+    "结界收菜_食盒已关闭": {
+        "recognition": "FeatureMatch", "template": "通用图标/关闭.png",
+        "roi": [919, 106, 182, 112], "inverse": true,
+        "next": ["结界收菜_已完成"], "timeout": 5000, "on_error": ["结界批次_失败"]
+    },
     "结界收菜_已完成": {
-        "recognition": "FeatureMatch", "template": "阴阳寮/阴阳寮_结界_结界换装.png",
+        "recognition": "And", "all_of": ["结界批次_自家结界"],
         "action": "Custom", "custom_action": "RealmFinish",
         "custom_action_param": {"status": "completed"}
     }

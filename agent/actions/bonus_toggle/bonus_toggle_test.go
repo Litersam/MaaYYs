@@ -25,6 +25,7 @@ func TestKnobAndCleanupScope(t *testing.T) {
 	if got == nil || *got != (maa.Rect{864, 308, 1, 1}) || knob(maa.Rect{1250, 299, 13, 18}, bounds) != nil {
 		t.Fatalf("incorrect timer-bar to knob offset: %v", got)
 	}
+
 	s := &Scope{owned: make(map[string]bool)}
 	s.set("gold_50%", true)
 	s.set("exp_50%", true)
@@ -37,5 +38,30 @@ func TestKnobAndCleanupScope(t *testing.T) {
 		return true
 	}); err == nil {
 		t.Fatal("cleanup cannot succeed without an off-state confirmation")
+	}
+}
+
+type fixtureAnchors map[string]string
+
+func (a fixtureAnchors) GetAnchor(name string) (string, error) { return a[name], nil }
+func (a fixtureAnchors) SetAnchor(name, value string) error {
+	a[name] = value
+	return nil
+}
+
+func TestAutomaticCleanupUsesOnlyThisTasksOwnedSwitches(t *testing.T) {
+	gui := ownership{anchors: fixtureAnchors{}}
+	const own, other = "exp_50%", "gold_50%"
+	if gui.contains(own) {
+		t.Fatal("cleanup without a record could disable a player's pre-existing bonus")
+	}
+	if err := gui.set(own, true); err != nil {
+		t.Fatal(err)
+	}
+	if !gui.contains(own) || gui.contains(other) || (ownership{anchors: fixtureAnchors{}}).contains(own) {
+		t.Fatal("ownership escaped the switch or task that established it")
+	}
+	if err := gui.set(own, false); err != nil || gui.contains(own) {
+		t.Fatalf("confirmed off switch stayed owned: %v", err)
 	}
 }

@@ -24,14 +24,14 @@ func TestEquipRequiresSuccessfulSubtask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := equip(func(entry string, override ...any) (*maa.TaskDetail, error) {
 				want := []any{map[string]any{
-					"装备御魂-识别目标分组": map[string]any{"expected": "御魂"},
-					"装备御魂-识别队伍名称": map[string]any{"expected": "魂十"},
+					"装备御魂-识别目标分组": map[string]any{"expected": "^御魂$"},
+					"装备御魂-识别队伍名称": map[string]any{"expected": `^A\+B$`},
 				}}
 				if entry != "装备御魂" || !reflect.DeepEqual(override, want) {
 					t.Fatalf("unexpected subtask: %q %v", entry, override)
 				}
 				return tc.detail, tc.err
-			}, " 御魂 ", "魂十")
+			}, " 御魂 ", "A+B")
 			wantErr := tc.name != "success"
 			if (err != nil) != wantErr || tc.err != nil && !errors.Is(err, tc.err) {
 				t.Fatalf("equip error = %v, want error: %t", err, wantErr)

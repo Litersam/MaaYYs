@@ -1,0 +1,82 @@
+{
+    "结界批次_进入结界": {
+        "next": [
+            "结界批次_自家结界",
+            "[JumpBack]结界批次_延后寄养归来",
+            "[JumpBack]结界批次_点结界",
+            "[JumpBack]结界批次_点阴阳寮",
+            "[JumpBack]结界批次_展开庭院菜单",
+            "[JumpBack]结界批次_关卡页",
+            "[JumpBack]结界批次_关食盒",
+            "[JumpBack]结界批次_蓝色返回",
+            "[JumpBack]结界批次_快捷返回",
+            "[JumpBack]结界批次_黄色返回",
+            "[JumpBack]结界批次_普通返回"
+        ],
+        "timeout": 5000, "max_hit": 1
+    },
+    "结界批次_自家结界": {
+        "recognition": "FeatureMatch", "template": "阴阳寮/阴阳寮_结界_结界换装.png"
+    },
+    "结界批次_返回庭院": {
+        "next": [
+            "结界批次_已确认庭院",
+            "[JumpBack]结界批次_延后寄养归来",
+            "[JumpBack]结界批次_关卡页",
+            "[JumpBack]结界批次_关食盒",
+            "[JumpBack]结界批次_蓝色返回",
+            "[JumpBack]结界批次_快捷返回",
+            "[JumpBack]结界批次_黄色返回",
+            "[JumpBack]结界批次_普通返回"
+        ],
+        "timeout": 6000
+    },
+    "结界批次_已确认庭院": {
+        "recognition": "Or",
+        "any_of": ["导航-庭院-识别是否位于庭院-模型识别", "导航-庭院-识别是否位于庭院", "导航-庭院-识别是否位于庭院-模板匹配"]
+    },
+    "结界批次_延后寄养归来": {
+        "recognition": "And", "all_of": ["通用弹窗-寄养归来-稍后"],
+        "action": "Click", "post_delay": 800, "max_hit": 2
+    },
+    "结界批次_点结界": {
+        "recognition": "And", "all_of": ["导航-阴阳寮-识别是否位于阴阳寮", "导航-阴阳寮结界-点击结界"],
+        "box_index": 1, "action": "Click", "post_delay": 3000, "max_hit": 2
+    },
+    "结界批次_点阴阳寮": {
+        "recognition": "And", "all_of": ["结界批次_已确认庭院", "导航-阴阳寮-点击阴阳寮"],
+        "box_index": 1, "action": "Click", "post_delay": 2000, "max_hit": 2
+    },
+    "结界批次_展开庭院菜单": {
+        "recognition": "And", "all_of": ["导航-庭院-底部菜单栏-点击底部菜单栏-模型识别"],
+        "target": [1205, 618, 49, 64], "action": "Click", "post_delay": 800, "max_hit": 2
+    },
+    "结界批次_关卡页": {
+        "recognition": "And", "all_of": ["结界挂卡_关闭卡页"],
+        "action": "Click", "post_delay": 700, "max_hit": 2
+    },
+    "结界批次_关食盒": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "Or", "any_of": ["结界收菜_体力页", "结界收菜_经验页"]},
+            "阴阳寮奖励领取_结界奖励领取_关闭食盒界面"
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 750, "max_hit": 2
+    },
+    "结界批次_蓝色返回": {
+        "recognition": "And", "all_of": ["好友寄养_蓝色返回"],
+        "action": "Click", "post_delay": 1000, "max_hit": 5
+    },
+    "结界批次_快捷返回": {
+        "recognition": "And", "all_of": ["导航-庭院-点击快捷返回庭院按钮"],
+        "action": "Click", "post_delay": 1700, "max_hit": 2
+    },
+    "结界批次_黄色返回": {
+        "recognition": "And", "all_of": ["识别黄色返回_模板识别"],
+        "action": "Click", "post_delay": 1000, "max_hit": 4
+    },
+    "结界批次_普通返回": {
+        "recognition": "And", "all_of": ["导航-庭院-点击返回按钮-特征匹配"],
+        "action": "Click", "post_delay": 1000, "max_hit": 4
+    }
+}

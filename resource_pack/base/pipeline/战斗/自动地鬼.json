@@ -74,8 +74,11 @@
         "timeout": 5000
     },
     "地鬼-确认鬼王详情": {
+        "recognition": "Custom",
+        "custom_recognition": "AreaBossName"
+    },
+    "地鬼-鬼王名原始OCR": {
         "recognition": "OCR",
-        "expected": "^[\\p{Han}·]{2,15}$",
         "roi": [114, 36, 248, 69]
     },
     "地鬼-详情关闭模板": {

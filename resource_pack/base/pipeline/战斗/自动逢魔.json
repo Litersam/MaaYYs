@@ -52,23 +52,30 @@
   },
   "开始逢魔-检查时间": {
     "action": "Custom",
-    "custom_action": "TimeCheck",
+    "custom_action": "DemonEncounterSkipped",
     "custom_action_param": {
       "end": "23:00",
-      "mode": "in",
       "start": "17:00"
     },
     "focus": {
-      "Node.Action.Failed": "[warning]不处于对应时间内,导航-庭院,任务结束",
+      "Node.Action.Failed": "[error]逢魔时段检查失败",
       "Node.Action.Starting": "[info]开始检查时间..."
     },
+    "on_error": [],
+    "timeout": 250,
+    "recognition": "DirectHit"
+  },
+  "逢魔-时段未开放": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "DemonEncounterSkipped",
+    "focus": {"Node.Action.Starting": "[info]逢魔尚未开放，稍后重试"}
+  },
+  "逢魔-时段已开放": {
     "next": [
       "逢魔-今日挑战已用完",
       "[JumpBack]自动逢魔-开始装备御魂",
       "自动逢魔"
-    ],
-    "on_error": [
-      "导航-庭院"
     ],
     "recognition": "DirectHit"
   },
@@ -227,6 +234,23 @@
     "roi": [548, 405, 182, 83],
     "count": 6
   },
+  "逢魔-宝箱灯笼图标": {
+    "recognition": "TemplateMatch",
+    "template": "自动逢魔/逢魔宝箱灯笼.png",
+    "roi": [1183, 278, 96, 277],
+    "threshold": 0.8
+  },
+  "逢魔-打开宝箱灯笼": {
+    "enabled": false,
+    "recognition": "And",
+    "all_of": ["逢魔-识别现世地图", "逢魔-今日仍可挑战", "逢魔-宝箱灯笼图标"],
+    "box_index": 2,
+    "action": "Click",
+    "max_hit": 1,
+    "post_delay": 1200,
+    "next": ["逢魔-购买50勾玉宝箱蓝票", "逢魔-跳过宝箱订单"],
+    "timeout": 3500
+  },
   "逢魔-购买50勾玉宝箱蓝票": {
     "enabled": false,
     "recognition": "And",
@@ -234,15 +258,34 @@
     "box_index": 2,
     "action": "Click",
     "max_hit": 1,
-    "post_delay": 1000
+    "post_delay": 1000,
+    "next": ["逢魔-宝箱奖励后恢复地图", "逢魔-宝箱流程已恢复地图"]
   },
-  "逢魔-跳过五十勾玉宝箱": {
+  "逢魔-跳过宝箱订单": {
     "recognition": "And",
-    "all_of": ["逢魔-识别现世地图", "逢魔-宝箱勾玉图标", "逢魔-宝箱五十勾玉"],
+    "all_of": ["逢魔-识别现世地图", "逢魔-宝箱勾玉图标"],
     "action": "Click",
     "target": [1132, 605, 95, 81],
-    "max_hit": 2,
-    "post_delay": 1000
+    "post_delay": 1000,
+    "next": ["逢魔-宝箱流程已恢复地图"]
+  },
+  "逢魔-宝箱奖励后恢复地图": {
+    "recognition": "OCR",
+    "expected": "^获得奖励$",
+    "roi": [419, 130, 417, 128],
+    "action": "Click",
+    "target": [2, 115, 143, 491],
+    "post_delay": 600,
+    "next": ["逢魔-宝箱流程已恢复地图"]
+  },
+  "逢魔-宝箱流程已恢复地图": {
+    "recognition": "And",
+    "all_of": [
+      "逢魔-识别现世地图",
+      "逢魔-今日仍可挑战",
+      {"recognition": "And", "all_of": ["逢魔-宝箱勾玉图标"], "inverse": true}
+    ],
+    "timeout": 6000
   },
   "现世逢魔_点击参加": {
     "action": "Click",
@@ -1044,8 +1087,7 @@
   "自动逢魔9": {
     "next": [
       "识别集结挑战",
-      "[JumpBack]逢魔-购买50勾玉宝箱蓝票",
-      "[JumpBack]逢魔-跳过五十勾玉宝箱",
+      "[JumpBack]逢魔-打开宝箱灯笼",
       "[JumpBack]现世逢魔_点击首领",
       "[JumpBack]自动逢魔-点击首领-模板匹配"
     ],

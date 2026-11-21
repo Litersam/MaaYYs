@@ -115,8 +115,8 @@ func buildPresetOverride(box []int, groupName string, teamName string) map[strin
 		}
 	}
 
-	ensureNodeOverride(override, "出战队伍预设-点击分组")["expected"] = groupName
-	ensureNodeOverride(override, "出战队伍预设-识别出战队伍")["expected"] = teamName
+	ensureNodeOverride(override, "出战队伍预设-点击分组")["expected"] = switch_soul.ExactPresetName(groupName)
+	ensureNodeOverride(override, "出战队伍预设-识别出战队伍")["expected"] = switch_soul.ExactPresetName(teamName)
 
 	return override
 }

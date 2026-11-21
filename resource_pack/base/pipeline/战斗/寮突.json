@@ -111,7 +111,8 @@
         "timeout": 2000000
     },
     "寮突-跳过": {
-        "recognition": "DirectHit"
+        "recognition": "DirectHit",
+        "next": ["寮突16_copy1"]
     },
     "寮突-返回探索界面": {
         "max_hit": 1,
@@ -130,7 +131,7 @@
         "action": "Custom",
         "custom_action": "BreakthroughPolicy",
         "custom_action_param": {"mode": "guild"},
-        "expected": "^[0-6]\\s*[/／]\\s*6$",
+        "expected": "^[0-6]\\s*(?:/|／)\\s*6$",
         "recognition": "OCR",
         "roi": [262, 547, 66, 54],
         "threshold": 0.7
@@ -142,14 +143,24 @@
         "template": ["寮突/寮突12.png"]
     },
     "寮突16_copy1": {
+        "action": "Custom",
+        "custom_action": "BreakthroughPolicy",
+        "custom_action_param": {"mode": "guild"},
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "expected": "结界突破", "roi": [542, 67, 193, 76]},
+            "寮突-策略"
+        ],
+        "next": ["寮突-策略"],
+        "timeout": 5000
+    },
+    "寮突-执行翻页": {
         "action": "Swipe",
         "begin": [600, 420, 240, 100],
         "duration": 1000,
         "end": [600, 260, 240, 100],
-        "expected": "结界突破",
-        "post_delay": 1000,
-        "recognition": "OCR",
-        "roi": [542, 67, 193, 76]
+        "post_wait_freezes": {"time": 400, "target": [423, 125, 672, 410], "timeout": 2400},
+        "recognition": "DirectHit"
     },
     "寮突17": {
         "action": "Click",
@@ -196,10 +207,8 @@
         "roi": [1171, 604, 109, 108]
     },
     "寮突18_从上往下打": {
-        "expected": "0/6",
-        "inverse": true,
+        "expected": "^[1-6]\\s*(?:/|／)\\s*6$",
         "next": ["寮突-识别第一个目标是否已击破", "寮突18_第一个待选目标", "寮突-识别第二个目标是否已击破", "寮突18_第二个待选目标", "寮突-识别第三个目标是否已击破", "寮突18_第三个待选目标", "寮突-识别第四个目标是否已击破", "寮突18_第四个待选目标", "寮突16_copy1"],
-        "on_error": ["跳过"],
         "post_delay": 1000,
         "pre_delay": 2000,
         "rate_limit": 3000,
@@ -214,7 +223,7 @@
             "node_name": "寮突17_copy1"
         },
         "inverse": true,
-        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy1"],
+        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy1", "寮突-跳过"],
         "post_delay": 1000,
         "pre_delay": 1000,
         "recognition": "TemplateMatch",
@@ -285,7 +294,7 @@
         "roi": [510, 41, 235, 84]
     },
     "寮突20": {
-        "expected": "^[1-6]\\s*[/／]\\s*6$",
+        "expected": "^[1-6]\\s*(?:/|／)\\s*6$",
         "next": ["[JumpBack]寮突-开始装备御魂", "寮突-开始战斗"],
         "post_delay": 2000,
         "pre_delay": 1000,

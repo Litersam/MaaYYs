@@ -1,7 +1,7 @@
 {
     "好友寄养": {
-        "next": ["好友寄养_结界就绪", "[JumpBack]通用弹窗-寄养归来-稍后", "[JumpBack]导航-阴阳寮结界"],
-        "on_error": ["结界批次_失败"]
+        "next": ["好友寄养_结界就绪", "[JumpBack]结界批次_进入结界"],
+        "timeout": 5000
     },
     "好友寄养_结界就绪": {
         "recognition": "FeatureMatch",
@@ -86,7 +86,7 @@
         "roi": [212, 85, 261, 81],
         "action": "Custom",
         "custom_action": "AutoFoster",
-        "custom_action_param": {"FosterTarget": 1},
+        "custom_action_param": {"FosterTarget": 1, "mode": "ranked_submit"},
         "next": ["[Anchor]好友寄养结果"],
         "on_error": ["结界批次_失败"]
     },
@@ -113,14 +113,16 @@
         "roi": [0, 0, 92, 105],
         "template": ["通用图标/返回_蓝色.png", "通用图标/返回_蓝色_2.png", "阴阳寮奖励/阴阳寮奖励领取_结界奖励领取_寄养式神_返回结界.png", "阴阳寮奖励/阴阳寮奖励领取_结界奖励领取_寄养式神_返回结界_1.png"],
         "action": "Click",
-        "post_delay": 1000
+        "post_delay": 1000,
+        "max_hit": 6
     },
     "好友寄养_回自己结界": {
         "recognition": "TemplateMatch",
         "roi": [927, 581, 353, 139],
         "template": ["导航/导航-阴阳寮结界-点击结界_1.png", "导航/导航-阴阳寮结界-点击结界_2.png"],
         "action": "Click",
-        "post_delay": 1500
+        "post_delay": 1500,
+        "max_hit": 4
     },
     "好友寄养_重新进入育成": {
         "recognition": "And",
@@ -130,7 +132,8 @@
         ],
         "box_index": 1,
         "action": "Click",
-        "post_delay": 900
+        "post_delay": 900,
+        "max_hit": 4
     },
     "好友寄养_切换同服": {
         "next": ["好友寄养_点同服"],
@@ -141,14 +144,18 @@
         "timeout": 3000
     },
     "好友寄养_点同服": {
-        "recognition": "OCR", "expected": "好友", "roi": [197, 71, 131, 88],
-        "action": "Click", "target": [246, 116, 54, 33], "post_delay": 500,
-        "next": ["好友寄养_好友列表回顶"]
+        "recognition": "And", "all_of": ["好友寄养_同服标签", "好友寄养_跨区标签"],
+        "action": "Click", "target": [246, 116, 54, 33], "post_delay": 500
     },
     "好友寄养_点跨区": {
-        "recognition": "OCR", "expected": "跨区", "roi": [327, 70, 184, 90],
-        "action": "Click", "target": [361, 107, 60, 42], "post_delay": 500,
-        "next": ["好友寄养_好友列表回顶"]
+        "recognition": "And", "all_of": ["好友寄养_同服标签", "好友寄养_跨区标签"],
+        "action": "Click", "target": [361, 107, 60, 42], "post_delay": 500
+    },
+    "好友寄养_同服标签": {
+        "recognition": "OCR", "expected": "^好友$", "roi": [216, 92, 109, 70]
+    },
+    "好友寄养_跨区标签": {
+        "recognition": "OCR", "expected": "^跨区$", "roi": [337, 92, 109, 66]
     },
     "好友寄养_好友列表回顶": {
         "action": "Swipe", "begin": [450, 193], "end": [450, 570], "duration": 220, "post_delay": 500,
@@ -167,11 +174,20 @@
     "好友寄养_好友名单OCR": {
         "recognition": "OCR", "expected": ".+", "roi": [330, 177, 200, 420], "order_by": "Vertical"
     },
+    "好友寄养_名单为空": {
+        "recognition": "OCR", "expected": "^(暂无|没有|未找到)(可寄养的)?(好友|跨区好友)$",
+        "roi": [223, 168, 422, 427]
+    },
     "好友寄养_点好友行": {
         "action": "Click", "post_wait_freezes": 450
     },
     "好友寄养_卡名OCR": {
-        "recognition": "OCR", "expected": "太鼓|斗鱼", "roi": [780, 350, 215, 43]
+        "recognition": "OCR", "expected": "太鼓|斗鱼|太阴符咒|伞室内|食发鬼|口水蛙|饿鬼|孟婆汤|鬼火烧",
+        "roi": [780, 350, 215, 43]
+    },
+    "好友寄养_好友无生效卡": {
+        "recognition": "OCR", "expected": "^(暂无|未激活|尚未激活|没有激活)(任何)?结界卡$",
+        "roi": [670, 244, 381, 291]
     },
     "好友寄养_候选星级": {
         "recognition": "NeuralNetworkDetect", "model": "BarrierCard.onnx",
@@ -240,7 +256,7 @@
         "recognition": "And",
         "all_of": ["好友寄养_育成标题", "好友寄养_打开列表"],
         "box_index": 1,
-        "action": "Click", "target": [1142, 70, 73, 49], "post_delay": 1600
+        "action": "Click", "target": [1142, 70, 73, 49], "post_delay": 1600, "max_hit": 4
     },
     "好友寄养_列表已打开": {
         "recognition": "OCR", "expected": "好友|跨区", "roi": [212, 85, 261, 81]

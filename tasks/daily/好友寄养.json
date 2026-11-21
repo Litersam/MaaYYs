@@ -17,11 +17,11 @@
             "cases": [
                 {
                     "name": "勾玉优先", "label": "勾玉优先",
-                    "pipeline_override": {"好友寄养_扫描选择": {"custom_action_param": {"FosterTarget": 1}}}
+                    "pipeline_override": {"好友寄养_扫描选择": {"custom_action_param": {"FosterTarget": 1, "mode": "ranked_submit"}}}
                 },
                 {
                     "name": "体力优先", "label": "体力优先",
-                    "pipeline_override": {"好友寄养_扫描选择": {"custom_action_param": {"FosterTarget": 2}}}
+                    "pipeline_override": {"好友寄养_扫描选择": {"custom_action_param": {"FosterTarget": 2, "mode": "ranked_submit"}}}
                 }
             ]
         },

@@ -54,10 +54,14 @@ func shouldDirectSelect(reward RewardInfo, preferred string, threshold int) bool
 }
 
 func rankedCandidates(candidates []candidate, preferred string, excluded map[host]bool) []candidate {
+	return orderCandidates(candidates, preferred, excluded, true)
+}
+
+func orderCandidates(candidates []candidate, preferred string, excluded map[host]bool, ranked bool) []candidate {
 	var available []candidate
 	for _, c := range candidates {
-		if !excluded[c.host] && c.stars >= 4 && c.stars <= 6 && c.YieldValue > 0 &&
-			(c.YieldType == "勾玉" || c.YieldType == "体力") {
+		if !excluded[c.host] && c.YieldValue > 0 && c.YieldType != "" && (!ranked ||
+			(c.stars >= 4 && c.stars <= 6 && (c.YieldType == "勾玉" || c.YieldType == "体力"))) {
 			available = append(available, c)
 		}
 	}

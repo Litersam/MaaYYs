@@ -1,6 +1,6 @@
 {
     "商店购买": {
-        "next": ["[JumpBack]秘魂屋-限价购买入口", "商店购买-检查本周是否已完成", "[JumpBack]通用-拒绝下载-识别到下载二字", "[JumpBack]商店购买-导航到商店界面", "[JumpBack]商店购买-购买特殊商店物品", "[JumpBack]商店购买-购买荣誉商店物品", "[JumpBack]商店购买-购买友情商店物品", "[JumpBack]商店购买-购买勋章商店物品", "[JumpBack]商店购买-购买魅力商店物品", "商店购买-写入本周购物完成"],
+        "next": ["商店购买-检查本周是否已完成", "[JumpBack]秘魂屋-限价购买入口", "[JumpBack]通用-拒绝下载-识别到下载二字", "[JumpBack]商店购买-导航到商店界面", "[JumpBack]商店购买-购买特殊商店物品", "[JumpBack]商店购买-购买荣誉商店物品", "[JumpBack]商店购买-购买友情商店物品", "[JumpBack]商店购买-购买勋章商店物品", "[JumpBack]商店购买-购买魅力商店物品", "商店购买-写入本周购物完成"],
         "recognition": "DirectHit"
     },
     "秘魂屋-限价购买入口": {
@@ -65,7 +65,13 @@
         "recognition": "FeatureMatch",
         "template": ["通用图标/勾玉.png", "通用图标/勾玉_2.png"],
         "count": 6,
-        "roi": [540, 480, 200, 120]
+        "roi": [560, 478, 118, 122]
+    },
+    "秘魂屋-订单数量控件": {
+        "recognition": "TemplateMatch",
+        "template": ["日常/商店购买/商店购买-商店购-批量购买_1.png", "非战斗/商店购买/商店购买-特殊商店购买-御灵境之钥-批量购买_1.png"],
+        "roi": [746, 397, 98, 112],
+        "threshold": 0.82
     },
     "秘魂屋-购买数量": {
         "recognition": "OCR",
@@ -82,7 +88,8 @@
         "action": "Click",
         "max_hit": 1,
         "next": ["秘魂屋-核销购买成功"],
-        "timeout": 5000
+        "timeout": 5000,
+        "on_error": ["秘魂屋-取消订单"]
     },
     "秘魂屋-核验限价及数量": {
         "recognition": "Custom",
@@ -100,10 +107,7 @@
     },
     "秘魂屋-取消订单": {
         "recognition": "And",
-        "all_of": [
-            "秘魂屋-订单蓝票",
-            {"recognition": "OCR", "expected": "^分享$", "roi": [24, 571, 100, 100], "inverse": true}
-        ],
+        "all_of": ["秘魂屋-订单蓝票", "秘魂屋-确认按钮勾玉"],
         "action": "Click",
         "target": [121, 2, 100, 22],
         "post_delay": 1000,

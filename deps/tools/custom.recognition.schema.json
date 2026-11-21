@@ -19,6 +19,7 @@
         "TimeCheckRecognition",
         "BountyInviteWhitelist",
         "AreaBossChallengeButton",
+        "AreaBossName",
         "MysteryShopPrice",
         "RealmTimerProbe",
         "RealmActivateButton"
@@ -39,6 +40,7 @@
       { "$ref": "#/$defs/TimeCheckRecognition" },
       { "$ref": "#/$defs/BountyInviteWhitelist" },
       { "$ref": "#/$defs/AreaBossChallengeButton" },
+      { "$ref": "#/$defs/AreaBossName" },
       { "$ref": "#/$defs/MysteryShopPrice" },
       { "$ref": "#/$defs/RealmTimerProbe" },
       { "$ref": "#/$defs/RealmActivateButton" }
@@ -62,6 +64,10 @@
           "additionalProperties": false
         }
       },
+      "required": ["custom_recognition"]
+    },
+    "AreaBossName": {
+      "properties": { "custom_recognition": { "const": "AreaBossName" } },
       "required": ["custom_recognition"]
     },
     "AreaBossChallengeButton": {

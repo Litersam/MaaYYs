@@ -56,7 +56,7 @@ type rawTaskDef struct {
 
 type rawOptionDef struct {
 	Type             string          `json:"type"`
-	DefaultCase      string          `json:"default_case"`
+	DefaultCase      json.RawMessage `json:"default_case"`
 	DefaultSelection json.RawMessage `json:"default"`
 	Cases            []rawCaseDef    `json:"cases"`
 	Inputs           []rawInputDef   `json:"inputs"`
@@ -292,7 +292,11 @@ func selectedCheckboxCases(opt rawOptionDef, selected any) []rawCaseDef {
 	var names []string
 	switch values := selected.(type) {
 	case nil:
-		if len(opt.DefaultSelection) != 0 && json.Unmarshal(opt.DefaultSelection, &names) != nil {
+		defaults := opt.DefaultCase
+		if len(defaults) == 0 || string(defaults) == "null" {
+			defaults = opt.DefaultSelection
+		}
+		if len(defaults) != 0 && json.Unmarshal(defaults, &names) != nil {
 			return nil
 		}
 	case []string:
@@ -304,22 +308,24 @@ func selectedCheckboxCases(opt rawOptionDef, selected any) []rawCaseDef {
 			}
 		}
 	}
-	var cases []rawCaseDef
-	seen := make(map[string]bool, len(names))
+	selectedNames := make(map[string]bool, len(names))
 	for _, name := range names {
-		for _, c := range opt.Cases {
-			if strings.EqualFold(c.Name, name) && !seen[c.Name] {
-				cases = append(cases, c)
-				seen[c.Name] = true
-				break
-			}
+		selectedNames[strings.ToLower(name)] = true
+	}
+	var cases []rawCaseDef
+	for _, c := range opt.Cases {
+		if selectedNames[strings.ToLower(c.Name)] {
+			cases = append(cases, c)
 		}
 	}
 	return cases
 }
 
 func selectOptionCase(opt rawOptionDef, optName string, params map[string]any) (rawCaseDef, bool) {
-	target := opt.DefaultCase
+	var target string
+	if len(opt.DefaultCase) > 0 && json.Unmarshal(opt.DefaultCase, &target) != nil {
+		return rawCaseDef{}, false
+	}
 	var boolVal *bool
 	if params != nil {
 		if rawVal, provided := params[optName]; provided && rawVal != nil {

@@ -18,9 +18,15 @@
     ]
   },
   "阴界之门-时间检查": {
-    "action": "Custom",
-    "custom_action": "TimeCheck",
-    "custom_action_param": {
+    "recognition": "DirectHit",
+    "next": ["阴界之门-在开放时段", "阴界之门-不在开放时段"],
+    "timeout": 3000,
+    "on_error": ["阴界之门-时间检查失败"]
+  },
+  "阴界之门-在开放时段": {
+    "recognition": "Custom",
+    "custom_recognition": "TimeCheckRecognition",
+    "custom_recognition_param": {
       "date_rule": {
         "type": "week",
         "value": [
@@ -33,18 +39,58 @@
       "mode": "in",
       "start": "17:00"
     },
-    "focus": {
-      "Node.Action.Failed": "不处于阴界之门开启时间,任务结束",
-      "Node.Action.Starting": "阴界之门-开始检查时间"
-    },
     "next": [
+      "阴界之门-已挑战",
+      "阴间之门26",
+      "阴间之门8",
       "阴间之门5",
-      "[JumpBack]导航-阴阳寮神社"
+      "[JumpBack]阴界之门-导航神社"
     ],
-    "on_error": [
-      "导航-庭院"
-    ],
-    "recognition": "DirectHit"
+    "timeout": 15000,
+    "on_error": ["阴界之门-未确认入口"]
+  },
+  "阴界之门-不在开放时段": {
+    "recognition": "Custom",
+    "custom_recognition": "TimeCheckRecognition",
+    "custom_recognition_param": {
+      "date_rule": {"type": "week", "value": [5, 6, 7]},
+      "end": "23:00",
+      "mode": "out",
+      "start": "17:00"
+    },
+    "action": "Custom",
+    "custom_action": "BattleOutcome",
+    "custom_action_param": {"status": "deferred", "reason": "gate_outside_opening_hours"}
+  },
+  "阴界之门-时间检查失败": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "BattleOutcome",
+    "max_hit": 1,
+    "timeout": 1,
+    "custom_action_param": {"status": "failed", "reason": "gate_time_check_failed"}
+  },
+  "阴界之门-导航神社": {
+    "recognition": "DirectHit",
+    "max_hit": 1,
+    "next": ["导航-阴阳寮神社"],
+    "on_error": ["阴界之门-未确认入口"]
+  },
+  "阴界之门-未确认入口": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "BattleOutcome",
+    "max_hit": 1,
+    "timeout": 1,
+    "custom_action_param": {"status": "failed", "reason": "gate_entry_unconfirmed"}
+  },
+  "阴界之门-已挑战": {
+    "recognition": "And",
+    "all_of": ["阴间之门-确定返回阴界之门界面", "阴间之门25"],
+    "action": "Custom",
+    "custom_action": "BattleOutcome",
+    "custom_action_param": {"status": "skipped", "reason": "gate_already_challenged"},
+    "next": ["导航-庭院"]
   },
   "阴界之门-点击开始挑战-模板匹配": {
     "action": "Click",
@@ -312,9 +358,9 @@
   },
   "阴间之门26": {
     "expected": "活动开放时间",
-    "next": [
-      "导航-庭院"
-    ],
+    "action": "Custom",
+    "custom_action": "BattleOutcome",
+    "custom_action_param": {"status": "deferred", "reason": "gate_closed_in_game"},
     "recognition": "OCR",
     "roi": [
       300,
@@ -340,16 +386,14 @@
     "timeout": 600000
   },
   "阴间之门5": {
-    "expected": ["阴界之门", "集体任务"],
+    "expected": ["^阴界之门$", "^集体任务$"],
     "next": [
-      "阴间之门25",
+      "阴界之门-已挑战",
       "阴间之门8",
       "阴间之门26",
       "[JumpBack]阴间之门7"
     ],
-    "on_error": [
-      "导航-庭院"
-    ],
+    "on_error": ["阴界之门-未确认入口"],
     "recognition": "OCR",
     "roi": [
       106,
@@ -361,7 +405,9 @@
   },
   "阴间之门7": {
     "action": "Click",
-    "expected": "阴界之门",
+    "expected": "^阴界之门$",
+    "max_hit": 2,
+    "post_delay": 1000,
     "recognition": "OCR",
     "roi": [
       106,
@@ -371,18 +417,15 @@
     ]
   },
   "阴间之门8": {
-    "expected": "攻打中",
+    "recognition": "And",
+    "all_of": [
+      "阴间之门-确定返回阴界之门界面",
+      {"recognition": "OCR", "expected": "^攻打中$", "roi": [1062, 589, 217, 116]}
+    ],
     "next": [
       "[JumpBack]阴界之门-开始装备御魂",
       "阴间之门15",
       "[JumpBack]阴间之门10"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      1062,
-      589,
-      217,
-      116
     ]
   }
 }

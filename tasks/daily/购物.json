@@ -20,7 +20,7 @@
         "秘魂屋限价购买": {
             "type": "switch",
             "label": "秘魂屋限价购买蓝票",
-            "description": "可选；仅在弹窗确认勾玉单价与数量1时购买一张。不改变其他商店的购买方式。",
+            "description": "可选；受每周执行限制。仅在单件确认窗验明勾玉单价，或在数量选择窗同时验明单价和数量1后购买一张。",
             "default_case": "No",
             "cases": [
                 {"name": "Yes", "label": "购买", "pipeline_override": {"秘魂屋-限价购买入口": {"enabled": true}}, "option": ["秘魂屋单价上限"]},

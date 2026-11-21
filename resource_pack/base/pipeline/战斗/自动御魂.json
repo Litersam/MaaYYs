@@ -15,6 +15,13 @@
     ]
   },
   "自动御魂": {
+    "action": "Custom",
+    "custom_action": "SoulCountGate",
+    "custom_action_param": {"count": 10},
+    "next": ["自动御魂-进入副本"],
+    "recognition": "DirectHit"
+  },
+  "自动御魂-进入副本": {
     "next": [
       "自动御魂-识别是否位于御魂界面",
       "[JumpBack]导航-御魂"

@@ -255,10 +255,10 @@ func TestJSONLWriterFormatAndSecretRedaction(t *testing.T) {
 	}
 }
 
-func TestCheckboxMergesOrderedSelectionsAndTheirSubOptions(t *testing.T) {
+func TestCheckboxMergesCasesInDeclarationOrder(t *testing.T) {
 	var options map[string]rawOptionDef
 	if err := json.Unmarshal([]byte(`{
-			"products": {"type":"checkbox","default":["one","two"],"cases":[
+			"products": {"type":"checkbox","default_case":["two","one"],"default":["three"],"cases":[
 				{"name":"one","pipeline_override":{"buy":{"one":true,"last":"one"}},"sub_options":["one-options"]},
 				{"name":"two","pipeline_override":{"buy":{"two":true,"last":"two"}}},
 				{"name":"three","pipeline_override":{"buy":{"three":true}},"option":["inactive"]}
@@ -275,7 +275,7 @@ func TestCheckboxMergesOrderedSelectionsAndTheirSubOptions(t *testing.T) {
 		last string
 	}{
 		{"defaults", nil, "two"},
-		{"decoded request", []any{"two", "unknown", "one"}, "one"},
+		{"decoded request", []any{"two", "unknown", "one", "two"}, "two"},
 		{"Go request", []string{"one", "two"}, "two"},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -290,13 +290,25 @@ func TestCheckboxMergesOrderedSelectionsAndTheirSubOptions(t *testing.T) {
 	if merged := resolveTaskOverride(task, map[string]any{"products": []any{}}); len(merged) != 0 {
 		t.Fatalf("explicit empty selection must not apply defaults: %v", merged)
 	}
+	legacy := options["products"]
+	legacy.DefaultCase = nil
+	options["products"] = legacy
+	merged := resolveTaskOverride(task, nil)
+	buy, _ := merged["buy"].(map[string]any)
+	if buy["three"] != true || buy["quantity"] != float64(3) || buy["one"] != nil {
+		t.Fatalf("legacy default array resolved to %v", buy)
+	}
 }
 
 func TestTerminalStepStatusAndMetricsBelongToTheirOwnID(t *testing.T) {
 	var output bytes.Buffer
 	w := &jsonlWriter{out: &output}
 	var plan runstate.Outcome
-	daily := runstate.Outcome{Status: runstate.Skipped, Metrics: map[string]any{"foster_remaining_sec": 120}}
+	observed := time.Date(2026, time.January, 1, 10, 0, 0, 0, time.UTC)
+	due := observed.Add(2 * time.Minute)
+	daily := runstate.Outcome{Status: runstate.Skipped, Metrics: map[string]any{
+		"foster_remaining_sec": 120, "foster_due_at": due.Unix(),
+	}}
 	mergeStepOutcome(&plan, "好友寄养", daily)
 	w.EndStep("daily", "", daily, nil)
 	closeApp := runstate.Outcome{Status: runstate.Completed}
@@ -326,7 +338,8 @@ func TestTerminalStepStatusAndMetricsBelongToTheirOwnID(t *testing.T) {
 			t.Fatal(err)
 		}
 		if event.ID != want.id || event.Status != want.status ||
-			(want.timer && event.Metrics["foster_remaining_sec"] != float64(120)) ||
+			(want.timer && (event.Metrics["foster_remaining_sec"] != float64(120) ||
+				event.Metrics["foster_due_at"] != float64(due.Unix()))) ||
 			(!want.timer && event.Metrics != nil) {
 			t.Errorf("unexpected event %d: %+v", index, event)
 		}
@@ -360,12 +373,83 @@ func TestRunOutcomeIgnoresSuccessfulLoginAndClose(t *testing.T) {
 	}
 }
 
-type reportFixture struct{}
+type offlineAction func(*maa.Context, *maa.CustomActionArg) bool
 
-func (reportFixture) Run(ctx *maa.Context, _ *maa.CustomActionArg) bool {
-	runstate.Report(ctx, runstate.Deferred)
-	runstate.SetMetric(ctx, "observations", 1)
-	return true
+func (f offlineAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
+	return f(ctx, arg)
+}
+
+func testBonusOwnershipNativeTaskBoundary(t *testing.T, res *maa.Resource, tasker *maa.Tasker) {
+	t.Helper()
+	const anchor = "通用加成-本轮已开启-exp_50%"
+	const marker = "通用加成-启用色"
+	if err := res.RegisterCustomAction("BonusScopeFixture", offlineAction(func(ctx *maa.Context, arg *maa.CustomActionArg) bool {
+		var param struct{ Mode string }
+		if err := json.Unmarshal([]byte(arg.CustomActionParam), &param); err != nil {
+			t.Errorf("read bonus fixture mode: %v", err)
+			return false
+		}
+		switch param.Mode {
+		case "set":
+			return ctx.SetAnchor(anchor, marker) == nil
+		case "owned":
+			fromTask, err := ctx.GetAnchor(anchor)
+			return err == nil && fromTask == marker
+		case "unowned":
+			fromTask, _ := ctx.GetAnchor(anchor)
+			return fromTask != marker
+		default:
+			return false
+		}
+	})); err != nil {
+		t.Fatal(err)
+	}
+	fixture := func(param string, next ...string) map[string]any {
+		if next == nil {
+			next = []string{}
+		}
+		return map[string]any{
+			"recognition": "DirectHit", "action": "Custom",
+			"custom_action": "BonusScopeFixture", "custom_action_param": map[string]string{"mode": param},
+			"next": next, "on_error": []string{},
+		}
+	}
+	const start, finish = "通用加成-归位", "通用加成-关闭本轮加成"
+	if !waitTask(context.Background(), tasker, start, map[string]any{
+		start: fixture("set", finish), finish: fixture("owned"),
+	}) {
+		t.Fatal("task cleanup could not see ownership recorded by an earlier node")
+	}
+	if !waitTask(context.Background(), tasker, finish, map[string]any{finish: fixture("unowned")}) {
+		t.Fatal("another task inherited a previous task's bonus ownership")
+	}
+}
+
+func testBonusCleanupWithoutRecognizedScreen(t *testing.T, tasker *maa.Tasker) {
+	t.Helper()
+	// Make a destructive fallback harmless, but fail the test if it is reached.
+	restartReached := make(chan struct{}, 1)
+	sink := tasker.OnNodePipelineNodeInContext(func(_ *maa.Context, status maa.EventStatus, detail maa.NodePipelineNodeDetail) {
+		if status == maa.EventStatusStarting && (detail.Name == "重启游戏" || detail.Name == "关闭阴阳师") {
+			select {
+			case restartReached <- struct{}{}:
+			default:
+			}
+		}
+	})
+	defer tasker.RemoveContextSink(sink)
+	overrides := map[string]any{
+		"通用加成-归位":     map[string]any{"timeout": 50},
+		"通用加成-关闭本轮加成": map[string]any{"enabled": false},
+		"通用加成-打开面板":   map[string]any{"enabled": false},
+		"通用加成-打开房间面板": map[string]any{"enabled": false},
+		"导航-庭院":       map[string]any{"timeout": 50, "next": []string{"重启游戏"}},
+		"重启游戏":        map[string]any{"action": "DoNothing", "next": []string{}},
+		"关闭阴阳师":       map[string]any{"action": "DoNothing", "next": []string{}},
+	}
+	if waitTask(context.Background(), tasker, "通用加成-归位", overrides) || len(restartReached) != 0 {
+		t.Fatal("cleanup must fail on unknown screens without reaching restart or close")
+	}
 }
 
 func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
@@ -447,7 +531,11 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 	if elapsed > 3*time.Second {
 		t.Fatalf("账号登录 failure entered retry loop (elapsed=%v, want <3s)", elapsed)
 	}
-	if err := res.RegisterCustomAction("ReportFixture", reportFixture{}); err != nil {
+	if err := res.RegisterCustomAction("ReportFixture", offlineAction(func(ctx *maa.Context, _ *maa.CustomActionArg) bool {
+		runstate.Report(ctx, runstate.Deferred)
+		runstate.SetMetric(ctx, "observations", 1)
+		return true
+	})); err != nil {
 		t.Fatalf("register offline result fixture: %v", err)
 	}
 	collector, release := runstate.Bind(tasker)
@@ -461,10 +549,32 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 		t.Fatalf("native callback wasn't routed to the CLI step: success=%v outcome=%+v", reported, outcome)
 	}
 
+	collector, release = runstate.Bind(tasker)
+	// A Maa StopTask reached by navigation/restart can produce a successful job
+	// without running the realm task's business terminal action.
+	if !waitTask(context.Background(), tasker, "好友寄养", map[string]any{
+		"好友寄养": map[string]any{"action": "StopTask", "next": []string{}, "on_error": []string{}},
+	}) {
+		t.Error("fixture did not reproduce successful native StopTask")
+	}
+	release()
+	for _, name := range []string{"daily/好友寄养", "结界挂卡", "结界收菜", "standalone/自动悬赏", "自动悬赏封印"} {
+		if err := validateStepCompletion(name, collector.Outcome(), nil); err == nil {
+			t.Errorf("native stop without a report must not complete %s", name)
+		}
+	}
+	if err := validateStepCompletion("结界挂卡", outcome, nil); err != nil {
+		t.Errorf("native explicit terminal report was rejected: %v", err)
+	}
+
+	testBonusCleanupWithoutRecognizedScreen(t, tasker)
+	testBonusOwnershipNativeTaskBoundary(t, res, tasker)
+
 	// Optional saved-frame regression checks also use the synthetic controller.
 	if os.Getenv("MAAYYS_LOGIN_SCREENSHOT_REGRESSION") != "1" {
 		return
 	}
+
 	engineShot := `D:\projs\game-desk-next\.data\screenshots\e63baece-ada4-462c-8db4-ef014478b0cc.png`
 	if img, err := loadPNG(engineShot); err == nil {
 		reco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{

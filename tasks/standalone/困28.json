@@ -5,11 +5,25 @@
       "label": "困28",
       "entry": "困28",
       "group": ["standalone"],
-      "option": ["困28挑战次数", "困28阵容预设"],
-      "description": "复用仍有余量的候补；仅在连续两张截图均确认0/50时尝试补充素材。"
+      "option": ["困28挑战次数", "困28阵容预设", "困28自动补充候补"],
+      "description": "默认不自动补候补。开启后仍复用已有候补；连续两帧确认 0/50 且认出招福达摩时才尝试添加。"
     }
   ],
   "option": {
+    "困28自动补充候补": {
+      "type": "select",
+      "label": "自动补充候补",
+      "description": "不影响正常探索；无可确认素材或补充未增加候补时继续探索。",
+      "default_case": "No",
+      "cases": [
+        {"name": "No", "label": "否"},
+        {
+          "name": "Yes",
+          "label": "是",
+          "pipeline_override": {"困28-进入探索检查候补": {"enabled": true}}
+        }
+      ]
+    },
     "困28挑战次数": {
       "type": "input",
       "label": "困28阵容预设",

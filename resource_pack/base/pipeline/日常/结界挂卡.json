@@ -1,6 +1,44 @@
 {
     "结界挂卡": {
-        "next": ["结界挂卡_进入卡页", "[JumpBack]通用弹窗-寄养归来-稍后", "[JumpBack]导航-阴阳寮结界"],
+        "next": ["结界挂卡_结算自家卡", "结界挂卡_进入卡页", "[JumpBack]结界批次_进入结界"],
+        "timeout": 5000
+    },
+    "结界挂卡_结算自家卡": {
+        "recognition": "And",
+        "all_of": ["结界批次_自家结界", "阴阳寮奖励39"],
+        "box_index": 1,
+        "action": "Click", "post_delay": 900,
+        "next": ["结界挂卡_收下自家卡奖励", "结界挂卡_确认结算完成"],
+        "timeout": 6000, "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_自家卡奖励弹层": {
+        "recognition": "OCR", "expected": "获得奖励|获得宝藏",
+        "roi": [375, 103, 607, 353]
+    },
+    "结界挂卡_收下自家卡奖励": {
+        "recognition": "And", "all_of": ["结界挂卡_自家卡奖励弹层"],
+        "action": "Click", "target": [397, 525, 316, 126], "post_delay": 800,
+        "next": ["结界挂卡_确认结算完成"],
+        "timeout": 6000, "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_确认结算完成": {
+        "recognition": "OCR", "expected": "获得奖励|获得宝藏",
+        "roi": [375, 103, 607, 353], "inverse": true,
+        "pre_wait_freezes": 500,
+        "next": ["结界挂卡_结算标识已消失"],
+        "timeout": 5000, "on_error": ["结界批次_失败"]
+    },
+    "结界挂卡_结算标识已消失": {
+        "recognition": "TemplateMatch", "inverse": true,
+        "roi": [731, 65, 433, 356],
+        "template": [
+            "日常/阴阳寮奖励/阴阳寮奖励39_1.png",
+            "日常/阴阳寮奖励/阴阳寮奖励39_2.png",
+            "日常/阴阳寮奖励/阴阳寮奖励39_3.png",
+            "日常/阴阳寮奖励/阴阳寮奖励39_4.png",
+            "阴阳寮奖励/阴阳寮奖励39.png"
+        ],
+        "next": ["结界挂卡_进入卡页"], "timeout": 5000,
         "on_error": ["结界批次_失败"]
     },
     "结界挂卡_进入卡页": {
@@ -57,7 +95,7 @@
             {"recognition": "TemplateMatch", "template": "通用图标/关闭.png", "roi": [1060, 31, 207, 143]}
         ],
         "box_index": 1,
-        "action": "Click", "post_delay": 700
+        "action": "Click", "post_delay": 700, "max_hit": 2
     },
     "结界挂卡_先检查育成": {
         "next": ["[JumpBack]结界挂卡_处理育成", "结界挂卡_回卡页", "[JumpBack]结界挂卡_关闭卡页"],
@@ -128,7 +166,7 @@
     },
     "结界挂卡_打开分类": {
         "recognition": "OCR", "expected": "全部|斗鱼|太鼓|变异|伞室内|太阴",
-        "roi": [349, 76, 170, 79], "action": "Click", "post_delay": 400,
+        "roi": [349, 76, 170, 79], "action": "Click", "post_delay": 400, "max_hit": 2,
         "next": ["结界挂卡_点分类"]
     },
     "结界挂卡_点分类": {
@@ -138,7 +176,8 @@
     "结界挂卡_筛选已生效": {
         "recognition": "And",
         "all_of": ["结界挂卡_卡页标题", "结界挂卡_卡筛选类型"],
-        "next": ["结界挂卡_无可挂卡", "结界挂卡_点库存卡", "[JumpBack]结界挂卡_翻页", "结界挂卡_遍历结束"],
+        "next": ["结界挂卡_无可挂卡", "结界挂卡_点库存卡", "结界挂卡_确认到底", "[JumpBack]结界挂卡_翻页"],
+        "timeout": 3500,
         "on_error": ["结界批次_失败"]
     },
     "结界挂卡_卡筛选类型": {
@@ -158,13 +197,20 @@
         "post_delay": 450, "max_hit": 4
     },
     "结界挂卡_无可挂卡": {
-        "recognition": "OCR", "expected": "未获得结界卡|可以通过|没有结界卡",
-        "roi": [174, 258, 375, 167],
+        "recognition": "And",
+        "all_of": [
+            "结界挂卡_卡页标题", "结界挂卡_卡筛选类型",
+            {"recognition": "OCR", "expected": "未获得结界卡|没有结界卡|暂无结界卡", "roi": [174, 258, 375, 167]}
+        ],
         "action": "Custom", "custom_action": "RealmFinish",
         "custom_action_param": {"status": "skipped"}
     },
-    "结界挂卡_遍历结束": {
-        "recognition": "And", "all_of": ["结界挂卡_卡页标题", "结界挂卡_筛选已生效"],
+    "结界挂卡_确认到底": {
+        "recognition": "And",
+        "all_of": [
+            "结界挂卡_卡页标题", "结界挂卡_卡筛选类型",
+            {"recognition": "OCR", "expected": "^(已经到底了|没有更多结界卡了?)$", "roi": [156, 533, 474, 125]}
+        ],
         "action": "Custom", "custom_action": "RealmFinish",
         "custom_action_param": {"status": "skipped"}
     },
@@ -191,7 +237,7 @@
             {"recognition": "OCR", "expected": "是否将|是否激活", "roi": [431, 266, 423, 93]},
             {"recognition": "OCR", "expected": "确定", "roi": [641, 394, 234, 88]}
         ],
-        "box_index": 1, "action": "Click", "post_delay": 1200
+        "box_index": 1, "action": "Click", "post_delay": 1200, "max_hit": 1
     },
     "结界挂卡_挂卡成功": {
         "recognition": "And",

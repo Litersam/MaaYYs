@@ -42,16 +42,44 @@ type BountyMonsterRecognition struct{}
 var _ maa.CustomActionRunner = (*BountyMonsterRecognition)(nil)
 
 func (*BountyMonsterRecognition) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
-	if ctx == nil || arg == nil || arg.CurrentTaskName != selectRow {
+	if ctx == nil || arg == nil {
+		return false
+	}
+	switch arg.CurrentTaskName {
+	case "悬赏-返回庭院后报告完成":
+		runstate.Report(ctx, runstate.Completed)
+		return true
+	case "悬赏-返回庭院后报告跳过":
+		runstate.Report(ctx, runstate.Skipped)
+		return true
+	case "悬赏-无法证明终态":
+		runstate.Report(ctx, runstate.Failed)
+		return false
+	case selectRow:
+	default:
 		return false
 	}
 	controller := ctx.GetTasker().GetController()
 	if controller == nil {
 		return false
 	}
+	// DirectHit does not request a screencap. A retry must see a fresh frame,
+	// not the same cached image while a panel was loading.
+	if !controller.PostScreencap().Wait().Success() {
+		return retryOrVerify(ctx)
+	}
 	img, err := controller.CacheImage()
 	if err != nil || img == nil {
+		return retryOrVerify(ctx)
+	}
+	// Recheck the exploration surface on the same frame used for every row.
+	// All misses on a loading/covered screen cannot imply an empty sidebar.
+	panel, err := ctx.RunRecognition("悬赏-探索主界面", img)
+	if err != nil || panel == nil {
 		return false
+	}
+	if !panel.Hit {
+		return retryOrVerify(ctx)
 	}
 
 	unresolved := false
@@ -94,7 +122,19 @@ func (*BountyMonsterRecognition) Run(ctx *maa.Context, arg *maa.CustomActionArg)
 		}
 	}
 	if unresolved {
-		runstate.Report(ctx, runstate.Skipped)
+		return setNext(ctx, "悬赏-带未处理目标返回庭院")
 	}
-	return ctx.OverrideNext(selectRow, []maa.NextItem{{Name: "导航-庭院"}}) == nil
+	return retryOrVerify(ctx)
+}
+
+func retryOrVerify(ctx *maa.Context) bool {
+	return setNext(ctx, "悬赏-重试侧栏", "悬赏-复核完成状态")
+}
+
+func setNext(ctx *maa.Context, names ...string) bool {
+	next := make([]maa.NextItem, 0, len(names))
+	for _, name := range names {
+		next = append(next, maa.NextItem{Name: name})
+	}
+	return ctx.OverrideNext(selectRow, next) == nil
 }

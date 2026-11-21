@@ -36,7 +36,7 @@
    - Gate Win32 syscalls behind `//go:build windows` and `//go:build !windows` stubs so cross-platform builds stay green.
    - Bind strictly to the requested `adb_address` / `mumu_index`; never probe or touch unrelated emulator instances.
 
-For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` separately. `结界奖励领取` and its original option keys remain accepted for existing plans; it does not return the split tasks' timer metrics. Successful timer reads on the split tasks emit `foster_remaining_sec` or `realm_card_remaining_sec` even when the slot was already active (`skipped`).
+For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` separately. `结界奖励领取` and its original option keys remain accepted for existing plans; it does not return the split tasks' timer metrics. The three split tasks must report a verified business outcome. A valid timer emits `foster_remaining_sec` with `foster_due_at`, or `realm_card_remaining_sec` with `realm_card_due_at`, including when the slot was already active (`skipped`). The `*_due_at` values are UTC Unix seconds based on when the timer was read, not when the task or plan finished.
 
 ## `maayys-cli.exe` Headless Subprocess Protocol
 Build and verify offline from `agent/`:
@@ -48,7 +48,7 @@ go build -o ..\bin\maayys-cli.exe .\cmd\maayys-cli
 
 ### Subcommands
 Both bare subcommands and `--` flag forms are accepted:
-1. `bin\maayys-cli.exe catalog` (`--catalog`): Recursively scans `tasks/{daily,standalone,promotion}`, resolves ProjectInterface v2 options (including checkbox case-name arrays, nested options and typed `pipeline_type` placeholders), and writes `{"ok": true, "tasks": [{"name": "...", "category": "daily"|"standalone"|"promotion", ...}]}` to `stdout`.
+1. `bin\maayys-cli.exe catalog` (`--catalog`): Recursively scans `tasks/{daily,standalone,promotion}`, resolves ProjectInterface v2 options (including checkbox `default_case` arrays, nested options and typed `pipeline_type` placeholders), and writes `{"ok": true, "tasks": [{"name": "...", "category": "daily"|"standalone"|"promotion", ...}]}` to `stdout`. Checkbox selections apply in `cases` declaration order; an explicit empty array selects none.
 2. `bin\maayys-cli.exe check-resources [paths...]` (`--check-resources`): Offline-loads `resource_pack/base` + `resource_pack/official` via `MaaFramework` and verifies core pipeline nodes without connecting to any emulator.
 3. `bin\maayys-cli.exe run` (`--run`): Reads a single UTF-8 JSON request from `stdin` (tasks may be referenced by bare `name` such as `"账号登录"` for backward compatibility, or `<category>/<name>`):
    ```json
@@ -81,4 +81,4 @@ Both bare subcommands and `--` flag forms are accepted:
      - `{"type":"result","ok":true,"status":"completed","metrics":{},"displaced":false,"error":null,"screenshot_saved":false}`
    - Overall status is `failed` on an execution error, otherwise `deferred` if any step asks to retry, `completed` if any work step completed, or `skipped` if all work was skipped. Login/open/close alone do not mask a skipped plan. Later observations replace earlier metrics with the same key.
    - `completed`, `skipped`, and `deferred` exit with code `0`. On failure (exit code `1`), attempts to capture the last frame to `failure_screenshot_path` only when a controller exists and no displacement/risk prompt was detected.
-   - On task failure or a catchable interrupt, the CLI tries to close only the bonuses it enabled for the step, before returning its result. A forced process kill cannot execute cleanup.
+   - Automatic bonus cleanup never disables a bonus already on before the task. On failure or a catchable interrupt, the CLI tries to close only its own bonuses on the current recognized screen; it never restarts the client to reach a switch. Failed verification is reported as an error. A forced process kill cannot execute cleanup.

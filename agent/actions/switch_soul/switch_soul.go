@@ -3,6 +3,7 @@ package switch_soul
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/MaaXYZ/maa-framework-go/v4"
@@ -43,10 +44,10 @@ func equip(runTask func(string, ...any) (*maa.TaskDetail, error), groupName, tea
 
 	result, err := runTask("装备御魂", map[string]any{
 		"装备御魂-识别目标分组": map[string]any{
-			"expected": groupName,
+			"expected": ExactPresetName(groupName),
 		},
 		"装备御魂-识别队伍名称": map[string]any{
-			"expected": teamName,
+			"expected": ExactPresetName(teamName),
 		},
 	})
 	switch {
@@ -58,6 +59,11 @@ func equip(runTask func(string, ...any) (*maa.TaskDetail, error), groupName, tea
 		return fmt.Errorf("执行任务 装备御魂 失败: %s", result.Status)
 	}
 	return nil
+}
+
+// ExactPresetName is shared by the equipment and battle preparation panels.
+func ExactPresetName(name string) string {
+	return "^" + regexp.QuoteMeta(name) + "$"
 }
 
 // Abort prevents a legacy recovery from turning a failed preset into a successful task.

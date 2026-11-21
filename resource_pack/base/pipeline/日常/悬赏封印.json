@@ -25,7 +25,98 @@
     "悬赏-筛选未处理妖怪": {
         "action": "Custom",
         "custom_action": "BountyMonsterRecognition",
+        "recognition": "DirectHit",
+        "on_error": ["悬赏-无法证明终态"]
+    },
+    "悬赏-探索主界面": {
+        "recognition": "And",
+        "all_of": [
+            "导航-探索界面-识别是否位于探索界面",
+            {"recognition": "FeatureMatch", "roi": [0, 540, 1280, 180], "template": ["悬赏封印/探索_悬赏_识别探索特征.png", "悬赏封印/探索_悬赏_识别探索特征_1.png"]}
+        ]
+    },
+    "悬赏-重试侧栏": {
+        "max_hit": 2,
+        "post_delay": 700,
+        "next": ["悬赏-筛选未处理妖怪"],
         "recognition": "DirectHit"
+    },
+    "悬赏-复核完成状态": {
+        "recognition": "DirectHit",
+        "next": ["悬赏-确认三张悬赏已结束", "[JumpBack]悬赏-回到庭院复核"],
+        "timeout": 8000,
+        "on_error": ["悬赏-无法证明终态"]
+    },
+    "悬赏-回到庭院复核": {
+        "recognition": "And",
+        "all_of": ["悬赏-探索主界面"],
+        "max_hit": 1,
+        "next": ["[JumpBack]悬赏-探索地图返回按钮", "悬赏-庭院打开悬赏"],
+        "timeout": 6000
+    },
+    "悬赏-探索地图返回按钮": {
+        "recognition": "And",
+        "all_of": ["悬赏-探索主界面", "导航-庭院-点击返回按钮-模板匹配"],
+        "box_index": 1,
+        "action": "Click",
+        "max_hit": 2,
+        "post_delay": 800
+    },
+    "悬赏-庭院打开悬赏": {
+        "recognition": "And",
+        "all_of": ["悬赏-已回到庭院", {"recognition": "NeuralNetworkDetect", "expected": 2, "model": "Courtyard-v8.6.onnx", "threshold": 0.7}],
+        "box_index": 1,
+        "action": "Click",
+        "post_delay": 850
+    },
+    "悬赏-确认三张悬赏已结束": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "roi": [500, 21, 291, 78], "expected": "^悬赏封印$"},
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [130, 142, 276, 385], "expected": "^(已完成|已领取)$"},
+                {"recognition": "FeatureMatch", "roi": [215, 143, 115, 115], "template": "悬赏封印/悬赏封印_完成.png", "count": 5}
+            ]},
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [420, 142, 276, 385], "expected": "^(已完成|已领取)$"},
+                {"recognition": "FeatureMatch", "roi": [498, 143, 115, 115], "template": "悬赏封印/悬赏封印_完成.png", "count": 5}
+            ]},
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [710, 142, 330, 385], "expected": "^(已完成|已领取)$"},
+                {"recognition": "FeatureMatch", "roi": [781, 143, 115, 115], "template": "悬赏封印/悬赏封印_完成.png", "count": 5}
+            ]}
+        ],
+        "next": ["悬赏-返回庭院后报告完成", "[JumpBack]悬赏封印_点击叉叉", "[JumpBack]导航-庭院"],
+        "on_error": ["悬赏-无法证明终态"]
+    },
+    "悬赏-带未处理目标返回庭院": {
+        "recognition": "DirectHit",
+        "next": ["悬赏-返回庭院后报告跳过", "[JumpBack]导航-庭院"],
+        "on_error": ["悬赏-无法证明终态"]
+    },
+    "悬赏-已回到庭院": {
+        "recognition": "Or",
+        "any_of": ["导航-庭院-识别是否位于庭院-模型识别", "导航-庭院-识别是否位于庭院", "导航-庭院-识别是否位于庭院-模板匹配"]
+    },
+    "悬赏-返回庭院后报告完成": {
+        "recognition": "And",
+        "all_of": ["悬赏-已回到庭院"],
+        "action": "Custom",
+        "custom_action": "BountyMonsterRecognition"
+    },
+    "悬赏-返回庭院后报告跳过": {
+        "recognition": "And",
+        "all_of": ["悬赏-已回到庭院"],
+        "action": "Custom",
+        "custom_action": "BountyMonsterRecognition"
+    },
+    "悬赏-无法证明终态": {
+        "recognition": "DirectHit",
+        "focus": {"Node.Action.Starting": "[error]无法确认悬赏已结束；请检查任务面板"},
+        "action": "Custom",
+        "custom_action": "BountyMonsterRecognition",
+        "on_error": [],
+        "timeout": 250
     },
     "悬赏-执行待选行": {
         "max_hit": 1,
@@ -195,7 +286,7 @@
             "action": "check"
         },
         "max_hit": 1,
-        "next": ["悬赏封印-确保关闭追踪列表", "[JumpBack]悬赏封印-关闭追踪列表"],
+        "next": ["悬赏-跳过当前行"],
         "recognition": "Custom"
     },
     "悬赏封印-判断是否返回秘闻界面": {
@@ -398,7 +489,7 @@
     },
     "悬赏封印-识别是否位于悬赏界面": {
         "expected": "悬赏封印",
-        "next": ["[JumpBack]悬赏封印_点击一键追踪", "[JumpBack]悬赏封印-在列表中滑到最左边", "[JumpBack]悬赏封印-判断第一个是不是协战封印", "[JumpBack]悬赏封印-判断第二个是不是协战封印", "[JumpBack]悬赏封印-判断第三个是不是协战封印", "悬赏-判断结束"],
+        "next": ["悬赏-确认三张悬赏已结束", "[JumpBack]悬赏封印_点击一键追踪", "[JumpBack]悬赏封印-在列表中滑到最左边", "[JumpBack]悬赏封印-判断第一个是不是协战封印", "[JumpBack]悬赏封印-判断第二个是不是协战封印", "[JumpBack]悬赏封印-判断第三个是不是协战封印", "悬赏-判断结束"],
         "recognition": "OCR",
         "roi": [500, 21, 291, 78]
     },
@@ -590,23 +681,33 @@
         "roi": [879, 508, 130, 60],
         "timeout": 3000
     },
-    "悬赏-协作邀请标题": {
-        "expected": "^(协助?悬赏封印|悬赏封印协助|悬赏封印协作邀请)$",
-        "recognition": "OCR",
-        "roi": [499, 36, 281, 72],
-        "threshold": 0.75
+    "悬赏-协作邀请面板": {
+        "recognition": "And",
+        "all_of": ["悬赏-协作邀请接受按钮", "悬赏-协作邀请拒绝按钮"]
     },
     "悬赏-协作邀请发送方": {
         "expected": "^.+$",
         "recognition": "OCR",
-        "roi": [314, 127, 397, 98],
+        "roi": [570, 380, 225, 42],
         "threshold": 0.8
     },
     "悬赏-协作邀请接受按钮": {
-        "expected": "^(接受|同意)$",
-        "recognition": "OCR",
-        "roi": [240, 441, 420, 188],
-        "threshold": 0.75
+        "recognition": "ColorMatch",
+        "method": 40,
+        "roi": [852, 472, 42, 50],
+        "lower": [35, 105, 95],
+        "upper": [90, 255, 255],
+        "count": 160,
+        "connected": true
+    },
+    "悬赏-协作邀请拒绝按钮": {
+        "recognition": "ColorMatch",
+        "method": 40,
+        "roi": [848, 560, 48, 50],
+        "lower": [0, 127, 169],
+        "upper": [18, 255, 255],
+        "count": 160,
+        "connected": true
     },
     "悬赏-白名单接邀": {
         "custom_recognition": "BountyInviteWhitelist",
@@ -615,27 +716,24 @@
     },
     "悬赏-确认并接邀": {
         "action": "Click",
-        "all_of": ["悬赏-协作邀请标题", "悬赏封印_拒绝邀请", "悬赏-白名单接邀", "悬赏-协作邀请接受按钮"],
-        "box_index": 3,
+        "all_of": ["悬赏-协作邀请面板", "悬赏-白名单接邀"],
+        "target": [852, 472, 42, 50],
         "next": ["确定关闭悬赏封印协助"],
         "post_delay": 600,
         "recognition": "And"
     },
     "悬赏封印_拒绝邀请": {
         "action": "Click",
-        "expected": "^拒绝$",
+        "all_of": ["悬赏-协作邀请面板"],
         "next": ["确定关闭悬赏封印协助"],
         "post_delay": 600,
-        "recognition": "OCR",
-        "roi": [811, 441, 210, 188],
-        "target_offset": [-32, 3, -14, -1],
-        "threshold": 0.7
+        "recognition": "And",
+        "target": [848, 560, 48, 50]
     },
     "确定关闭悬赏封印协助": {
-        "expected": "^(协助?悬赏封印|悬赏封印协助|悬赏封印协作邀请)$",
+        "all_of": ["悬赏-协作邀请面板"],
         "inverse": true,
-        "recognition": "OCR",
-        "roi": [499, 36, 281, 72]
+        "recognition": "And"
     },
     "自动悬赏封印": {
         "next": ["[JumpBack]悬赏封印_协助战斗1", "悬赏封印-识别是否位于悬赏界面", "[JumpBack]导航-悬赏封印"],

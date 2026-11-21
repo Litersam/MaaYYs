@@ -5,6 +5,7 @@ import (
 
 	"maa-yys-agent/actions/auto_battle"
 	"maa-yys-agent/actions/auto_foster"
+	"maa-yys-agent/actions/battle_flow"
 	"maa-yys-agent/actions/battle_team"
 	"maa-yys-agent/actions/bonus_toggle"
 	"maa-yys-agent/actions/bounty_monster_recognition"
@@ -86,6 +87,8 @@ var CustomActions = []ActionRegistration{
 	{"Guess", &guess.Guess{}},
 	{"TimeCheck", &time_check.TimeCheck{}},
 	{"BreakthroughPolicy", &breakthrough.PolicyAction{}},
+	{"BattleOutcome", &battle_flow.Outcome{}},
+	{"SoulCountGate", &battle_flow.SoulCountGate{}},
 	{"DemonEncounterSkipped", &demon_encounter.Skipped{}},
 	{"Kun28ReserveGuard", &kun28.ReserveGuard{}},
 	{"RealmFinish", &realm.Finish{}},
@@ -104,6 +107,7 @@ var CustomRecognitions = []RecognitionRegistration{
 	{"TimeCheckRecognition", &time_check_recognition.TimeCheckRecognition{}},
 	{"BountyInviteWhitelist", &bounty_monster_recognition.InviteWhitelist{}},
 	{"AreaBossChallengeButton", &challenge_dungeon_boss.ChallengeButton{}},
+	{"AreaBossName", &challenge_dungeon_boss.BossName{}},
 	{"MysteryShopPrice", &mystery_shop.Price{}},
 	{"RealmTimerProbe", &realm.TimerProbe{}},
 	{"RealmActivateButton", &realm.ActivateButton{}},

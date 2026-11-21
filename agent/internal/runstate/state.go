@@ -19,8 +19,9 @@ const (
 )
 
 type Outcome struct {
-	Status  Status
-	Metrics map[string]any
+	Status   Status
+	Metrics  map[string]any
+	Reported bool
 }
 
 type Collector struct {
@@ -112,7 +113,7 @@ func (c *Collector) Outcome() Outcome {
 	for k, v := range c.metrics {
 		metrics[k] = append(json.RawMessage(nil), v...)
 	}
-	return Outcome{Status: status, Metrics: metrics}
+	return Outcome{Status: status, Metrics: metrics, Reported: c.status != ""}
 }
 
 // Merge combines only the steps relevant to the plan's outcome. Later metric
