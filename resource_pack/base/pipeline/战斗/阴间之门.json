@@ -73,8 +73,36 @@
   "阴界之门-导航神社": {
     "recognition": "DirectHit",
     "max_hit": 1,
-    "next": ["导航-阴阳寮神社"],
+    "next": [
+      "导航-阴阳寮神社-识别是否位于阴阳寮神社界面",
+      "[JumpBack]阴界之门-点击神社",
+      "[JumpBack]阴界之门-点击阴阳寮",
+      "[JumpBack]阴界之门-展开庭院菜单"
+    ],
+    "timeout": 6000,
     "on_error": ["阴界之门-未确认入口"]
+  },
+  "阴界之门-点击神社": {
+    "recognition": "And",
+    "all_of": ["导航-阴阳寮神社-点击神社"],
+    "action": "Click",
+    "post_delay": 2000,
+    "max_hit": 2
+  },
+  "阴界之门-点击阴阳寮": {
+    "recognition": "And",
+    "all_of": ["导航-阴阳寮-点击阴阳寮"],
+    "action": "Click",
+    "post_delay": 2000,
+    "max_hit": 2
+  },
+  "阴界之门-展开庭院菜单": {
+    "recognition": "And",
+    "all_of": ["导航-庭院-底部菜单栏-点击底部菜单栏-模型识别"],
+    "action": "Click",
+    "target": [1205, 618, 49, 64],
+    "post_delay": 1000,
+    "max_hit": 2
   },
   "阴界之门-未确认入口": {
     "recognition": "DirectHit",

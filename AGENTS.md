@@ -38,6 +38,8 @@
 
 For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` separately. `结界奖励领取` and its original option keys remain accepted for existing plans; it does not return the split tasks' timer metrics. The three split tasks must report a verified business outcome. A valid timer emits `foster_remaining_sec` with `foster_due_at`, or `realm_card_remaining_sec` with `realm_card_due_at`, including when the slot was already active (`skipped`). The `*_due_at` values are UTC Unix seconds based on when the timer was read, not when the task or plan finished.
 
+`结界收菜` proceeds to experience only after the selected stamina tab confirms `0/N`. An unchanged positive count after two withdrawal clicks is a failure, even if a reward popup was dismissed.
+
 ## `maayys-cli.exe` Headless Subprocess Protocol
 Build and verify offline from `agent/`:
 ```powershell

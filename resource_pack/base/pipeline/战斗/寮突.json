@@ -9,7 +9,7 @@
     },
     "寮突-开始战斗": {
         "expected": "击败次数",
-        "next": ["寮突12", "[JumpBack]寮突10", "寮突-策略", "寮突-识别是否已经攻破"],
+        "next": ["[JumpBack]寮突10", "寮突-策略", "寮突-识别是否已经攻破"],
         "post_delay": 2000,
         "pre_delay": 2000,
         "recognition": "OCR",
@@ -77,19 +77,19 @@
         "roi": [833, 487, 258, 166]
     },
     "寮突-识别第一个目标是否已击破": {
-        "next": ["寮突16_copy1"],
+        "next": ["寮突18_检查第二格"],
         "recognition": "TemplateMatch",
         "roi": [423, 141, 316, 124],
         "template": ["寮突/寮突12.png"]
     },
     "寮突-识别第三个目标是否已击破": {
-        "next": ["寮突16_copy1"],
+        "next": ["寮突18_检查第四格"],
         "recognition": "TemplateMatch",
         "roi": [423, 267, 321, 131],
         "template": ["寮突/寮突12.png"]
     },
     "寮突-识别第二个目标是否已击破": {
-        "next": ["寮突16_copy1"],
+        "next": ["寮突18_检查第三格"],
         "recognition": "TemplateMatch",
         "roi": [750, 130, 345, 149],
         "template": ["寮突/寮突12.png"]
@@ -109,10 +109,6 @@
         "recognition": "OCR",
         "roi": [375, 102, 722, 617],
         "timeout": 2000000
-    },
-    "寮突-跳过": {
-        "recognition": "DirectHit",
-        "next": ["寮突16_copy1"]
     },
     "寮突-返回探索界面": {
         "max_hit": 1,
@@ -135,12 +131,6 @@
         "recognition": "OCR",
         "roi": [262, 547, 66, 54],
         "threshold": 0.7
-    },
-    "寮突12": {
-        "next": ["寮突24", "[JumpBack]寮突23"],
-        "recognition": "TemplateMatch",
-        "roi": [415, 123, 331, 201],
-        "template": ["寮突/寮突12.png"]
     },
     "寮突16_copy1": {
         "action": "Custom",
@@ -208,13 +198,22 @@
     },
     "寮突18_从上往下打": {
         "expected": "^[1-6]\\s*(?:/|／)\\s*6$",
-        "next": ["寮突-识别第一个目标是否已击破", "寮突18_第一个待选目标", "寮突-识别第二个目标是否已击破", "寮突18_第二个待选目标", "寮突-识别第三个目标是否已击破", "寮突18_第三个待选目标", "寮突-识别第四个目标是否已击破", "寮突18_第四个待选目标", "寮突16_copy1"],
+        "next": ["寮突-识别第一个目标是否已击破", "寮突18_第一个待选目标", "寮突18_检查第二格"],
         "post_delay": 1000,
         "pre_delay": 2000,
         "rate_limit": 3000,
         "recognition": "OCR",
         "roi": [262, 547, 66, 54],
         "timeout": 5000
+    },
+    "寮突18_检查第二格": {
+        "next": ["寮突-识别第二个目标是否已击破", "寮突18_第二个待选目标", "寮突18_检查第三格"]
+    },
+    "寮突18_检查第三格": {
+        "next": ["寮突-识别第三个目标是否已击破", "寮突18_第三个待选目标", "寮突18_检查第四格"]
+    },
+    "寮突18_检查第四格": {
+        "next": ["寮突-识别第四个目标是否已击破", "寮突18_第四个待选目标", "寮突16_copy1"]
     },
     "寮突18_第一个待选目标": {
         "action": "Custom",
@@ -223,7 +222,7 @@
             "node_name": "寮突17_copy1"
         },
         "inverse": true,
-        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy1", "寮突-跳过"],
+        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy1", "寮突18_检查第二格"],
         "post_delay": 1000,
         "pre_delay": 1000,
         "recognition": "TemplateMatch",
@@ -237,7 +236,7 @@
             "node_name": "寮突17"
         },
         "inverse": true,
-        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17", "寮突-跳过"],
+        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17", "寮突18_检查第四格"],
         "pre_delay": 1000,
         "recognition": "TemplateMatch",
         "roi": [617, 212, 149, 242],
@@ -250,7 +249,7 @@
             "node_name": "寮突17_copy2"
         },
         "inverse": true,
-        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy2", "寮突-跳过"],
+        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy2", "寮突18_检查第三格"],
         "post_delay": 1000,
         "pre_delay": 1000,
         "recognition": "TemplateMatch",
@@ -264,7 +263,7 @@
             "node_name": "寮突17_copy3"
         },
         "inverse": true,
-        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy3", "寮突-跳过"],
+        "next": ["寮突-识别进攻按钮", "[JumpBack]寮突17_copy3", "寮突16_copy1"],
         "post_delay": 1000,
         "pre_delay": 1000,
         "recognition": "TemplateMatch",
@@ -338,7 +337,7 @@
     },
     "寮突4": {
         "expected": "突破进度",
-        "next": ["寮突12", "寮突20", "寮突-策略", "寮突-识别是否已经攻破", "[JumpBack]寮突10"],
+        "next": ["寮突20", "寮突-策略", "寮突-识别是否已经攻破", "[JumpBack]寮突10"],
         "recognition": "OCR",
         "roi": [127, 293, 235, 63]
     },

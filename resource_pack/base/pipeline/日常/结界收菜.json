@@ -63,7 +63,8 @@
     },
     "结界收菜_体力页已确认": {
         "recognition": "And", "all_of": ["结界收菜_体力页"],
-        "next": ["结界收菜_体力未到", "结界收菜_取体力"], "timeout": 4500,
+        "next": ["[JumpBack]结界收菜_收下奖励", "结界收菜_体力未到", "[JumpBack]结界收菜_取体力"],
+        "timeout": 4500,
         "on_error": ["结界批次_失败"]
     },
     "结界收菜_计数为零": {
@@ -82,10 +83,7 @@
         "all_of": [
             "结界收菜_体力页", "结界收菜_计数为正", "结界收菜_取出按钮"
         ],
-        "box_index": 2, "action": "Click", "post_delay": 750,
-        "next": ["[JumpBack]结界收菜_收下奖励", "结界收菜_体力未到", "结界收菜_打开经验酒壶"],
-        "timeout": 5000,
-        "on_error": ["结界批次_失败"]
+        "box_index": 2, "action": "Click", "post_delay": 750, "max_hit": 2
     },
     "结界收菜_体力未到": {
         "recognition": "And", "all_of": ["结界收菜_体力页", "结界收菜_计数为零"],

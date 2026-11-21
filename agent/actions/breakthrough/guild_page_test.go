@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -30,7 +31,7 @@ func TestGuildFirstPageExhaustedThenSecondPageTarget(t *testing.T) {
 	}
 	page := 0
 	var path []string
-	for node, hops := guildPlan, 0; hops < 12; hops++ {
+	for node, hops := guildPlan, 0; hops < 16; hops++ {
 		path = append(path, node)
 		switch node {
 		case guildPlan:
@@ -48,14 +49,17 @@ func TestGuildFirstPageExhaustedThenSecondPageTarget(t *testing.T) {
 			}
 			node = nodes[guildSwipe].Next[0]
 		case guildAttack:
-			want := []string{guildPlan, scan, defeated, guildSwipe, guildPlan, scan, target, ready, "[JumpBack]寮突-记录最后一个名字并进攻", guildAttack}
+			want := []string{
+				guildPlan, scan, defeated, "寮突18_检查第二格", "寮突18_检查第三格", "寮突18_检查第四格",
+				guildSwipe, guildPlan, scan, target, ready, "[JumpBack]寮突-记录最后一个名字并进攻", guildAttack,
+			}
 			if !reflect.DeepEqual(path, want) {
 				t.Fatalf("guild fixture path = %v, want %v", path, want)
 			}
 			return
 		default:
 			hit := func(name string) bool {
-				return name == pages[page].discovery || name == guildSwipe || page == 1 &&
+				return strings.HasPrefix(name, "寮突18_检查") || name == pages[page].discovery || name == guildSwipe || page == 1 &&
 					(name == ready || name == guildAttack || name == "[JumpBack]寮突-记录最后一个名字并进攻")
 			}
 			next := ""
