@@ -17,6 +17,7 @@ const (
 	inviteRowPitch       = 110
 	inviteButtonSlop     = 18
 	inviteButtonBody     = 58
+	inviteOCRTopSlop     = 8
 )
 
 type inviteAcceptHits struct{ Buttons []maa.Rect }
@@ -110,6 +111,8 @@ func (u inviteUI) invitationTexts(img image.Image, card *invitationCard) []maa.O
 	}
 	// Read past the boundary so a clipped line cannot become an exact match.
 	roi := card.header.Inset(-22).Intersect(img.Bounds())
+	textBounds := card.header
+	textBounds.Min.Y -= inviteOCRTopSlop
 	detail, err := u.ctx.RunRecognitionDirect(maa.RecognitionTypeOCR, &maa.OCRParam{
 		ROI: maa.NewTargetRect(maa.Rect{roi.Min.X, roi.Min.Y, roi.Dx(), roi.Dy()}),
 	}, img)
@@ -142,7 +145,9 @@ func (u inviteUI) invitationTexts(img image.Image, card *invitationCard) []maa.O
 			}
 			continue // Reject/accept artwork can be read as X or punctuation.
 		}
-		if !b.In(card.header) {
+		// OCR can pad the top of a line into the previous button band.
+		// Its center must still be inside the original card header.
+		if !center.In(card.header) || !b.In(textBounds) {
 			return nil // This text is not uniquely inside the sender window.
 		}
 		texts = append(texts, *item)

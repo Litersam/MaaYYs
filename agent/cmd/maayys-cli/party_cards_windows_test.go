@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"image"
 	"image/draw"
+	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -34,7 +36,7 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 	// The upper card has a gear but no ordinary button, so the receipt
 	// recognizer selects the lower ordinary button. This recreates the
 	// review's mixed-row setup without mocking OCR or button recognition.
-	stack := func(t *testing.T, top, bottom int, lowerReject bool) *image.RGBA {
+	stack := func(t *testing.T, top, bottom int, lowerReject, topBleed bool) *image.RGBA {
 		pieces := []partyHistoryCrop{
 			{"gi_i_accept_default.png", 205, top - 2},
 			{"gi_i_reject.png", 12, top + 1},
@@ -44,7 +46,19 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 		if lowerReject {
 			pieces = append(pieces, partyHistoryCrop{"gi_i_reject.png", 12, bottom + 1})
 		}
-		return partyHistoryFrame(t, dir, pieces...)
+		if !topBleed {
+			return partyHistoryFrame(t, dir, pieces...)
+		}
+		frame := blankPartyFrame()
+		draw.Draw(frame, image.Rect(5, top-8, 301, top+68), image.White, image.Point{}, draw.Src)
+		for _, piece := range pieces {
+			crop, err := loadPNG(filepath.Join(dir, piece.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			pastePartyCrop(frame, crop, piece.x, piece.y)
+		}
+		return frame
 	}
 
 	input := &partyFrameController{frame: blankPartyFrame()}
@@ -69,6 +83,7 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 			lowerReject  bool
 			failReject   bool
 			autoAccept   bool
+			topBleed     bool
 			wantClick    image.Rectangle
 			wantPeer     string
 		}{
@@ -76,8 +91,12 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 				wantClick: image.Rect(12, 336, 76, 397)},
 			{label: "stranger above allowlisted: ordinary accept lower", upper: 225, lower: 335, lowerReject: true,
 				wantClick: image.Rect(113, 335, 176, 407), wantPeer: "涂壁"},
+			{label: "stranger above allowlisted: sender box y276", upper: 220, lower: 330, lowerReject: true, topBleed: true,
+				wantClick: image.Rect(113, 330, 176, 402), wantPeer: "涂壁"},
+			{label: "stranger above allowlisted: ordinary at y445 with OCR top bleed", upper: 335, lower: 445, lowerReject: true, topBleed: true,
+				wantClick: image.Rect(113, 445, 176, 517), wantPeer: "涂壁"},
 			{label: "stranger above allowlisted: default accept lower at edge", upper: 335, lower: 445, lowerReject: true, autoAccept: true,
-				wantClick: image.Rect(204, 444, 267, 513), wantPeer: "涂壁"},
+				topBleed: true, wantClick: image.Rect(204, 444, 267, 513), wantPeer: "涂壁"},
 			{label: "review repro: upper name beside gear cannot authorize lower", upper: 220, lower: 330, firstAllowed: true, besideGear: true, lowerReject: true,
 				wantClick: image.Rect(12, 331, 76, 392)},
 			{label: "conflicting names in the same header cannot authorize", upper: 225, lower: 335, extraSender: true, lowerReject: true,
@@ -86,10 +105,13 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 			{label: "failed reject cannot retain authority", upper: 225, lower: 335, firstAllowed: true, lowerReject: true, failReject: true},
 		} {
 			t.Run(tc.label, func(t *testing.T) {
-				frame := stack(t, tc.upper, tc.lower, tc.lowerReject)
+				frame := stack(t, tc.upper, tc.lower, tc.lowerReject, tc.topBleed)
 				if tc.firstAllowed {
 					if tc.besideGear {
 						name(frame, 107, tc.upper+19)
+					} else if tc.topBleed {
+						drawPartyCaption(t, frame, "陌生人邀请你组队", 11, tc.upper-43)
+						name(frame, 20, tc.lower-43)
 					} else {
 						name(frame, 20, tc.upper-48)
 					}
@@ -134,6 +156,16 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 					if err != nil || seen == nil || !seen.Hit || seen.Box.Y() != tc.lower {
 						t.Errorf("expected received box for lower row at %d: %v, %v", tc.lower, seen, err)
 						return
+					}
+					if tc.topBleed {
+						// The recorded frame exposes the sender at y=276 / y=391,
+						// three pixels above the unpadded card header.
+						items := vision.OCRItems(ctx, frame, maa.Rect{0, tc.lower - 73, 334, 95})
+						if !slices.ContainsFunc(items, func(item maa.OCRResult) bool {
+							return item.Text == "涂壁" && item.Box.Y() == tc.lower-54
+						}) {
+							t.Errorf("fixture must expose the exact padded sender box: %v", items)
+						}
 					}
 					if tc.extraSender || tc.besideGear {
 						// Assert the native OCR actually sees the conflicting

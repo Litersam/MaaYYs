@@ -159,7 +159,7 @@ func (f *flow) run() outcome {
 			return f.fail(reason)
 		}
 	}
-	return f.finish()
+	return f.returnHome("budget_exhausted")
 }
 
 // A manually opened challenge has no reliable slot identity once we leave it.
@@ -197,7 +197,7 @@ func (f *flow) runManual(page string) outcome {
 			page = f.ui.step("复核手选目标").last
 		}
 	}
-	return f.finish()
+	return f.returnHome("budget_exhausted")
 }
 
 func (f *flow) battle(tier discTier) string {

@@ -92,7 +92,8 @@ func TestNativeBondlingReview(t *testing.T) {
 	prepare := bondlingClick{"prepare", r(1080, 544, 200, 108), "result"}
 	result := func(page string) bondlingClick { return bondlingClick{"bond receipt", r(257, 509, 275, 167), page} }
 	continueWarning := bondlingClick{"continue warning", r(668, 410, 168, 59), "prepare"}
-	home := []bondlingClick{back("map15"), back("exploration"), back("courtyard")}
+	homeFromMap := []bondlingClick{back("exploration"), back("courtyard")}
+	home := append([]bondlingClick{back("map15")}, homeFromMap...)
 	tierCheck := func(board string) []bondlingClick {
 		return []bondlingClick{openSettings("settings"), closeSettings(board)}
 	}
@@ -117,7 +118,7 @@ func TestNativeBondlingReview(t *testing.T) {
 		paid := append(append([]bondlingClick{}, summoned...),
 			slot(235, 525, "board"), openSettings("settings"), closeSettings("board"), trial, prepare, result("board"),
 			openSettings("settings"), closeSettings("board"), trial, prepare, result("map14"))
-		run(t, "map15", 2, paid, runstate.Completed, "bonds_verified", 1, 2)
+		run(t, "map15", 2, append(paid, homeFromMap...), runstate.Completed, "bonds_verified", 1, 2)
 	})
 	t.Run("second shop shows zero in the selected tier", func(t *testing.T) {
 		clicks := append(append([]bondlingClick{}, scan...), shop("shopZero"), back("map15"))
@@ -155,17 +156,22 @@ func TestNativeBondlingReview(t *testing.T) {
 			{"managed after purchase", "map15", append(append([]bondlingClick{}, summoned...), slot(235, 525, "boardLast")), 1},
 		} {
 			t.Run(entry.name, func(t *testing.T) {
-				clicks := append(append([]bondlingClick{}, entry.clicks...), tierCheck("boardLast")...)
-				clicks = append(clicks, trial, prepare, result("boardZero"))
-				clicks = append(clicks, tierCheck("boardZero")...)
-				run(t, entry.start, 3, append(clicks, home...), runstate.Completed, "bonds_verified", entry.spent, 1)
+				for _, limit := range []int{1, 3} {
+					t.Run(fmt.Sprintf("limit_%d", limit), func(t *testing.T) {
+						clicks := append(append([]bondlingClick{}, entry.clicks...), tierCheck("boardLast")...)
+						clicks = append(clicks, trial, prepare, result("boardZero"))
+						if limit > 1 {
+							clicks = append(clicks, tierCheck("boardZero")...)
+						}
+						run(t, entry.start, limit, append(clicks, home...), runstate.Completed, "bonds_verified", entry.spent, 1)
+					})
+				}
 			})
 		}
 		t.Run("unconfirmed courtyard preserves receipt but fails", func(t *testing.T) {
 			clicks := append(tierCheck("boardLast"), trial, prepare, result("boardZero"))
-			clicks = append(clicks, tierCheck("boardZero")...)
 			clicks = append(clicks, back("map15"), back("exploration"), back("prepare"))
-			run(t, "boardLast", 3, clicks, runstate.Failed, "courtyard_unconfirmed", 0, 1)
+			run(t, "boardLast", 1, clicks, runstate.Failed, "courtyard_unconfirmed", 0, 1)
 		})
 	})
 	t.Run("unknown stock never counts as exhausted", func(t *testing.T) {
@@ -191,7 +197,7 @@ func TestNativeBondlingReview(t *testing.T) {
 					run(t, fmt.Sprintf("warning%dZero", i+1), 1, nil, runstate.Failed, "low_disc_continuation_unconfirmed", 0, 0)
 				})
 				t.Run("own positive other columns zero", func(t *testing.T) {
-					run(t, fmt.Sprintf("warning%dPositive", i+1), 1, []bondlingClick{continueWarning, prepare, result("map14")},
+					run(t, fmt.Sprintf("warning%dPositive", i+1), 1, append([]bondlingClick{continueWarning, prepare, result("map14")}, homeFromMap...),
 						runstate.Completed, "bonds_verified", 0, 1)
 				})
 			})
@@ -246,7 +252,7 @@ func TestNativeBondlingReview(t *testing.T) {
 			board := fmt.Sprintf("singleTier%d", i+1)
 			t.Run(name, func(t *testing.T) {
 				run(t, board, 1,
-					[]bondlingClick{openSettings(name), closeSettings(board), trial, prepare, result("map14")},
+					append([]bondlingClick{openSettings(name), closeSettings(board), trial, prepare, result("map14")}, homeFromMap...),
 					runstate.Completed, "bonds_verified", 0, 1)
 			})
 		}
