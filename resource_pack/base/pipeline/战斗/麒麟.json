@@ -1,276 +1,252 @@
 {
-  "自动麒麟-识别是否位于战斗界面": {
-    "expected": "当前成绩",
-    "recognition": "OCR",
-    "roi": [
-      45,
-      73,
-      139,
-      61
-    ]
-  },
-  "麒麟": {
-    "next": [
-      "麒麟11",
-      "[JumpBack]麒麟4",
-      "[JumpBack]导航-阴阳寮神社"
-    ],
-    "post_delay": 1000,
-    "pre_delay": 1000,
-    "rate_limit": 5000,
-    "recognition": "DirectHit",
-    "timeout": 10000
-  },
-  "麒麟-开始时间检查": {
-    "action": "Custom",
-    "custom_action": "TimeCheck",
-    "custom_action_param": {
-      "date_rule": {
-        "type": "week",
-        "value": [
-          1,
-          2,
-          3,
-          4
+    "麒麟-开始时间检查": {
+        "next": ["麒麟-开放时段", "麒麟-非开放时段"],
+        "timeout": 2000, "on_error": ["麒麟-入口未确认"]
+    },
+    "麒麟-开放时段": {
+        "recognition": "Custom", "custom_recognition": "TimeCheckRecognition",
+        "custom_recognition_param": {"date_rule": {"type": "week", "value": [1, 2, 3, 4]}, "start": "06:00", "end": "23:00", "mode": "in"},
+        "next": ["麒麟"], "timeout": 1000, "on_error": ["麒麟-入口未确认"]
+    },
+    "麒麟-非开放时段": {
+        "recognition": "Custom", "custom_recognition": "TimeCheckRecognition",
+        "custom_recognition_param": {"date_rule": {"type": "week", "value": [1, 2, 3, 4]}, "start": "06:00", "end": "23:00", "mode": "out"},
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "skipped", "reason": "kirin_outside_opening_hours"}
+    },
+    "麒麟": {
+        "next": [
+            "麒麟-已挑战", "麒麟-未开放", "麒麟-选择换御魂", "麒麟-选择不换御魂",
+            "[JumpBack]麒麟-点狩猎战", "[JumpBack]麒麟-点神社",
+            "[JumpBack]寮活动-点阴阳寮", "[JumpBack]寮活动-展开庭院菜单"
+        ],
+        "timeout": 15000, "on_error": ["麒麟-入口未确认"]
+    },
+    "麒麟-神社": {
+        "recognition": "And", "all_of": ["导航-阴阳寮神社-识别是否位于阴阳寮神社界面"]
+    },
+    "麒麟-点神社": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮", "导航-阴阳寮神社-点击神社"],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1300
+    },
+    "麒麟-点狩猎战": {
+        "recognition": "And",
+        "all_of": [
+            "麒麟-神社",
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [150, 405, 231, 186], "expected": "^狩猎[战戰]$"},
+                {"recognition": "OCR", "roi": [92, 102, 1052, 509], "expected": "^狩猎[战戰]$"}
+            ]}
+        ],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1200
+    },
+    "麒麟-狩猎战大厅": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [10, 0, 325, 98], "expected": "^狩猎[战戰]$"},
+            {"recognition": "And", "all_of": [
+                {"recognition": "OCR", "roi": [540, 0, 200, 80], "expected": "^狩猎([战戰])?$"},
+                {"recognition": "OCR", "roi": [327, 224, 98, 91], "expected": "^麒\\s*麟$"}
+            ]}
         ]
-      },
-      "end": "23:00",
-      "mode": "in",
-      "start": "06:00"
     },
-    "next": [
-      "麒麟"
-    ],
-    "on_error": [
-      "导航-庭院"
-    ],
-    "post_delay": 1000,
-    "pre_delay": 1000,
-    "rate_limit": 5000,
-    "recognition": "DirectHit",
-    "timeout": 10000
-  },
-  "麒麟-识别剩余生命值": {
-    "expected": "剩余|生命值",
-    "next": [
-      "麒麟10"
-    ],
-    "on_error": [
-      "导航-庭院"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      476,
-      14,
-      376,
-      73
-    ]
-  },
-  "麒麟-识别是否战斗结束": {
-    "action": "Click",
-    "expected": "失败|成功|胜利",
-    "post_delay": 1000,
-    "recognition": "OCR",
-    "roi": [
-      659,
-      104,
-      365,
-      210
-    ],
-    "target": [
-      347,
-      591,
-      501,
-      128
-    ]
-  },
-  "麒麟-识别是否返回狩猎战界面": {
-    "expected": "狩猎战",
-    "next": [
-      "麒麟10"
-    ],
-    "on_error": [
-      "导航-庭院"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      0,
-      0,
-      326,
-      82
-    ]
-  },
-  "麒麟-识别是否返回麒麟界面": {
-    "expected": "狩猎战",
-    "next": [
-      "麒麟8"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      0,
-      0,
-      339,
-      106
-    ]
-  },
-  "麒麟10": {
-    "expected": "^\\d{2,}$",
-    "next": [
-      "导航-庭院"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      41,
-      357,
-      207,
-      56
-    ]
-  },
-  "麒麟11": {
-    "expected": "狩猎战",
-    "next": [
-      "麒麟10",
-      "麒麟12"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      22,
-      0,
-      254,
-      82
-    ]
-  },
-  "麒麟12": {
-    "expected": "大人未挑战",
-    "next": [
-      "麒麟5"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      37,
-      362,
-      247,
-      53
-    ]
-  },
-  "麒麟13": {
-    "action": "Click",
-    "expected": "准备",
-    "post_delay": 1000,
-    "recognition": "OCR",
-    "roi": [
-      1108,
-      518,
-      139,
-      176
-    ]
-  },
-  "麒麟14": {
-    "action": "Click",
-    "expected": "点击屏幕继续",
-    "post_delay": 1000,
-    "recognition": "OCR",
-    "roi": [
-      347,
-      591,
-      501,
-      128
-    ]
-  },
-  "麒麟4": {
-    "action": "Click",
-    "expected": "狩猎战",
-    "recognition": "OCR",
-    "roi": [
-      92,
-      102,
-      1052,
-      509
-    ]
-  },
-  "麒麟5": {
-    "action": "Click",
-    "expected": "式神录",
-    "next": [
-      "麒麟6"
-    ],
-    "recognition": "OCR",
-    "roi": [
-      1011,
-      616,
-      95,
-      98
-    ]
-  },
-  "麒麟6": {
-    "action": "Custom",
-    "custom_action": "SwitchSoul",
-    "custom_action_param": {
-      "group_name": "麒麟_默认分组",
-      "team_name": "麒麟_默认队伍"
+    "麒麟-已挑战标志": {
+        "recognition": "OCR", "roi": [1114, 585, 135, 79],
+        "expected": ["^(今日)?已挑[战戰]$", "^已[击擊][败敗]$"]
     },
-    "next": [
-      "麒麟-识别是否返回麒麟界面",
-      "[JumpBack]麒麟7"
-    ],
-    "on_error": [
-      "超时_切换御魂失败"
-    ],
-    "recognition": "DirectHit"
-  },
-  "麒麟7": {
-    "action": "Click",
-    "post_delay": 2000,
-    "recognition": "TemplateMatch",
-    "roi": [
-      0,
-      0,
-      183,
-      115
-    ],
-    "template": [
-      "麒麟/麒麟7.png"
-    ]
-  },
-  "麒麟8": {
-    "action": "Click",
-    "expected": "挑战",
-    "next": [
-      "麒麟-识别剩余生命值",
-      "麒麟-识别是否返回狩猎战界面",
-      "[JumpBack]麒麟14",
-      "[JumpBack]麒麟-识别是否战斗结束",
-      "[JumpBack]麒麟13",
-      "[JumpBack]麒麟9",
-      "[JumpBack]自动麒麟-识别是否位于战斗界面"
-    ],
-    "post_delay": 5000,
-    "rate_limit": 3000,
-    "recognition": "OCR",
-    "roi": [
-      1103,
-      553,
-      158,
-      144
-    ],
-    "timeout": 400000
-  },
-  "麒麟9": {
-    "action": "Click",
-    "expected": "本次伤害",
-    "post_delay": 1000,
-    "recognition": "OCR",
-    "roi": [
-      302,
-      292,
-      736,
-      90
-    ],
-    "target": [
-      523,
-      623,
-      304,
-      97
-    ]
-  }
+    "麒麟-未开放标志": {
+        "recognition": "Or",
+        "any_of": [
+            {"recognition": "OCR", "roi": [1092, 545, 172, 166],
+                "expected": ["^[开開]\\s*[启啟]\\s*挑\\s*[战戰]$", "^(尚|暂)?未[开開][启啟放]$", "^狩猎[战戰]未[开開][启啟放]$"]},
+            {"recognition": "And", "all_of": [
+                {"recognition": "OCR", "roi": [1110, 552, 143, 74], "expected": "^[开開][启啟]$"},
+                {"recognition": "OCR", "roi": [1110, 616, 143, 75], "expected": "^挑[战戰]$"}
+            ]}
+        ]
+    },
+    "麒麟-已挑战": {
+        "recognition": "And", "all_of": ["麒麟-狩猎战大厅", "麒麟-已挑战标志"],
+        "next": ["麒麟-归庭已挑战", "[JumpBack]麒麟-退出大厅", "[JumpBack]麒麟-退出神社", "[JumpBack]寮活动-退出阴阳寮"],
+        "timeout": 13000, "on_error": ["麒麟-归庭失败"]
+    },
+    "麒麟-未开放": {
+        "recognition": "And", "all_of": ["麒麟-狩猎战大厅", "麒麟-未开放标志"],
+        "next": ["麒麟-归庭未开放", "[JumpBack]麒麟-退出大厅", "[JumpBack]麒麟-退出神社", "[JumpBack]寮活动-退出阴阳寮"],
+        "timeout": 13000, "on_error": ["麒麟-归庭失败"]
+    },
+    "麒麟-可挑战": {
+        "recognition": "And", "box_index": 1,
+        "all_of": [
+            "麒麟-狩猎战大厅",
+            {"recognition": "OCR", "roi": [1129, 592, 100, 64], "expected": "^挑[战戰]$"}
+        ]
+    },
+    "麒麟-选择换御魂": {
+        "recognition": "And", "all_of": ["麒麟-可挑战"],
+        "next": ["麒麟-已挑战", "麒麟-未开放", "麒麟-打开式神录"],
+        "timeout": 3500, "on_error": ["麒麟-预设未确认"]
+    },
+    "麒麟-选择不换御魂": {
+        "enabled": false,
+        "recognition": "And", "all_of": ["麒麟-可挑战"],
+        "next": ["麒麟-已挑战", "麒麟-未开放", "麒麟-挑战"],
+        "timeout": 3500, "on_error": ["麒麟-入口未确认"]
+    },
+    "麒麟-打开式神录": {
+        "recognition": "And", "box_index": 1,
+        "all_of": [
+            "麒麟-可挑战",
+            {"recognition": "OCR", "roi": [1000, 605, 120, 111], "expected": "^式神录$"}
+        ],
+        "action": "Click", "max_hit": 1, "post_delay": 800,
+        "next": ["麒麟6"], "timeout": 5000, "on_error": ["麒麟-预设未确认"]
+    },
+    "麒麟-式神录": {
+        "recognition": "OCR", "roi": [42, 0, 208, 76], "expected": "^式神录$"
+    },
+    "麒麟6": {
+        "recognition": "And", "all_of": ["麒麟-式神录"], "max_hit": 1,
+        "action": "Custom", "custom_action": "SwitchSoul",
+        "custom_action_param": {"group_name": "默认分组", "team_name": "默认队伍"},
+        "next": ["麒麟-已挑战", "麒麟-未开放", "麒麟-挑战", "[JumpBack]麒麟-退出式神录"],
+        "timeout": 7000, "on_error": ["麒麟-预设未确认"]
+    },
+    "麒麟-退出式神录": {
+        "recognition": "And", "box_index": 1,
+        "all_of": ["麒麟-式神录", {"recognition": "TemplateMatch", "roi": [0, 0, 183, 115], "template": "麒麟/麒麟7.png"}],
+        "action": "Click", "max_hit": 2, "post_delay": 1000
+    },
+    "麒麟-挑战": {
+        "recognition": "And", "all_of": ["麒麟-可挑战"],
+        "action": "Click", "max_hit": 1, "post_delay": 900,
+        "next": ["麒麟-已挑战", "麒麟-未开放", "麒麟-需要出战预设", "麒麟-不用出战预设", "麒麟-直接开战"],
+        "timeout": 13000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-备战按钮": {
+        "recognition": "OCR", "roi": [1108, 518, 139, 176], "expected": "^准[备備]$"
+    },
+    "麒麟-需要出战预设": {
+        "enabled": false,
+        "recognition": "And", "all_of": ["麒麟-备战按钮"],
+        "next": ["麒麟-切换出战阵容", "[JumpBack]麒麟-解锁阵容"],
+        "timeout": 6500, "on_error": ["麒麟-预设未确认"]
+    },
+    "麒麟-解锁阵容": {
+        "recognition": "And", "all_of": ["麒麟-备战按钮", "通用-解锁阵容-点击解锁图标"],
+        "box_index": 1, "action": "Click", "max_hit": 1, "post_delay": 750
+    },
+    "麒麟-切换出战阵容": {
+        "recognition": "And", "all_of": ["麒麟-备战按钮", "出战队伍预设-打开备战预设"],
+        "action": "Custom", "custom_action": "BattleTeam", "max_hit": 1,
+        "custom_action_param": {"position": "麒麟", "group_name": "默认分组", "team_name": "默认队伍"},
+        "next": ["麒麟-点准备"],
+        "timeout": 5500, "on_error": ["麒麟-预设未确认"]
+    },
+    "麒麟-不用出战预设": {
+        "recognition": "And", "all_of": ["麒麟-备战按钮"],
+        "next": ["麒麟-点准备"],
+        "timeout": 3000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-点准备": {
+        "recognition": "And", "all_of": ["麒麟-备战按钮"],
+        "action": "Click", "max_hit": 2, "post_delay": 1100,
+        "next": ["麒麟-开战中", "麒麟-战败", "麒麟-战果已见", "麒麟-点准备"],
+        "timeout": 10000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-直接开战": {
+        "recognition": "And", "all_of": ["麒麟-战中成绩"],
+        "next": ["麒麟-等待战果"], "timeout": 1000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-战中成绩": {
+        "recognition": "OCR", "roi": [45, 73, 139, 61], "expected": "^当前成绩\\s*[:：]?$"
+    },
+    "麒麟-开战中": {
+        "recognition": "And", "all_of": ["麒麟-战中成绩"],
+        "next": ["麒麟-等待战果"], "timeout": 1000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-等待战果": {
+        "next": ["麒麟-战败", "麒麟-战果已见"],
+        "rate_limit": 800, "timeout": 480000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-胜利标志": {
+        "recognition": "OCR", "roi": [659, 104, 365, 210], "expected": ["^胜利$", "^挑战成功$"]
+    },
+    "麒麟-伤害结算": {
+        "recognition": "OCR", "roi": [302, 292, 736, 90], "expected": "^本次伤害\\s*[:：]?\\s*([0-9][0-9,，.]*)?$"
+    },
+    "麒麟-战败": {
+        "recognition": "OCR", "roi": [659, 104, 365, 210], "expected": ["^失败$", "^挑战失败$"],
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "kirin_battle_lost"}
+    },
+    "麒麟-战果已见": {
+        "recognition": "Or", "any_of": ["麒麟-胜利标志", "麒麟-伤害结算"],
+        "next": [
+            "麒麟-战败",
+            "[JumpBack]麒麟-关闭伤害结算", "[JumpBack]麒麟-关闭胜利画面", "[JumpBack]麒麟-点击继续",
+            "麒麟-结算后大厅"
+        ],
+        "timeout": 16000, "on_error": ["麒麟-战斗未确认"]
+    },
+    "麒麟-关闭伤害结算": {
+        "recognition": "And", "all_of": ["麒麟-伤害结算"],
+        "action": "Click", "target": [523, 623, 304, 97], "max_hit": 2, "post_delay": 850
+    },
+    "麒麟-关闭胜利画面": {
+        "recognition": "And", "all_of": ["麒麟-胜利标志"],
+        "action": "Click", "target": [347, 591, 501, 128], "max_hit": 2, "post_delay": 850
+    },
+    "麒麟-点击继续": {
+        "recognition": "OCR", "roi": [347, 591, 501, 128], "expected": "^点击屏幕继续$",
+        "action": "Click", "max_hit": 2, "post_delay": 650
+    },
+    "麒麟-结算后大厅": {
+        "recognition": "And", "all_of": ["麒麟-狩猎战大厅"],
+        "next": ["麒麟-归庭完成", "[JumpBack]麒麟-退出大厅", "[JumpBack]麒麟-退出神社", "[JumpBack]寮活动-退出阴阳寮"],
+        "timeout": 13000, "on_error": ["麒麟-归庭失败"]
+    },
+    "麒麟-退出大厅": {
+        "recognition": "And", "all_of": ["麒麟-狩猎战大厅", "寮活动-返回箭头"],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1000
+    },
+    "麒麟-退出神社": {
+        "recognition": "And", "all_of": ["麒麟-神社", "寮活动-返回箭头"],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1000
+    },
+    "麒麟-归庭完成": {
+        "recognition": "And", "all_of": ["寮活动-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "completed", "reason": "kirin_result_verified"}
+    },
+    "麒麟-归庭已挑战": {
+        "recognition": "And", "all_of": ["寮活动-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "skipped", "reason": "kirin_already_challenged"}
+    },
+    "麒麟-归庭未开放": {
+        "recognition": "And", "all_of": ["寮活动-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "skipped", "reason": "kirin_not_open"}
+    },
+    "麒麟-入口未确认": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "kirin_entry_unconfirmed"}
+    },
+    "麒麟-预设未确认": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "kirin_preset_unconfirmed"}
+    },
+    "麒麟-战斗未确认": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "kirin_battle_unconfirmed"}
+    },
+    "麒麟-归庭失败": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "kirin_courtyard_unconfirmed"}
+    }
 }

@@ -1,0 +1,393 @@
+{
+    "自动道馆": {
+        "action": "Custom", "custom_action": "DokanBudget", "custom_action_param": {"op": "init"},
+        "next": ["道馆-入口识别"], "on_error": ["道馆-失败"]
+    },
+    "道馆-入口识别": {
+        "next": [
+            "道馆-胜利资金", "道馆-已在场内", "道馆-当日已办", "道馆-寮境已结束", "道馆-进入已集结", "道馆-等待开馆",
+            "道馆-从神社进入", "道馆-从寮进入神社", "道馆-从庭院进入寮", "道馆-展开庭院菜单"
+        ],
+        "timeout": 5000, "on_error": ["道馆-失败"]
+    },
+    "道馆-从庭院进入寮": {
+        "recognition": "And", "all_of": ["道馆-庭院", "导航-阴阳寮-点击阴阳寮", "道馆-可进馆"],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-从寮进入神社", "道馆-到期在寮"], "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-展开庭院菜单": {
+        "recognition": "And", "all_of": ["导航-庭院-底部菜单栏-点击底部菜单栏-模型识别", "道馆-可进馆"],
+        "target": [1205, 618, 49, 64], "action": "Click", "post_delay": 0,
+        "next": ["道馆-从庭院进入寮", "道馆-到期在庭院"], "timeout": 3000, "on_error": ["道馆-失败"]
+    },
+    "道馆-从寮进入神社": {
+        "recognition": "And", "all_of": ["道馆-阴阳寮", "导航-阴阳寮神社-点击神社", "道馆-可进馆"],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-从神社进入", "道馆-到期在神社"], "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-从神社进入": {
+        "recognition": "And",
+        "all_of": ["道馆-神社", {"recognition": "OCR", "roi": [452, 147, 134, 78], "expected": "^道[馆館]$"}, "道馆-可进馆"],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-胜利资金", "道馆-已在场内", "道馆-当日已办", "道馆-寮境已结束", "道馆-进入已集结", "道馆-等待开馆", "道馆-到期在神社"],
+        "timeout": 4000, "on_error": ["道馆-失败"]
+    },
+
+    "道馆-庭院": {
+        "recognition": "Or",
+        "any_of": ["导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院-模型识别", "导航-庭院-识别是否位于庭院"]
+    },
+    "道馆-阴阳寮": {
+        "recognition": "And",
+        "all_of": ["导航-阴阳寮-识别是否位于阴阳寮", {"recognition": "OCR", "roi": [1140, 654, 131, 66], "expected": "^阴阳[寮竂]$"}]
+    },
+    "道馆-神社": {
+        "recognition": "And", "all_of": ["导航-阴阳寮神社-识别是否位于阴阳寮神社界面"]
+    },
+    "道馆-返回箭头": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "TemplateMatch", "roi": [0, 0, 80, 85], "template": "自动道馆/自动道馆13.png"},
+            "导航-庭院-点击返回按钮-模板匹配", "识别黄色返回_模板识别"
+        ]
+    },
+    "道馆-地图标题": {
+        "recognition": "OCR", "roi": [130, 0, 230, 85], "expected": "^道[馆館]突破$"
+    },
+    "道馆-已集结地图": {
+        "recognition": "OCR", "roi": [440, 575, 360, 145], "expected": "道[馆館]突破集[结結]中"
+    },
+    "道馆-非集结地图": {
+        "recognition": "OCR", "roi": [440, 575, 360, 145], "expected": "道[馆館]突破集[结結]中", "inverse": true
+    },
+    "道馆-推荐列表标志": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [977, 55, 108, 178], "expected": "^推\\s*[荐薦]$"},
+            {"recognition": "And", "all_of": [
+                {"recognition": "OCR", "roi": [977, 55, 108, 114], "expected": "^推$"},
+                {"recognition": "OCR", "roi": [977, 103, 108, 130], "expected": "^[荐薦]$"}
+            ]}
+        ]
+    },
+    "道馆-未开馆证据": {
+        "recognition": "And",
+        "all_of": [
+            "道馆-地图标题", "道馆-推荐列表标志", "道馆-非集结地图"
+        ]
+    },
+    "道馆-地图已办标志": {
+        "recognition": "Or", "any_of": ["道馆-地图成功标志", "道馆-次数清零"]
+    },
+    "道馆-地图成功标志": {
+        "recognition": "OCR", "roi": [549, 609, 224, 81], "expected": "挑[战戰]成功"
+    },
+    "道馆-次数清零": {
+        "recognition": "And", "all_of": [
+            "道馆-今日机会", {"recognition": "OCR", "roi": [650, 610, 110, 80], "expected": "(^|[：:])\\s*0次$"}
+        ]
+    },
+    "道馆-今日机会": {
+        "recognition": "OCR", "roi": [497, 610, 265, 79], "expected": "今日可挑[战戰](机会|次[数數])"
+    },
+    "道馆-当日已办": {
+        "recognition": "And", "all_of": ["道馆-地图标题", "道馆-地图已办标志"],
+        "next": ["道馆-跳过收尾"]
+    },
+    "道馆-寮境已结束": {
+        "recognition": "And", "all_of": [
+            "道馆-寮境",
+            {"recognition": "Or", "any_of": ["道馆-地图成功标志", "道馆-次数清零"]}
+        ],
+        "next": ["道馆-跳过收尾"]
+    },
+    "道馆-进入已集结": {
+        "recognition": "And",
+        "all_of": [
+            "道馆-已集结地图",
+            {"recognition": "OCR", "roi": [270, 130, 740, 460], "expected": "[0-9]+(?:\\.[0-9]+)?万"},
+            "道馆-战斗有余量"
+        ],
+        "box_index": 1, "target_offset": [0, -20, 0, 0], "action": "Click", "post_delay": 0,
+        "next": ["道馆-已在场内", "道馆-胜利资金"], "timeout": 8000, "on_error": ["道馆-失败"]
+    },
+    "道馆-等待开馆": {
+        "recognition": "And", "all_of": ["道馆-未开馆证据"],
+        "action": "Custom", "custom_action": "DokanBudget", "custom_action_param": {"op": "wait"},
+        "post_delay": 0, "next": ["道馆-开馆复核"], "on_error": ["道馆-失败"]
+    },
+    "道馆-开馆复核": {
+        "next": ["道馆-胜利资金", "道馆-已在场内", "道馆-当日已办", "道馆-寮境已结束", "道馆-进入已集结", "道馆-到期在列表", "道馆-预扣刷新"],
+        "timeout": 3000, "on_error": ["道馆-失败"]
+    },
+    "道馆-预扣刷新": {
+        "recognition": "And", "all_of": ["道馆-未开馆证据", "道馆-开馆窗口内"],
+        "action": "Custom", "custom_action": "DokanBudget", "custom_action_param": {"op": "refresh"},
+        "anchor": {"道馆-返回庭院后": "道馆-重进"},
+        "post_delay": 0, "next": ["道馆-退出未开列表", "道馆-到期在列表", "道馆-进入已集结", "道馆-已在场内"],
+        "on_error": ["道馆-到期在列表", "道馆-失败"], "timeout": 2500
+    },
+    "道馆-重进": {
+        "next": ["道馆-到期在庭院", "道馆-从庭院进入寮", "道馆-展开庭院菜单"],
+        "timeout": 3000, "on_error": ["道馆-失败"]
+    },
+    "道馆-可进馆": {
+        "recognition": "Custom", "custom_recognition": "DokanBudgetGate", "custom_recognition_param": {"phase": "entry"}
+    },
+    "道馆-开馆窗口内": {
+        "recognition": "Custom", "custom_recognition": "DokanBudgetGate", "custom_recognition_param": {"phase": "opening"}
+    },
+    "道馆-开馆窗口截止": {
+        "recognition": "Custom", "custom_recognition": "DokanBudgetGate", "custom_recognition_param": {"phase": "expired"}
+    },
+    "道馆-到期在列表": {
+        "recognition": "And", "all_of": ["道馆-未开馆证据", "道馆-开馆窗口截止"],
+        "next": ["道馆-超时收尾"]
+    },
+    "道馆-到期在庭院": {
+        "recognition": "And", "all_of": ["道馆-庭院", "道馆-开馆窗口截止"],
+        "next": ["道馆-庭院确认超时"], "timeout": 1500, "on_error": ["道馆-失败"]
+    },
+    "道馆-到期在寮": {
+        "recognition": "And", "all_of": ["道馆-阴阳寮", "道馆-开馆窗口截止"],
+        "next": ["道馆-超时收尾"]
+    },
+    "道馆-到期在神社": {
+        "recognition": "And", "all_of": ["道馆-神社", "道馆-开馆窗口截止"],
+        "next": ["道馆-超时收尾"]
+    },
+
+    "道馆-战斗有余量": {
+        "recognition": "Custom", "custom_recognition": "DokanBudgetGate", "custom_recognition_param": {"phase": "combat"}
+    },
+    "道馆-寮境": {
+        "recognition": "OCR", "roi": [502, 0, 280, 81], "expected": "^道[馆館]突破$"
+    },
+    "道馆-战报": {"recognition": "OCR", "roi": [0, 13, 225, 173], "expected": "^战报$|^戰報$"},
+    "道馆-集结倒数": {"recognition": "OCR", "roi": [530, 64, 220, 55], "expected": "开[战戰]"},
+    "道馆-进攻阶段": {"recognition": "OCR", "roi": [1055, 530, 189, 78], "expected": "剩[余餘]"},
+    "道馆-馆主倒数": {"recognition": "OCR", "roi": [578, 130, 180, 64], "expected": "[馆館]主"},
+    "道馆-馆主旗": {"recognition": "OCR", "roi": [640, 0, 640, 360], "expected": "^[馆館]主$"},
+    "道馆-冷却": {"recognition": "OCR", "roi": [1058, 485, 206, 59], "expected": "挑[战戰]次数恢复"},
+    "道馆-寮境活动": {
+        "recognition": "And", "all_of": [
+            "道馆-寮境", "道馆-战报",
+            {"recognition": "Or", "any_of": ["道馆-集结倒数", "道馆-进攻阶段", "道馆-馆主倒数", "道馆-馆主旗", "道馆-冷却", "道馆-挑战按钮"]}
+        ]
+    },
+    "道馆-备战按钮": {"recognition": "OCR", "roi": [1104, 525, 141, 114], "expected": "^准[备備]$"},
+    "道馆-备战面板": {
+        "recognition": "And", "all_of": [
+            "道馆-备战按钮",
+            {"recognition": "Or", "any_of": [
+                {"recognition": "OCR", "roi": [16, 597, 145, 120], "expected": "^(队伍)?预设[0-9]*$"},
+                {"recognition": "OCR", "roi": [1080, 180, 160, 70], "expected": "^(第[一二]([阵陣]容?)?|[一二][阵陣]容)$"}
+            ]}
+        ]
+    },
+    "道馆-战斗运行中": {
+        "recognition": "OCR", "roi": [190, 0, 166, 86], "expected": "^加油$|^助威$"
+    },
+    "道馆-已在场内": {
+        "recognition": "Or", "any_of": ["道馆-寮境活动", "道馆-战斗运行中", "道馆-备战面板"],
+        "next": ["道馆-复核活动画面"], "timeout": 1000, "on_error": ["道馆-失败"]
+    },
+    "道馆-复核活动画面": {
+        "recognition": "And", "all_of": ["道馆-战斗有余量"],
+        "next": [
+            "道馆-胜利资金", "道馆-确认挑战成功", "道馆-关闭排名", "道馆-关闭小战结算", "道馆-关闭继续提示", "道馆-未成功结束",
+            "道馆-在战等待", "道馆-集结等待", "道馆-打开馆主预设", "道馆-馆主倒数等待",
+            "道馆-场内挑战", "道馆-备战切队", "道馆-点击准备", "道馆-在场等待"
+        ],
+        "timeout": 7500, "on_error": ["道馆-失败"]
+    },
+    "道馆-在场等待": {
+        "recognition": "And", "all_of": ["道馆-寮境活动", "道馆-战斗有余量"],
+        "post_delay": 1800, "next": ["道馆-复核活动画面"], "timeout": 1000, "on_error": ["道馆-失败"]
+    },
+    "道馆-集结等待": {
+        "recognition": "And", "all_of": ["道馆-寮境", "道馆-战报", "道馆-集结倒数", "道馆-战斗有余量"],
+        "post_delay": 1800, "next": ["道馆-复核活动画面"], "timeout": 1000, "on_error": ["道馆-失败"]
+    },
+    "道馆-馆主倒数等待": {
+        "recognition": "And", "all_of": ["道馆-寮境", "道馆-战报", "道馆-馆主倒数", "道馆-战斗有余量"],
+        "post_delay": 1800, "next": ["道馆-复核活动画面"], "timeout": 1000, "on_error": ["道馆-失败"]
+    },
+    "道馆-在战等待": {
+        "recognition": "And", "all_of": ["道馆-战斗运行中", "道馆-战斗有余量"],
+        "post_delay": 1800, "next": ["道馆-复核活动画面"], "timeout": 1000, "on_error": ["道馆-失败"]
+    },
+    "道馆-挑战按钮": {"recognition": "OCR", "roi": [1100, 550, 180, 105], "expected": "^(挑战|挑戰|[12]/2)$"},
+    "道馆-场内挑战": {
+        "recognition": "And", "all_of": [
+            "道馆-寮境", "道馆-战报",
+            {"recognition": "Or", "any_of": ["道馆-进攻阶段", "道馆-馆主旗"]},
+            "道馆-挑战按钮", "道馆-战斗有余量"
+        ],
+        "box_index": 3, "action": "Click", "post_delay": 0, "max_hit": 24,
+        "next": ["道馆-胜利资金", "道馆-已开始对战", "道馆-备战切队", "道馆-点击准备", "道馆-关闭小战结算"],
+        "timeout": 8000, "on_error": ["道馆-失败"]
+    },
+    "道馆-备战切队": {
+        "enabled": false, "recognition": "And", "all_of": ["道馆-备战面板", "道馆-战斗有余量"],
+        "action": "Custom", "custom_action": "BattleTeam",
+        "custom_action_param": {"group_name": "默认分组", "team_name": "默认队伍"},
+        "next": ["道馆-已开始对战", "道馆-点击准备", "道馆-胜利资金", "道馆-关闭小战结算"],
+        "max_hit": 24, "timeout": 5000, "on_error": ["道馆-失败"]
+    },
+    "道馆-点击准备": {
+        "recognition": "And", "all_of": ["道馆-备战面板", "道馆-战斗有余量"],
+        "action": "Click", "post_delay": 0, "max_hit": 24,
+        "next": ["道馆-已开始对战", "道馆-胜利资金", "道馆-关闭小战结算"],
+        "timeout": 8000, "on_error": ["道馆-失败"]
+    },
+    "道馆-已开始对战": {
+        "recognition": "And", "all_of": ["道馆-战斗运行中", "道馆-战斗有余量"],
+        "next": ["道馆-复核活动画面"]
+    },
+    "道馆-打开馆主预设": {
+        "enabled": false, "recognition": "And", "all_of": [
+            "道馆-寮境", "道馆-战报",
+            {"recognition": "Or", "any_of": ["道馆-馆主倒数", "道馆-馆主旗"]},
+            "道馆-战斗有余量"
+        ],
+        "action": "Click", "target": [987, 608, 89, 60], "post_delay": 0, "max_hit": 1,
+        "next": ["道馆-装备馆主预设"], "timeout": 6500, "on_error": ["道馆-失败"]
+    },
+    "道馆-装备馆主预设": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [0, 0, 215, 78], "expected": "^式神[录錄]$"}, "道馆-战斗有余量"
+        ],
+        "action": "Custom", "custom_action": "SwitchSoul",
+        "custom_action_param": {"group_name": "默认分组", "team_name": "默认队伍"},
+        "next": ["[JumpBack]道馆-处理换装确认", "[JumpBack]道馆-退出御魂预设", "道馆-返回馆主阶段"],
+        "timeout": 5000, "on_error": ["道馆-失败"]
+    },
+    "道馆-处理换装确认": {
+        "recognition": "And", "all_of": [
+            "装备御魂-识别更换确认",
+            {"recognition": "OCR", "roi": [401, 354, 467, 135], "expected": "^[确確]定$"}
+        ],
+        "box_index": 1, "action": "Click", "max_hit": 1
+    },
+    "道馆-退出御魂预设": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Or", "any_of": ["装备御魂-识别是否打开预设", {"recognition": "OCR", "roi": [0, 0, 215, 78], "expected": "^式神[录錄]$"}]},
+            "道馆-返回箭头"
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 800, "max_hit": 2
+    },
+    "道馆-返回馆主阶段": {
+        "recognition": "Or", "any_of": ["道馆-寮境活动", "道馆-战斗运行中", "道馆-备战面板", "道馆-资金提示"],
+        "next": ["道馆-复核活动画面"]
+    },
+
+    "道馆-资金提示": {
+        "recognition": "OCR", "roi": [480, 400, 400, 100], "expected": "夺得[资資]金"
+    },
+    "道馆-胜利资金": {
+        "recognition": "And", "all_of": ["道馆-资金提示"],
+        "action": "Click", "target": [1150, 380, 100, 150], "post_delay": 600, "max_hit": 1,
+        "next": ["道馆-完成收尾"]
+    },
+    "道馆-确认挑战成功": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Or", "any_of": ["道馆-寮境", "道馆-地图标题"]}, "道馆-地图成功标志"
+        ],
+        "next": ["道馆-完成收尾"]
+    },
+    "道馆-未成功结束": {
+        "recognition": "And", "all_of": ["道馆-寮境", "道馆-今日机会"],
+        "anchor": {"道馆-返回庭院后": "道馆-失败"}, "next": ["道馆-收尾"]
+    },
+    "道馆-排名提示": {"recognition": "OCR", "roi": [105, 74, 188, 84], "expected": "^突破排名$"},
+    "道馆-关闭排名": {
+        "recognition": "And", "all_of": ["道馆-排名提示"],
+        "action": "Click", "target": [1150, 380, 100, 150], "post_delay": 600, "max_hit": 4,
+        "next": ["道馆-复核活动画面"]
+    },
+    "道馆-关闭小战结算": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [609, 21, 229, 119], "expected": "^胜利$"},
+            {"recognition": "OCR", "roi": [386, 49, 472, 190], "expected": "^失败$"}
+        ],
+        "action": "Click", "target": [1150, 380, 100, 150], "post_delay": 800, "max_hit": 28,
+        "next": ["道馆-复核活动画面"]
+    },
+    "道馆-关闭继续提示": {
+        "recognition": "OCR", "roi": [336, 618, 510, 101], "expected": "点击屏幕继续",
+        "action": "Click", "post_delay": 600, "max_hit": 28, "next": ["道馆-复核活动画面"]
+    },
+
+    "道馆-完成收尾": {
+        "anchor": {"道馆-返回庭院后": "道馆-庭院确认完成"}, "next": ["道馆-收尾"]
+    },
+    "道馆-跳过收尾": {
+        "anchor": {"道馆-返回庭院后": "道馆-庭院确认跳过"}, "next": ["道馆-收尾"]
+    },
+    "道馆-超时收尾": {
+        "anchor": {"道馆-返回庭院后": "道馆-庭院确认超时"}, "next": ["道馆-收尾"]
+    },
+    "道馆-收尾": {
+        "next": ["道馆-已到庭院", "道馆-退出未开列表", "道馆-退出已办列表", "道馆-退出结算寮境", "道馆-退出神社", "道馆-退出阴阳寮", "[JumpBack]道馆-收尾关闭排名"],
+        "timeout": 4000, "on_error": ["道馆-失败"]
+    },
+    "道馆-收尾关闭排名": {
+        "recognition": "And", "all_of": ["道馆-排名提示"],
+        "action": "Click", "target": [1150, 380, 100, 150], "post_delay": 650, "max_hit": 1
+    },
+    "道馆-退出未开列表": {
+        "recognition": "And", "all_of": ["道馆-未开馆证据", "道馆-返回箭头"],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-退出神社", "道馆-退出阴阳寮", "道馆-已到庭院"], "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-退出已办列表": {
+        "recognition": "And", "all_of": ["道馆-地图标题", "道馆-地图已办标志", "道馆-返回箭头"],
+        "box_index": 2, "action": "Click", "post_delay": 0,
+        "next": ["道馆-退出神社", "道馆-退出阴阳寮", "道馆-已到庭院"], "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-退出结算寮境": {
+        "recognition": "And", "all_of": [
+            "道馆-寮境", {"recognition": "Or", "any_of": ["道馆-今日机会", "道馆-地图成功标志"]}, "道馆-返回箭头"
+        ],
+        "box_index": 2, "action": "Click", "post_delay": 0,
+        "next": ["道馆-退出已办列表", "道馆-退出未开列表", "道馆-退出神社", "道馆-退出阴阳寮", "道馆-已到庭院", "道馆-确认退出寮境"],
+        "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-确认退出寮境": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [340, 160, 600, 260], "expected": "(退出|离开).*(道[馆館]|寮境)"},
+            {"recognition": "OCR", "roi": [678, 395, 125, 56], "expected": "^[确確][认認定]$"}
+        ],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-退出已办列表", "道馆-退出未开列表", "道馆-退出神社", "道馆-退出阴阳寮", "道馆-已到庭院"],
+        "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-退出神社": {
+        "recognition": "And", "all_of": ["道馆-神社", "道馆-返回箭头"],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-退出阴阳寮", "道馆-已到庭院"], "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-退出阴阳寮": {
+        "recognition": "And", "all_of": ["道馆-阴阳寮", "道馆-返回箭头"],
+        "box_index": 1, "action": "Click", "post_delay": 0,
+        "next": ["道馆-已到庭院"], "timeout": 3500, "on_error": ["道馆-失败"]
+    },
+    "道馆-已到庭院": {
+        "recognition": "And", "all_of": ["道馆-庭院"], "post_delay": 450,
+        "next": ["[Anchor]道馆-返回庭院后"], "timeout": 2000, "on_error": ["道馆-失败"]
+    },
+    "道馆-庭院确认跳过": {
+        "recognition": "And", "all_of": ["道馆-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "skipped", "reason": "dokan_already_settled_or_no_attempts"}
+    },
+    "道馆-庭院确认超时": {
+        "recognition": "And", "all_of": ["道馆-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "skipped", "reason": "dokan_opening_timeout"}
+    },
+    "道馆-庭院确认完成": {
+        "recognition": "And", "all_of": ["道馆-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "completed"}
+    },
+    "道馆-失败": {
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed"}
+    }
+}

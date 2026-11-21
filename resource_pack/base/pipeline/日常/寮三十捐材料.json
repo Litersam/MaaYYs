@@ -1,0 +1,145 @@
+{
+    "寮三十-开始任务": {
+        "next": ["寮捐-奖励未关闭", "寮捐-执行", "寮捐-打开集体任务", "寮捐-打开神社", "寮捐-进入阴阳寮", "[JumpBack]寮捐-展开庭院菜单"],
+        "timeout": 5000, "on_error": ["寮捐-失败"]
+    },
+    "寮捐-庭院": {
+        "recognition": "Or", "any_of": ["导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院", "导航-庭院-识别是否位于庭院-模型识别"]
+    },
+    "寮捐-展开庭院菜单": {
+        "recognition": "And", "all_of": ["导航-庭院-底部菜单栏-点击底部菜单栏-模型识别"],
+        "action": "Click", "target": [1205, 618, 49, 64], "post_delay": 800, "max_hit": 1
+    },
+    "寮捐-进入阴阳寮": {
+        "recognition": "And", "all_of": ["寮捐-庭院", "导航-阴阳寮-点击阴阳寮"], "box_index": 1,
+        "action": "Click", "post_delay": 900, "timeout": 5000,
+        "next": ["寮捐-打开神社"], "on_error": ["寮捐-失败"]
+    },
+    "寮捐-打开神社": {
+        "recognition": "And", "all_of": ["导航-阴阳寮-识别是否位于阴阳寮", "导航-阴阳寮神社-点击神社"], "box_index": 1,
+        "action": "Click", "post_delay": 800, "timeout": 5000,
+        "next": ["寮捐-打开集体任务"], "on_error": ["寮捐-失败"]
+    },
+    "寮捐-神社集体任务入口": {
+        "recognition": "TemplateMatch", "roi": [137, 131, 246, 235], "template": "寮30/寮304.png", "threshold": 0.8
+    },
+    "寮捐-打开集体任务": {
+        "recognition": "And", "all_of": ["寮捐-神社集体任务入口"],
+        "action": "Click", "post_delay": 500, "timeout": 4000,
+        "next": ["寮捐-执行"], "on_error": ["寮捐-失败"]
+    },
+    "寮捐-面板叉": {
+        "recognition": "TemplateMatch", "roi": [1108, 72, 121, 160], "template": "寮30/寮3054.png"
+    },
+    "寮捐-面板": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [526, 22, 173, 79], "expected": "^集体任务$"},
+            "寮捐-面板叉"
+        ]
+    },
+    "寮捐-进度": {
+        "recognition": "OCR", "roi": [1105, 564, 60, 28], "only_rec": true,
+        "expected": "^[ \\t]*([0-9]|０|１|２|３|４|５|６|７|８|９){1,2}[ \\t]*(/|／)[ \\t]*(30|３０)[ \\t]*$"
+    },
+    "寮捐-执行": {
+        "recognition": "And", "all_of": ["寮捐-面板", "寮捐-进度"],
+        "action": "Custom", "custom_action": "GuildDonation", "custom_action_param": {"material": "低级觉醒材料"},
+        "on_error": ["寮捐-失败"]
+    },
+    "寮捐-任务种类": {
+        "recognition": "OCR", "roi": [333, 135, 92, 44], "only_rec": true, "expected": "^觉醒一$"
+    },
+    "寮捐-任务描述": {
+        "recognition": "OCR", "roi": [162, 183, 283, 124], "expected": "^提交低级觉醒材料$"
+    },
+    "寮捐-任务提交按钮": {
+        "recognition": "OCR", "roi": [231, 468, 141, 55], "expected": "^提交$"
+    },
+    "寮捐-刷新任务": {
+        "recognition": "TemplateMatch", "roi": [391, 459, 92, 96], "template": "寮30/寮3059.png", "threshold": 0.85
+    },
+    "寮捐-材料提交按钮": {
+        "recognition": "OCR", "roi": [559, 594, 160, 66], "expected": "^提交$"
+    },
+    "寮捐-材料计数": {
+        "recognition": "OCR", "roi": [427, 172, 100, 27], "only_rec": true,
+        "expected": "^[ \\t]*([0-9]|０|１|２|３|４|５|６|７|８|９){1,8}[ \\t]*(/|／)[ \\t]*([0-9]|０|１|２|３|４|５|６|７|８|９){1,8}[ \\t]*$"
+    },
+    "寮捐-材料加号": {
+        "recognition": "TemplateMatch", "roi": [893, 133, 70, 68], "template": "寮30/寮3050.png", "threshold": 0.83
+    },
+    "寮捐-确认材料页": {
+        "next": ["寮捐-材料提交按钮"], "timeout": 3500
+    },
+    "寮捐-提交后等待面板": {
+        "next": ["寮捐-关闭首层奖励", "寮捐-确认30次"], "post_delay": 750, "timeout": 5000
+    },
+    "寮捐-奖励标题": {
+        "recognition": "OCR", "roi": [432, 111, 415, 171], "expected": "^(获得奖励|获得奖勵|獲得獎勵|双倍奖励|雙倍獎勵)$"
+    },
+    "寮捐-关闭首层奖励": {
+        "recognition": "And", "all_of": ["寮捐-奖励标题"],
+        "action": "Click", "target": [630, 540, 20, 16], "post_delay": 750, "timeout": 5000,
+        "next": ["寮捐-关闭第二层奖励", "寮捐-确认30次"]
+    },
+    "寮捐-关闭第二层奖励": {
+        "recognition": "And", "all_of": ["寮捐-奖励标题"],
+        "action": "Click", "target": [630, 540, 20, 16], "post_delay": 750, "timeout": 5000,
+        "next": ["寮捐-奖励未关闭", "寮捐-确认30次"]
+    },
+    "寮捐-奖励未关闭": {
+        "recognition": "And", "all_of": ["寮捐-奖励标题"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "reward_still_open"}
+    },
+    "寮捐-确认30次": {
+        "recognition": "And", "all_of": [
+            "寮捐-面板",
+            {"recognition": "OCR", "roi": [1105, 564, 60, 28], "only_rec": true, "expected": "^[ \\t]*(30|３０)[ \\t]*(/|／)[ \\t]*(30|３０)[ \\t]*$"}
+        ]
+    },
+    "寮捐-离开材料页": {
+        "next": ["寮捐-关闭材料页"], "timeout": 3500
+    },
+    "寮捐-关闭材料页": {
+        "recognition": "And", "all_of": ["寮捐-材料提交按钮", "返回庭院_识别叉"], "box_index": 1,
+        "action": "Click", "post_delay": 500, "timeout": 3500,
+        "next": ["寮捐-面板"]
+    },
+    "寮捐-离开面板": {
+        "next": ["寮捐-关闭面板"], "timeout": 3500
+    },
+    "寮捐-关闭面板": {
+        "recognition": "And", "all_of": ["寮捐-面板", "寮捐-面板叉"], "box_index": 1,
+        "action": "Click", "post_delay": 650, "timeout": 4500,
+        "next": ["寮捐-离开神社", "寮捐-离开阴阳寮"]
+    },
+    "寮捐-离开神社": {
+        "recognition": "And", "all_of": [
+            "寮捐-神社集体任务入口",
+            {"recognition": "Or", "any_of": ["导航-庭院-点击返回按钮-模板匹配", "识别黄色返回_模板识别", "返回庭院_识别叉"]}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 750, "timeout": 4500,
+        "next": ["寮捐-离开阴阳寮", "寮捐-返回受阻", "寮捐-庭院终态"]
+    },
+    "寮捐-离开阴阳寮": {
+        "recognition": "And", "all_of": [
+            "导航-阴阳寮-识别是否位于阴阳寮",
+            {"recognition": "Or", "any_of": ["导航-庭院-点击返回按钮-模板匹配", "识别黄色返回_模板识别"]}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 750, "timeout": 4500,
+        "next": ["寮捐-返回受阻", "寮捐-庭院终态"]
+    },
+    "寮捐-返回受阻": {
+        "recognition": "Or", "any_of": [
+            "寮捐-面板", "寮捐-神社集体任务入口", "导航-阴阳寮-识别是否位于阴阳寮", "寮捐-材料提交按钮", "寮捐-奖励标题"
+        ],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "courtyard_still_obstructed"}
+    },
+    "寮捐-庭院终态": {
+        "recognition": "And", "all_of": ["寮捐-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed"}
+    },
+    "寮捐-失败": {
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed"}
+    }
+}

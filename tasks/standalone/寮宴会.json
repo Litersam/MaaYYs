@@ -1,0 +1,10 @@
+{
+    "task": [
+        {
+            "name": "寮宴会",
+            "label": "寮宴会",
+            "entry": "寮宴会",
+            "group": ["standalone"]
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+    "寮活动-庭院": {
+        "recognition": "Or",
+        "any_of": ["导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院-模型识别", "导航-庭院-识别是否位于庭院"]
+    },
+    "寮活动-阴阳寮": {
+        "recognition": "And",
+        "all_of": [
+            "导航-阴阳寮-识别是否位于阴阳寮",
+            {"recognition": "OCR", "roi": [1140, 654, 131, 66], "expected": "^阴阳[寮竂]$"}
+        ]
+    },
+    "寮活动-点阴阳寮": {
+        "recognition": "And", "all_of": ["寮活动-庭院", "导航-阴阳寮-点击阴阳寮"],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1200
+    },
+    "寮活动-展开庭院菜单": {
+        "recognition": "And", "all_of": ["导航-庭院-底部菜单栏-点击底部菜单栏-模型识别"],
+        "target": [1205, 618, 49, 64], "action": "Click", "max_hit": 1, "post_delay": 700
+    },
+    "寮活动-返回箭头": {
+        "recognition": "Or",
+        "any_of": ["识别黄色返回_模板识别", "识别蓝色返回_模板识别", "导航-庭院-点击返回按钮-模板匹配"]
+    },
+    "寮活动-退出阴阳寮": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮", "寮活动-返回箭头"],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1200
+    }
+}

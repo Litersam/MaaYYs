@@ -3,6 +3,7 @@ package registry
 import (
 	"fmt"
 
+	"maa-yys-agent/actions/abyss_shadows"
 	"maa-yys-agent/actions/auto_battle"
 	"maa-yys-agent/actions/auto_foster"
 	"maa-yys-agent/actions/battle_flow"
@@ -14,7 +15,9 @@ import (
 	"maa-yys-agent/actions/clear_hit_count"
 	"maa-yys-agent/actions/count_action"
 	"maa-yys-agent/actions/demon_encounter"
+	"maa-yys-agent/actions/dokan"
 	"maa-yys-agent/actions/guess"
+	"maa-yys-agent/actions/guild_donation"
 	"maa-yys-agent/actions/human_touch"
 	"maa-yys-agent/actions/kun28"
 	"maa-yys-agent/actions/loop_action"
@@ -35,6 +38,7 @@ import (
 	"maa-yys-agent/actions/task_list"
 	"maa-yys-agent/actions/team_builder"
 	"maa-yys-agent/actions/time_check"
+	"maa-yys-agent/internal/runstate"
 	"maa-yys-agent/recognition/co_battle_target_recognition"
 	"maa-yys-agent/recognition/config_value_recognition"
 	"maa-yys-agent/recognition/my_recognizer"
@@ -93,6 +97,10 @@ var CustomActions = []ActionRegistration{
 	{"Kun28ReserveGuard", &kun28.ReserveGuard{}},
 	{"RealmFinish", &realm.Finish{}},
 	{"RealmGrowthSelect", &realm.GrowthSelect{}},
+	{"TaskOutcome", &runstate.TerminalAction{}},
+	{"AbyssDamageGuard", &abyss_shadows.Battle{}},
+	{"DokanBudget", &dokan.BudgetAction{}},
+	{"GuildDonation", &guild_donation.Donate{}},
 }
 
 var CustomRecognitions = []RecognitionRegistration{
@@ -111,6 +119,9 @@ var CustomRecognitions = []RecognitionRegistration{
 	{"MysteryShopPrice", &mystery_shop.Price{}},
 	{"RealmTimerProbe", &realm.TimerProbe{}},
 	{"RealmActivateButton", &realm.ActivateButton{}},
+	{"AbyssWindow", &abyss_shadows.Window{}},
+	{"AbyssProgress", &abyss_shadows.Progress{}},
+	{"DokanBudgetGate", &dokan.BudgetGate{}},
 }
 
 // RegisterAgentServer registers all custom actions and recognitions with MaaAgentServer.

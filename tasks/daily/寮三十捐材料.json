@@ -20,8 +20,8 @@
                     "name": "低级觉醒材料",
                     "label": "低级觉醒材料",
                     "pipeline_override": {
-                        "寮30_提交材料": {
-                            "expected": "提交低级觉醒材料"
+                        "寮捐-执行": {
+                            "custom_action_param": {"material": "低级觉醒材料"}
                         }
                     }
                 },
@@ -29,8 +29,8 @@
                     "name": "中级觉醒材料",
                     "label": "中级觉醒材料",
                     "pipeline_override": {
-                        "寮30_提交材料": {
-                            "expected": "提交中级觉醒材料"
+                        "寮捐-执行": {
+                            "custom_action_param": {"material": "中级觉醒材料"}
                         }
                     }
                 },
@@ -38,17 +38,17 @@
                     "name": "高级觉醒材料",
                     "label": "高级觉醒材料",
                     "pipeline_override": {
-                        "寮30_提交材料": {
-                            "expected": "提交高级觉醒材料"
+                        "寮捐-执行": {
+                            "custom_action_param": {"material": "高级觉醒材料"}
                         }
                     }
                 },
-                                {
+                {
                     "name": "低级御灵材料",
                     "label": "低级御灵材料",
                     "pipeline_override": {
-                        "寮30_提交材料": {
-                            "expected": "提交低级御灵材料"
+                        "寮捐-执行": {
+                            "custom_action_param": {"material": "低级御灵材料"}
                         }
                     }
                 },
@@ -56,8 +56,8 @@
                     "name": "中级御灵材料",
                     "label": "中级御灵材料",
                     "pipeline_override": {
-                        "寮30_提交材料": {
-                            "expected": "提交中级御灵材料"
+                        "寮捐-执行": {
+                            "custom_action_param": {"material": "中级御灵材料"}
                         }
                     }
                 },
@@ -65,8 +65,8 @@
                     "name": "高级御灵材料",
                     "label": "高级御灵材料",
                     "pipeline_override": {
-                        "寮30_提交材料": {
-                            "expected": "提交高级御灵材料"
+                        "寮捐-执行": {
+                            "custom_action_param": {"material": "高级御灵材料"}
                         }
                     }
                 }

@@ -1,0 +1,665 @@
+{
+    "狭间暗域": {
+        "next": ["狭间暗域-开放", "狭间暗域-尚未开放", "狭间暗域-已关闭"],
+        "timeout": 1500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-尚未开放": {
+        "recognition": "Custom", "custom_recognition": "AbyssWindow", "custom_recognition_param": {"state": "before"},
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "deferred", "reason": "abyss_before_window"}
+    },
+    "狭间暗域-已关闭": {
+        "recognition": "Custom", "custom_recognition": "AbyssWindow", "custom_recognition_param": {"state": "closed"},
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "skipped", "reason": "abyss_outside_window"}
+    },
+    "狭间暗域-开放": {
+        "recognition": "Custom", "custom_recognition": "AbyssWindow", "custom_recognition_param": {"state": "open"},
+        "next": ["狭间暗域-活动未开弹窗", "狭间暗域-活动已结束弹窗", "狭间暗域-确认领域已结束",
+                 "狭间暗域-确认战报全歼", "狭间暗域-继续领域", "狭间暗域-已有战报", "狭间暗域-进入神社列表",
+                 "[JumpBack]狭间暗域-进神社", "[JumpBack]狭间暗域-进寮", "[JumpBack]狭间暗域-展开庭院菜单"],
+        "timeout": 15000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-进寮": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院", "导航-阴阳寮-点击阴阳寮"], "box_index": 1,
+        "action": "Click", "max_hit": 2, "post_delay": 1200
+    },
+    "狭间暗域-展开庭院菜单": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院", "导航-庭院-底部菜单栏-点击底部菜单栏-模型识别"],
+        "action": "Click", "target": [1205, 618, 49, 64], "max_hit": 2, "post_delay": 800
+    },
+    "狭间暗域-进神社": {
+        "recognition": "And", "all_of": ["导航-阴阳寮-识别是否位于阴阳寮", "导航-阴阳寮神社-点击神社"], "box_index": 1,
+        "action": "Click", "max_hit": 2, "post_delay": 1200
+    },
+    "狭间暗域-进入神社列表": {
+        "recognition": "And", "all_of": ["导航-阴阳寮神社-识别是否位于阴阳寮神社界面"],
+        "next": ["狭间暗域-神社活动入口", "[JumpBack]狭间暗域-滚动神社"],
+        "timeout": 5500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-神社活动入口": {
+        "recognition": "And", "all_of": [
+            "导航-阴阳寮神社-识别是否位于阴阳寮神社界面",
+            {"recognition": "OCR", "expected": "狭间暗域", "roi": [684, 182, 170, 454]}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 900,
+        "next": ["狭间暗域-活动未开弹窗", "狭间暗域-活动已结束弹窗", "狭间暗域-确认领域已结束",
+                 "狭间暗域-继续领域"], "timeout": 10000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-滚动神社": {
+        "recognition": "And", "all_of": ["导航-阴阳寮神社-识别是否位于阴阳寮神社界面"],
+        "action": "Swipe", "begin": [752, 395, 62, 66], "end": [758, 193, 62, 48],
+        "duration": 450, "post_delay": 650, "max_hit": 2
+    },
+    "狭间暗域-继续领域": {
+        "recognition": "Or", "any_of": ["狭间暗域-领域", "狭间暗域-领域选择"],
+        "next": ["狭间暗域-首领阶段"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-已有战报": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "action": "Click", "target": [1154, 96, 32, 32], "post_delay": 650,
+        "next": ["狭间暗域-继续领域"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-活动未开弹窗": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [352, 219, 574, 181],
+             "expected": "狭间暗域.*(未[开開][放启啓]|未[开開]始)|活动(尚未|暂未|还未|未)[开開](放|始)|未到[开開]放时间"},
+            "狭间暗域-弹窗确认按钮"
+        ], "box_index": 1, "action": "Click", "post_delay": 650,
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院确认未开"},
+        "next": ["狭间暗域-退领域", "狭间暗域-退领域选择", "狭间暗域-退神社", "狭间暗域-退寮", "狭间暗域-回庭院"],
+        "timeout": 6500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-活动已结束弹窗": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [352, 219, 574, 181],
+             "expected": "(狭间暗域|活动)(已|已经)[结結]束|所有(目标|敌人).*已(被)?击[败敗]"},
+            "狭间暗域-弹窗确认按钮"
+        ], "box_index": 1, "action": "Click", "post_delay": 650,
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院结束结果"},
+        "next": ["狭间暗域-退领域", "狭间暗域-退领域选择", "狭间暗域-退神社", "狭间暗域-退寮", "狭间暗域-回庭院"],
+        "timeout": 6500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-确认领域已结束": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-领域", {"recognition": "OCR", "roi": [500, 48, 280, 62],
+             "expected": "^((活动|挑战|战斗|进攻)?已[结結]束|全部(敌人|目标)已(被)?击[败敗])$"}
+        ],
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院结束结果"},
+        "next": ["狭间暗域-退领域"], "timeout": 6000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-确认战报全歼": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-战报面板", {"recognition": "OCR", "roi": [311, 192, 695, 414],
+             "expected": "^(所有|全部)(领域|目标|敌人|怪物).*(全[部数])?已(被)?(击[败敗]|击破|消灭)$"}
+        ],
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院结束结果"},
+        "action": "Click", "target": [1154, 96, 32, 32], "post_delay": 650,
+        "next": ["狭间暗域-退领域"], "timeout": 6000, "on_error": ["狭间暗域-失败"]
+    },
+
+    "狭间暗域-首领阶段": {
+        "anchor": {
+            "暗域本档首选": "狭间暗域-选首领", "暗域后续档": "狭间暗域-副将阶段",
+            "暗域未核实": "狭间暗域-首领未核实",
+            "暗域限伤": "狭间暗域-首领限伤", "暗域计次": "狭间暗域-首领战已返回"
+        },
+        "next": ["狭间暗域-前往神龙"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-副将阶段": {
+        "anchor": {
+            "暗域本档首选": "狭间暗域-选副将一", "暗域后续档": "狭间暗域-精英阶段",
+            "暗域未核实": "狭间暗域-副将未核实",
+            "暗域限伤": "狭间暗域-副将限伤", "暗域计次": "狭间暗域-副将战已返回"
+        },
+        "next": ["狭间暗域-前往神龙"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-精英阶段": {
+        "anchor": {
+            "暗域本档首选": "狭间暗域-选精英一", "暗域后续档": "狭间暗域-正常收尾",
+            "暗域未核实": "狭间暗域-精英未核实",
+            "暗域限伤": "狭间暗域-精英限伤", "暗域计次": "狭间暗域-精英战已返回"
+        },
+        "next": ["狭间暗域-前往神龙"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-首领额满": {
+        "recognition": "Custom", "custom_recognition": "AbyssProgress", "custom_recognition_param": {"state": "boss_full"},
+        "next": ["[Anchor]暗域后续档"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-副将额满": {
+        "recognition": "Custom", "custom_recognition": "AbyssProgress", "custom_recognition_param": {"state": "general_full"},
+        "next": ["[Anchor]暗域后续档"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-精英额满": {
+        "recognition": "Custom", "custom_recognition": "AbyssProgress", "custom_recognition_param": {"state": "elite_full"},
+        "next": ["[Anchor]暗域后续档"], "on_error": ["狭间暗域-失败"]
+    },
+
+    "狭间暗域-领域名称": {
+        "recognition": "OCR", "roi": [548, 3, 183, 51],
+        "expected": "^(神[龙龍]|孔雀|白藏主|黑豹)(暗域|领域|領域)$"
+    },
+    "狭间暗域-战报按钮": {
+        "recognition": "OCR", "roi": [1172, 359, 108, 83], "expected": "^(战报|戰報)$"
+    },
+    "狭间暗域-领域": {
+        "recognition": "And", "all_of": ["狭间暗域-领域名称", "狭间暗域-战报按钮"]
+    },
+    "狭间暗域-进攻中": {
+        "recognition": "OCR", "roi": [565, 51, 122, 50], "expected": "(进攻|攻打|戰鬥|战斗)中"
+    },
+    "狭间暗域-集结标记": {
+        "recognition": "OCR", "roi": [565, 51, 122, 50], "expected": "集[结結]中|等待[开開]始"
+    },
+    "狭间暗域-可进攻领域": {
+        "recognition": "And", "all_of": ["狭间暗域-领域", "狭间暗域-进攻中"]
+    },
+    "狭间暗域-入口神龙": {
+        "recognition": "OCR", "roi": [190, 147, 140, 283], "expected": "神[龙龍]|^[神龙龍]$"
+    },
+    "狭间暗域-入口孔雀": {
+        "recognition": "OCR", "roi": [465, 104, 154, 346], "expected": "孔雀|^[孔雀]$"
+    },
+    "狭间暗域-入口白藏主": {
+        "recognition": "OCR", "roi": [789, 130, 148, 249], "expected": "白藏主|^[藏]$"
+    },
+    "狭间暗域-入口黑豹": {
+        "recognition": "OCR", "roi": [1093, 143, 138, 297], "expected": "黑豹|^[豹]$"
+    },
+    "狭间暗域-领域选择": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Or", "any_of": ["狭间暗域-入口神龙", "狭间暗域-入口孔雀"]},
+            {"recognition": "Or", "any_of": ["狭间暗域-入口白藏主", "狭间暗域-入口黑豹"]}
+        ]
+    },
+    "狭间暗域-前往神龙": {
+        "anchor": {"暗域所需领域": "狭间暗域-抵达神龙", "暗域点选领域": "狭间暗域-点神龙",
+                   "暗域后继领域": "狭间暗域-前往孔雀", "暗域战报用途": "狭间暗域-初次打开战报"},
+        "next": ["狭间暗域-定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-前往孔雀": {
+        "anchor": {"暗域所需领域": "狭间暗域-抵达孔雀", "暗域点选领域": "狭间暗域-点孔雀",
+                   "暗域后继领域": "狭间暗域-前往白藏主", "暗域战报用途": "狭间暗域-初次打开战报"},
+        "next": ["狭间暗域-定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-前往白藏主": {
+        "anchor": {"暗域所需领域": "狭间暗域-抵达白藏主", "暗域点选领域": "狭间暗域-点白藏主",
+                   "暗域后继领域": "狭间暗域-前往黑豹", "暗域战报用途": "狭间暗域-初次打开战报"},
+        "next": ["狭间暗域-定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-前往黑豹": {
+        "anchor": {"暗域所需领域": "狭间暗域-抵达黑豹", "暗域点选领域": "狭间暗域-点黑豹",
+                   "暗域后继领域": "狭间暗域-本档扫描完", "暗域战报用途": "狭间暗域-初次打开战报"},
+        "next": ["狭间暗域-定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-定位领域": {
+        "next": ["狭间暗域-确认领域已结束", "[Anchor]暗域所需领域", "[Anchor]暗域点选领域", "狭间暗域-更换领域"],
+        "timeout": 8500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-更换领域": {
+        "recognition": "And", "all_of": ["狭间暗域-领域"],
+        "action": "Click", "target": [511, 20, 27, 27], "post_delay": 650,
+        "next": ["[Anchor]暗域点选领域"], "timeout": 7000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-点神龙": {
+        "recognition": "And", "all_of": ["狭间暗域-领域选择", "狭间暗域-入口神龙"],
+        "action": "Click", "target": [233, 196, 55, 151], "post_delay": 850,
+        "next": ["狭间暗域-抵达神龙"], "timeout": 9000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-点孔雀": {
+        "recognition": "And", "all_of": ["狭间暗域-领域选择", "狭间暗域-入口孔雀"],
+        "action": "Click", "target": [526, 189, 48, 165], "post_delay": 850,
+        "next": ["狭间暗域-抵达孔雀"], "timeout": 9000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-点白藏主": {
+        "recognition": "And", "all_of": ["狭间暗域-领域选择", "狭间暗域-入口白藏主"],
+        "action": "Click", "target": [822, 184, 49, 144], "post_delay": 850,
+        "next": ["狭间暗域-抵达白藏主"], "timeout": 9000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-点黑豹": {
+        "recognition": "And", "all_of": ["狭间暗域-领域选择", "狭间暗域-入口黑豹"],
+        "action": "Click", "target": [1140, 190, 50, 162], "post_delay": 850,
+        "next": ["狭间暗域-抵达黑豹"], "timeout": 9000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-抵达神龙": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-战报按钮", {"recognition": "OCR", "roi": [548, 3, 183, 51], "expected": "^神[龙龍](暗域|领域|領域)$"}
+        ],
+        "next": ["狭间暗域-初始化扫描"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-抵达孔雀": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-战报按钮", {"recognition": "OCR", "roi": [548, 3, 183, 51], "expected": "^孔雀(暗域|领域|領域)$"}
+        ],
+        "next": ["狭间暗域-初始化扫描"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-抵达白藏主": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-战报按钮", {"recognition": "OCR", "roi": [548, 3, 183, 51], "expected": "^白藏主(暗域|领域|領域)$"}
+        ],
+        "next": ["狭间暗域-初始化扫描"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-抵达黑豹": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-战报按钮", {"recognition": "OCR", "roi": [548, 3, 183, 51], "expected": "^黑豹(暗域|领域|領域)$"}
+        ],
+        "next": ["狭间暗域-初始化扫描"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-初始化扫描": {
+        "next": ["狭间暗域-确认领域已结束", "狭间暗域-请求御魂切换", "[Anchor]暗域战报用途", "狭间暗域-观察到集结"],
+        "timeout": 8000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-观察到集结": {
+        "recognition": "And", "all_of": ["狭间暗域-领域", "狭间暗域-集结标记"],
+        "next": ["狭间暗域-确认领域已结束", "狭间暗域-请求御魂切换", "[Anchor]暗域战报用途"],
+        "rate_limit": 800, "timeout": 45000, "on_error": ["狭间暗域-仍在集结", "狭间暗域-失败"]
+    },
+    "狭间暗域-仍在集结": {
+        "recognition": "And", "all_of": ["狭间暗域-领域", "狭间暗域-集结标记"],
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院确认集结"},
+        "next": ["狭间暗域-退领域"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-请求御魂切换": {
+        "enabled": false, "max_hit": 1,
+        "recognition": "And", "all_of": ["狭间暗域-可进攻领域"],
+        "next": ["狭间暗域-打开式神录"], "timeout": 5500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-打开式神录": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-可进攻领域", {"recognition": "OCR", "roi": [1169, 446, 111, 97], "expected": "^式神[录錄]$"}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 1000,
+        "next": ["狭间暗域-装备御魂"], "timeout": 7000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-装备御魂": {
+        "recognition": "And", "all_of": ["导航-式神录-识别是否位于式神录"],
+        "action": "Custom", "custom_action": "SwitchSoul", "custom_action_param": {"group_name": "默认分组", "team_name": "默认队伍"},
+        "post_delay": 650,
+        "next": ["[JumpBack]狭间暗域-处理延迟换装确认", "[JumpBack]狭间暗域-从式神录返回", "狭间暗域-换装后回到领域"],
+        "timeout": 8000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-处理延迟换装确认": {
+        "recognition": "And", "all_of": [
+            "装备御魂-识别更换确认",
+            {"recognition": "OCR", "expected": "^[确確]定$", "roi": [401, 354, 467, 135]}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 850, "max_hit": 1
+    },
+    "狭间暗域-从式神录返回": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Or", "any_of": ["装备御魂-识别是否打开预设", "导航-式神录-识别是否位于式神录"]},
+            {"recognition": "Or", "any_of": ["返回-从式神录返回-模板匹配", "狭间暗域-返回箭头"]}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 850, "max_hit": 2
+    },
+    "狭间暗域-换装后回到领域": {
+        "recognition": "And", "all_of": ["狭间暗域-领域"],
+        "next": ["狭间暗域-定位领域"], "timeout": 8000, "on_error": ["狭间暗域-失败"]
+    },
+
+    "狭间暗域-战报面板": {
+        "recognition": "OCR", "roi": [292, 128, 240, 88], "expected": "战报|戰報|战况|戰況"
+    },
+    "狭间暗域-前往按钮": {
+        "recognition": "OCR", "roi": [1106, 592, 108, 83], "expected": "^前往$"
+    },
+    "狭间暗域-初次打开战报": {
+        "recognition": "And", "all_of": ["狭间暗域-可进攻领域", "狭间暗域-战报按钮"], "box_index": 1,
+        "action": "Click", "post_delay": 650,
+        "next": ["狭间暗域-确认战报全歼", "狭间暗域-初次战报已开"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-初次战报已开": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["[Anchor]暗域本档首选"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-续查定位领域": {
+        "anchor": {"暗域战报用途": "狭间暗域-续查战报"},
+        "next": ["狭间暗域-定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-续查战报": {
+        "recognition": "And", "all_of": ["狭间暗域-可进攻领域", "狭间暗域-战报按钮"], "box_index": 1,
+        "action": "Click", "post_delay": 650,
+        "next": ["狭间暗域-确认战报全歼", "狭间暗域-战报已复开"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-战报已复开": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["[Anchor]暗域后继候选"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-选首领": {
+        "anchor": {"暗域点击候选": "狭间暗域-点击首领", "暗域后继候选": "狭间暗域-本域扫描完"},
+        "next": ["狭间暗域-试选一次"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-选副将一": {
+        "anchor": {"暗域点击候选": "狭间暗域-点击副将一", "暗域后继候选": "狭间暗域-选副将二"},
+        "next": ["狭间暗域-试选一次"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-选副将二": {
+        "anchor": {"暗域点击候选": "狭间暗域-点击副将二", "暗域后继候选": "狭间暗域-本域扫描完"},
+        "next": ["狭间暗域-试选一次"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-选精英一": {
+        "anchor": {"暗域点击候选": "狭间暗域-点击精英一", "暗域后继候选": "狭间暗域-选精英二"},
+        "next": ["狭间暗域-试选一次"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-选精英二": {
+        "anchor": {"暗域点击候选": "狭间暗域-点击精英二", "暗域后继候选": "狭间暗域-选精英三"},
+        "next": ["狭间暗域-试选一次"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-选精英三": {
+        "anchor": {"暗域点击候选": "狭间暗域-点击精英三", "暗域后继候选": "狭间暗域-本域扫描完"},
+        "next": ["狭间暗域-试选一次"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-试选一次": {
+        "anchor": {"暗域重试": "狭间暗域-试选二次"},
+        "next": ["狭间暗域-允许点击候选"], "timeout": 2000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-试选二次": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "anchor": {"暗域重试": "狭间暗域-试选三次"},
+        "next": ["狭间暗域-确认前往", "狭间暗域-允许点击候选"], "timeout": 2000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-试选三次": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "anchor": {"暗域重试": "狭间暗域-目标无响应"},
+        "next": ["狭间暗域-确认前往", "狭间暗域-允许点击候选"], "timeout": 2000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-允许点击候选": {
+        "recognition": "And", "all_of": ["狭间暗域-前往按钮"], "inverse": true,
+        "next": ["[Anchor]暗域点击候选"], "timeout": 2000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-点击首领": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "action": "Click", "target": [679, 164, 83, 54],
+        "post_delay": 750, "next": ["狭间暗域-确认前往", "狭间暗域-已击败提示"],
+        "timeout": 1300, "on_error": ["[Anchor]暗域重试", "狭间暗域-失败"]
+    },
+    "狭间暗域-点击副将一": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "action": "Click", "target": [539, 306, 64, 56],
+        "post_delay": 750, "next": ["狭间暗域-确认前往", "狭间暗域-已击败提示"],
+        "timeout": 1300, "on_error": ["[Anchor]暗域重试", "狭间暗域-失败"]
+    },
+    "狭间暗域-点击副将二": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "action": "Click", "target": [856, 293, 58, 50],
+        "post_delay": 750, "next": ["狭间暗域-确认前往", "狭间暗域-已击败提示"],
+        "timeout": 1300, "on_error": ["[Anchor]暗域重试", "狭间暗域-失败"]
+    },
+    "狭间暗域-点击精英一": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "action": "Click", "target": [453, 418, 54, 45],
+        "post_delay": 750, "next": ["狭间暗域-确认前往", "狭间暗域-已击败提示"],
+        "timeout": 1300, "on_error": ["[Anchor]暗域重试", "狭间暗域-失败"]
+    },
+    "狭间暗域-点击精英二": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "action": "Click", "target": [694, 420, 58, 44],
+        "post_delay": 750, "next": ["狭间暗域-确认前往", "狭间暗域-已击败提示"],
+        "timeout": 1300, "on_error": ["[Anchor]暗域重试", "狭间暗域-失败"]
+    },
+    "狭间暗域-点击精英三": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "action": "Click", "target": [938, 413, 60, 44],
+        "post_delay": 750, "next": ["狭间暗域-确认前往", "狭间暗域-已击败提示"],
+        "timeout": 1300, "on_error": ["[Anchor]暗域重试", "狭间暗域-失败"]
+    },
+    "狭间暗域-已击败提示": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [350, 230, 580, 170], "expected": "(目标|敌人|怪物|首领|副将|精英).*(已被击败|已击败|已击破|已死亡|不存在)"},
+            "狭间暗域-弹窗确认按钮"
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 650,
+        "next": ["狭间暗域-目标未开放"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-目标未开放": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["[Anchor]暗域后继候选"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-目标无响应": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["狭间暗域-确认前往", "狭间暗域-确认目标无响应"],
+        "timeout": 2000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-确认目标无响应": {
+        "recognition": "And", "all_of": ["狭间暗域-前往按钮"], "inverse": true,
+        "next": ["[Anchor]暗域未核实"], "timeout": 2000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-首领未核实": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["[Anchor]暗域后继候选"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-副将未核实": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["[Anchor]暗域后继候选"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-精英未核实": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "next": ["[Anchor]暗域后继候选"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-本域扫描完": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"],
+        "action": "Click", "target": [1154, 96, 32, 32], "post_delay": 650,
+        "next": ["狭间暗域-本域已退出战报"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-本域已退出战报": {
+        "recognition": "And", "all_of": ["狭间暗域-可进攻领域"],
+        "next": ["[Anchor]暗域后继领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-本档扫描完": {
+        "recognition": "And", "all_of": ["狭间暗域-可进攻领域"],
+        "next": ["[Anchor]暗域后续档"], "on_error": ["狭间暗域-失败"]
+    },
+
+    "狭间暗域-确认前往": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板", "狭间暗域-前往按钮"], "box_index": 1,
+        "action": "Click", "post_delay": 900,
+        "next": ["狭间暗域-活动已结束弹窗", "狭间暗域-确认跨域", "狭间暗域-等待抵达目标"],
+        "timeout": 22000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-弹窗确认按钮": {
+        "recognition": "OCR", "roi": [664, 396, 190, 78], "expected": "^[确確][定认認]$"
+    },
+    "狭间暗域-确认跨域": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [340, 235, 600, 162], "expected": "(前往|更换|切换).*(领域|暗域|[阵陣]眼)"},
+            "狭间暗域-弹窗确认按钮"
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 900,
+        "next": ["狭间暗域-活动已结束弹窗", "狭间暗域-确认领域已结束", "狭间暗域-挑战选定目标"],
+        "timeout": 22000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-等待抵达目标": {
+        "recognition": "And", "all_of": ["狭间暗域-战报面板"], "inverse": true,
+        "next": ["狭间暗域-活动已结束弹窗", "狭间暗域-确认领域已结束", "狭间暗域-确认跨域", "狭间暗域-挑战选定目标"],
+        "timeout": 22000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-挑战选定目标": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-可进攻领域", {"recognition": "OCR", "roi": [1104, 588, 116, 86], "expected": "^挑[战戰]$"}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 850,
+        "next": ["狭间暗域-活动已结束弹窗", "狭间暗域-奖励已达上限", "狭间暗域-进入备战"],
+        "timeout": 12000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-奖励已达上限": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [335, 232, 610, 174], "expected": "(奖励|挑战).*次数.*(上限|用尽|耗尽)"},
+            {"recognition": "OCR", "roi": [438, 387, 220, 96], "expected": "^取消$"}
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 650,
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院结束结果"},
+        "next": ["狭间暗域-退领域"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-准备按钮": {
+        "recognition": "OCR", "roi": [1106, 527, 139, 120], "expected": "^准[备備]$"
+    },
+    "狭间暗域-进入备战": {
+        "recognition": "And", "all_of": ["狭间暗域-准备按钮"],
+        "next": ["狭间暗域-备战打开队伍预设", "狭间暗域-点准备"],
+        "timeout": 4500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-备战打开队伍预设": {
+        "enabled": false, "recognition": "And", "all_of": ["狭间暗域-准备按钮"],
+        "action": "Click", "target": [32, 650, 47, 45], "post_delay": 700,
+        "next": ["狭间暗域-切换出战"], "timeout": 5500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-切换出战": {
+        "recognition": "OCR", "roi": [400, 150, 560, 400], "expected": "^出[战戰]$",
+        "action": "Custom", "custom_action": "BattleTeam", "custom_action_param": {"position": "御魂", "group_name": "默认分组", "team_name": "默认队伍"},
+        "next": ["狭间暗域-点准备"], "timeout": 5500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-点准备": {
+        "recognition": "And", "all_of": ["狭间暗域-准备按钮"],
+        "action": "Click", "post_delay": 650,
+        "next": ["[Anchor]暗域限伤"], "timeout": 10000, "on_error": ["狭间暗域-失败"]
+    },
+
+    "狭间暗域-退战按钮": {
+        "recognition": "TemplateMatch", "roi": [0, 0, 81, 74], "threshold": 0.82,
+        "template": ["通用图标/战斗_返回_原版.png", "通用图标/战斗_返回.png"],
+        "action": "Click", "pre_delay": 0, "post_delay": 0
+    },
+    "狭间暗域-战斗中": {
+        "recognition": "And", "all_of": [
+            "狭间暗域-退战按钮",
+            {"recognition": "OCR", "roi": [0, 614, 148, 106], "expected": "^(手动|自动|手動|自動)$"}
+        ], "box_index": 0
+    },
+    "狭间暗域-结算标识": {
+        "recognition": "Or", "any_of": [
+            {"recognition": "OCR", "roi": [286, 24, 438, 246], "expected": "^(战斗)?(胜利|失败|戰鬥勝利|戰鬥失敗)$"},
+            {"recognition": "OCR", "roi": [341, 618, 554, 102], "expected": "^点击屏幕继续$"}
+        ]
+    },
+    "狭间暗域-限伤入口": {
+        "recognition": "Or", "any_of": ["狭间暗域-结算标识", "狭间暗域-战斗中"]
+    },
+    "狭间暗域-首领限伤": {
+        "recognition": "And", "all_of": ["狭间暗域-限伤入口"],
+        "action": "Custom", "custom_action": "AbyssDamageGuard", "custom_action_param": {"tier": "boss", "damage_target": 30000000},
+        "next": ["狭间暗域-处理结算", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
+    },
+    "狭间暗域-副将限伤": {
+        "recognition": "And", "all_of": ["狭间暗域-限伤入口"],
+        "action": "Custom", "custom_action": "AbyssDamageGuard", "custom_action_param": {"tier": "general", "damage_target": 20000000},
+        "next": ["狭间暗域-处理结算", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
+    },
+    "狭间暗域-精英限伤": {
+        "recognition": "And", "all_of": ["狭间暗域-限伤入口"],
+        "action": "Custom", "custom_action": "AbyssDamageGuard", "custom_action_param": {"tier": "elite", "damage_target": 10000000},
+        "next": ["狭间暗域-处理结算", "狭间暗域-确认退出战斗"], "timeout": 10000, "on_error": ["狭间暗域-战斗失败"]
+    },
+    "狭间暗域-确认退出战斗": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [333, 202, 615, 188], "expected": "(退出|离开|離開|放弃|放棄).*(战斗|戰鬥)"},
+            "狭间暗域-弹窗确认按钮"
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 600,
+        "next": ["狭间暗域-处理结算", "[Anchor]暗域计次"],
+        "timeout": 11000, "on_error": ["狭间暗域-战斗失败"]
+    },
+    "狭间暗域-处理结算": {
+        "recognition": "And", "all_of": ["狭间暗域-结算标识"],
+        "action": "Click", "target": [395, 618, 487, 86], "post_delay": 750,
+        "next": ["[Anchor]暗域计次", "狭间暗域-结算继续"],
+        "timeout": 11000, "on_error": ["狭间暗域-战斗失败"]
+    },
+    "狭间暗域-结算继续": {
+        "recognition": "OCR", "roi": [341, 618, 554, 102], "expected": "^点击屏幕继续$",
+        "action": "Click", "post_delay": 700,
+        "next": ["[Anchor]暗域计次"], "timeout": 8500, "on_error": ["狭间暗域-战斗失败"]
+    },
+    "狭间暗域-首领战已返回": {
+        "recognition": "And", "all_of": ["狭间暗域-领域"], "max_hit": 2,
+        "next": ["狭间暗域-确认领域已结束", "狭间暗域-首领额满", "狭间暗域-续查定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-副将战已返回": {
+        "recognition": "And", "all_of": ["狭间暗域-领域"], "max_hit": 4,
+        "next": ["狭间暗域-确认领域已结束", "狭间暗域-副将额满", "狭间暗域-续查定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-精英战已返回": {
+        "recognition": "And", "all_of": ["狭间暗域-领域"], "max_hit": 6,
+        "next": ["狭间暗域-确认领域已结束", "狭间暗域-精英额满", "狭间暗域-续查定位领域"], "on_error": ["狭间暗域-失败"]
+    },
+
+    "狭间暗域-正常收尾": {
+        "recognition": "And", "all_of": ["狭间暗域-领域"],
+        "anchor": {"暗域庭院结果": "狭间暗域-庭院结果"},
+        "next": ["狭间暗域-退领域"], "timeout": 5000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-返回箭头": {
+        "recognition": "TemplateMatch", "roi": [0, 0, 114, 93],
+        "template": ["通用图标/返回_黄色.png", "通用图标/返回_黄色_2.png", "通用图标/返回_蓝色.png", "通用图标/返回_蓝色_2.png", "通用图标/返回.png"]
+    },
+    "狭间暗域-退领域": {
+        "recognition": "And", "all_of": ["狭间暗域-领域", "狭间暗域-返回箭头"], "box_index": 1,
+        "action": "Click", "post_delay": 700,
+        "next": ["狭间暗域-确认退暗域", "狭间暗域-退领域选择", "狭间暗域-退神社", "狭间暗域-退寮", "狭间暗域-回庭院"],
+        "timeout": 6000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-确认退暗域": {
+        "recognition": "And", "all_of": [
+            {"recognition": "OCR", "roi": [340, 220, 600, 181], "expected": "(退出|离开|離開).*(狭间暗域|领域|暗域)"},
+            "狭间暗域-弹窗确认按钮"
+        ], "box_index": 1,
+        "action": "Click", "post_delay": 800,
+        "next": ["狭间暗域-退领域选择", "狭间暗域-退神社", "狭间暗域-退寮", "狭间暗域-回庭院"],
+        "timeout": 6500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-退领域选择": {
+        "recognition": "And", "all_of": ["狭间暗域-领域选择", "狭间暗域-返回箭头"], "box_index": 1,
+        "action": "Click", "post_delay": 700,
+        "next": ["狭间暗域-退神社", "狭间暗域-退寮", "狭间暗域-回庭院"],
+        "timeout": 6500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-退神社": {
+        "recognition": "And", "all_of": ["导航-阴阳寮神社-识别是否位于阴阳寮神社界面", "狭间暗域-返回箭头"], "box_index": 1,
+        "action": "Click", "post_delay": 700,
+        "next": ["狭间暗域-退寮", "狭间暗域-回庭院"], "timeout": 6500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-退寮": {
+        "recognition": "And", "all_of": ["导航-阴阳寮-识别是否位于阴阳寮", "狭间暗域-返回箭头"], "box_index": 1,
+        "action": "Click", "post_delay": 700,
+        "next": ["狭间暗域-回庭院"], "timeout": 6500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-庭院": {
+        "recognition": "Or", "any_of": ["导航-庭院-识别是否位于庭院", "导航-庭院-识别是否位于庭院-模板匹配", "导航-庭院-识别是否位于庭院-模型识别"]
+    },
+    "狭间暗域-回庭院": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院"],
+        "post_delay": 350, "next": ["[Anchor]暗域庭院结果"], "timeout": 3500, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-庭院结果": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院"],
+        "next": ["狭间暗域-庭院确认完成", "狭间暗域-庭院确认无目标"], "timeout": 3000, "on_error": ["狭间暗域-庭院确认扫描不全", "狭间暗域-失败"]
+    },
+    "狭间暗域-庭院结束结果": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院"],
+        "next": ["狭间暗域-庭院确认完成", "狭间暗域-庭院确认已结束"], "timeout": 3000, "on_error": ["狭间暗域-失败"]
+    },
+    "狭间暗域-庭院确认完成": {
+        "recognition": "Custom", "custom_recognition": "AbyssProgress", "custom_recognition_param": {"state": "worked"},
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "completed", "reason": "abyss_battles_verified"}
+    },
+    "狭间暗域-庭院确认无目标": {
+        "recognition": "Custom", "custom_recognition": "AbyssProgress", "custom_recognition_param": {"state": "empty"},
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "skipped", "reason": "abyss_no_eligible_target"}
+    },
+    "狭间暗域-庭院确认集结": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "deferred", "reason": "abyss_still_assembling"}
+    },
+    "狭间暗域-庭院确认未开": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "deferred", "reason": "abyss_not_open_in_game"}
+    },
+    "狭间暗域-庭院确认已结束": {
+        "recognition": "Custom", "custom_recognition": "AbyssProgress", "custom_recognition_param": {"state": "empty"},
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "skipped", "reason": "abyss_activity_ended"}
+    },
+    "狭间暗域-庭院确认扫描不全": {
+        "recognition": "And", "all_of": ["狭间暗域-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "abyss_scan_unresolved"},
+        "max_hit": 1
+    },
+    "狭间暗域-战斗失败": {
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "abyss_battle_unverified"},
+        "max_hit": 1
+    },
+    "狭间暗域-失败": {
+        "action": "Custom", "custom_action": "TaskOutcome", "custom_action_param": {"status": "failed", "reason": "abyss_transition_unverified"},
+        "max_hit": 1
+    }
+}

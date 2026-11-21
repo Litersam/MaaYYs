@@ -41,7 +41,11 @@
         "DemonEncounterSkipped",
         "Kun28ReserveGuard",
         "RealmFinish",
-        "RealmGrowthSelect"
+        "RealmGrowthSelect",
+        "TaskOutcome",
+        "AbyssDamageGuard",
+        "DokanBudget",
+        "GuildDonation"
       ]
     }
   },
@@ -81,10 +85,85 @@
       { "$ref": "#/$defs/DemonEncounterSkipped" },
       { "$ref": "#/$defs/Kun28ReserveGuard" },
       { "$ref": "#/$defs/RealmFinish" },
-      { "$ref": "#/$defs/RealmGrowthSelect" }
+      { "$ref": "#/$defs/RealmGrowthSelect" },
+      { "$ref": "#/$defs/TaskOutcome" },
+      { "$ref": "#/$defs/AbyssDamageGuard" },
+      { "$ref": "#/$defs/DokanBudget" },
+      { "$ref": "#/$defs/GuildDonation" }
     ]
   },
   "$defs": {
+    "AbyssDamageGuard": {
+      "properties": {
+        "custom_action": { "const": "AbyssDamageGuard" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "tier": { "enum": ["boss", "general", "elite"] },
+            "damage_target": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["tier", "damage_target"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "GuildDonation": {
+      "properties": {
+        "custom_action": { "const": "GuildDonation" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "material": {
+              "enum": ["低级觉醒材料", "中级觉醒材料", "高级觉醒材料", "低级御灵材料", "中级御灵材料", "高级御灵材料"]
+            }
+          },
+          "required": ["material"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "DokanBudget": {
+      "properties": {
+        "custom_action": { "const": "DokanBudget" },
+        "custom_action_param": {
+          "type": "object",
+          "oneOf": [
+            {
+              "properties": {
+                "op": { "const": "init" },
+                "wait_seconds": { "type": "integer", "minimum": 0, "maximum": 300 },
+                "refresh_attempts": { "type": "integer", "minimum": 0, "maximum": 19 }
+              },
+              "required": ["op"],
+              "additionalProperties": false
+            },
+            {
+              "properties": { "op": { "enum": ["wait", "refresh"] } },
+              "required": ["op"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
+    "TaskOutcome": {
+      "properties": {
+        "custom_action": { "const": "TaskOutcome" },
+        "custom_action_param": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["completed", "skipped", "deferred", "failed"] },
+            "reason": { "type": "string" }
+          },
+          "required": ["status"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_action", "custom_action_param"]
+    },
     "BattleOutcome": {
       "properties": {
         "custom_action": { "const": "BattleOutcome" },

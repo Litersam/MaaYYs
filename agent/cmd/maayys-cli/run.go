@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -131,7 +132,7 @@ func runStepsFromStdin(ctx context.Context, repoRoot string, in io.Reader, jsonl
 		untrack()
 		release()
 		stepOutcome := collector.Outcome()
-		stepErr = validateStepCompletion(step.Task, stepOutcome, stepErr)
+		stepErr = validateStepCompletion(outcomeTaskName(tasksByName, step.Task), stepOutcome, stepErr)
 		mergeStepOutcome(&outcome, step.Task, stepOutcome)
 		writer.EndStep(stepID, detail, stepOutcome, stepErr)
 		if stepErr != nil {
@@ -151,6 +152,36 @@ func bareTaskName(task string) string {
 	return name
 }
 
+var guildActivityTasks = []string{"狭间暗域", "自动道馆突破", "寮三十捐材料", "寮宴会", "自动麒麟"}
+
+func requiresStepOutcome(task string) bool {
+	name := bareTaskName(task)
+	if slices.Contains(guildActivityTasks, name) {
+		return true
+	}
+	switch name {
+	case "好友寄养", "结界挂卡", "结界收菜", "自动悬赏", "自动悬赏封印":
+		return true
+	default:
+		return false
+	}
+}
+
+func outcomeTaskName(tasks map[string]resolvedTask, task string) string {
+	if def, ok := lookupTask(tasks, task); ok {
+		return def.Name
+	}
+	// A caller may use a declared task's raw Pipeline entry instead of its
+	// catalog name. It still needs the same verified business outcome.
+	entry := strings.TrimSpace(task)
+	for _, def := range tasks {
+		if def.Entry == entry && requiresStepOutcome(def.Name) {
+			return def.Name
+		}
+	}
+	return task
+}
+
 func validateStepCompletion(task string, outcome runstate.Outcome, err error) error {
 	if err != nil {
 		return err
@@ -158,11 +189,8 @@ func validateStepCompletion(task string, outcome runstate.Outcome, err error) er
 	if outcome.Status == runstate.Failed {
 		return fmt.Errorf("任务 %s 报告失败", task)
 	}
-	switch bareTaskName(task) {
-	case "好友寄养", "结界挂卡", "结界收菜", "自动悬赏", "自动悬赏封印":
-		if !outcome.Reported {
-			return fmt.Errorf("任务 %s 未确认业务终态", task)
-		}
+	if requiresStepOutcome(task) && !outcome.Reported {
+		return fmt.Errorf("任务 %s 未确认业务终态", task)
 	}
 	return nil
 }

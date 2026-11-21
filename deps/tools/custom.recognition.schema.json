@@ -22,7 +22,10 @@
         "AreaBossName",
         "MysteryShopPrice",
         "RealmTimerProbe",
-        "RealmActivateButton"
+        "RealmActivateButton",
+        "AbyssWindow",
+        "AbyssProgress",
+        "DokanBudgetGate"
       ]
     }
   },
@@ -43,10 +46,49 @@
       { "$ref": "#/$defs/AreaBossName" },
       { "$ref": "#/$defs/MysteryShopPrice" },
       { "$ref": "#/$defs/RealmTimerProbe" },
-      { "$ref": "#/$defs/RealmActivateButton" }
+      { "$ref": "#/$defs/RealmActivateButton" },
+      { "$ref": "#/$defs/AbyssWindow" },
+      { "$ref": "#/$defs/AbyssProgress" },
+      { "$ref": "#/$defs/DokanBudgetGate" }
     ]
   },
   "$defs": {
+    "AbyssWindow": {
+      "properties": {
+        "custom_recognition": { "const": "AbyssWindow" },
+        "custom_recognition_param": {
+          "type": "object",
+          "properties": { "state": { "enum": ["before", "open", "closed"] } },
+          "required": ["state"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_recognition", "custom_recognition_param"]
+    },
+    "AbyssProgress": {
+      "properties": {
+        "custom_recognition": { "const": "AbyssProgress" },
+        "custom_recognition_param": {
+          "type": "object",
+          "properties": { "state": { "enum": ["boss_full", "general_full", "elite_full", "worked", "empty"] } },
+          "required": ["state"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_recognition", "custom_recognition_param"]
+    },
+    "DokanBudgetGate": {
+      "properties": {
+        "custom_recognition": { "const": "DokanBudgetGate" },
+        "custom_recognition_param": {
+          "type": "object",
+          "properties": { "phase": { "enum": ["entry", "opening", "expired", "combat"] } },
+          "required": ["phase"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["custom_recognition", "custom_recognition_param"]
+    },
     "BountyInviteWhitelist": {
       "properties": {
         "custom_recognition": { "const": "BountyInviteWhitelist" },

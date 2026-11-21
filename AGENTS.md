@@ -40,6 +40,8 @@ For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` sepa
 
 `结界收菜` proceeds to experience only after the selected stamina tab confirms `0/N`. An unchanged positive count after two withdrawal clicks is a failure, even if a reward popup was dismissed.
 
+`狭间暗域`, `自动道馆突破`, `寮三十捐材料`, `寮宴会`, and `自动麒麟` also require explicit task outcomes. Use `TaskOutcome` only after verifying the corresponding business terminal; a successful native `StopTask` from navigation or recovery cannot complete these tasks.
+
 ## `maayys-cli.exe` Headless Subprocess Protocol
 Build and verify offline from `agent/`:
 ```powershell

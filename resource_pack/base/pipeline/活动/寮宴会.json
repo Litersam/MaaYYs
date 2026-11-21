@@ -1,0 +1,156 @@
+{
+    "寮宴会": {
+        "next": [
+            "寮宴会-在席", "寮宴会-直接参加", "寮宴会-进入",
+            "寮宴会-在寮初检", "[JumpBack]寮活动-点阴阳寮", "[JumpBack]寮活动-展开庭院菜单"
+        ],
+        "timeout": 10000, "on_error": ["寮宴会-入口未确认"]
+    },
+    "寮宴会-集结旗": {
+        "recognition": "Or",
+        "any_of": [
+            {"recognition": "OCR", "roi": [1030, 7, 44, 70], "expected": "^集\\s*[结結]$"},
+            {"recognition": "And", "all_of": [
+                {"recognition": "OCR", "roi": [1031, 8, 42, 37], "expected": "^集$"},
+                {"recognition": "OCR", "roi": [1031, 39, 42, 37], "expected": "^[结結]$"}
+            ]}
+        ]
+    },
+    "寮宴会-参加按钮": {
+        "recognition": "OCR", "roi": [250, 235, 800, 420],
+        "expected": ["^(参加|进入)宴会$", "^(参加|进入)阴阳寮宴会$"]
+    },
+    "寮宴会-直接参加": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮", "寮宴会-参加按钮"],
+        "box_index": 1, "action": "Click", "max_hit": 1, "post_delay": 1200,
+        "next": ["寮宴会-在席"], "timeout": 8000, "on_error": ["寮宴会-入口未确认"]
+    },
+    "寮宴会-进入": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮", "寮宴会-集结旗"],
+        "target": [1035, 12, 33, 60], "action": "Click", "max_hit": 1, "post_delay": 900,
+        "next": ["寮宴会-在席", "[JumpBack]寮宴会-参加"],
+        "timeout": 8000, "on_error": ["寮宴会-入口未确认"]
+    },
+    "寮宴会-参加": {
+        "recognition": "And", "all_of": ["寮宴会-参加按钮"],
+        "action": "Click", "max_hit": 1, "post_delay": 1200
+    },
+    "寮宴会-在寮初检": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮"], "post_delay": 1200,
+        "next": ["寮宴会-在席", "寮宴会-直接参加", "寮宴会-进入", "寮宴会-在寮复检"],
+        "timeout": 3000, "on_error": ["寮宴会-入口未确认"]
+    },
+    "寮宴会-在寮复检": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮"], "post_delay": 1600,
+        "next": ["寮宴会-在席", "寮宴会-直接参加", "寮宴会-进入", "寮宴会-未开放"],
+        "timeout": 3000, "on_error": ["寮宴会-入口未确认"]
+    },
+    "寮宴会-未开放": {
+        "recognition": "And", "all_of": ["寮活动-阴阳寮"],
+        "next": ["寮宴会-已回庭院延后", "[JumpBack]寮活动-退出阴阳寮"],
+        "timeout": 6500, "on_error": ["寮宴会-归庭失败"]
+    },
+    "寮宴会-会场标题": {
+        "recognition": "OCR", "roi": [440, 0, 400, 53],
+        "expected": ["^阴阳寮宴会$", "^寮宴会$"]
+    },
+    "寮宴会-有效倒计时": {
+        "recognition": "OCR", "roi": [500, 35, 280, 57],
+        "expected": ["^(0?[1-9]|1[0-4])\\s*[:：]\\s*[0-5][0-9]$", "^15\\s*[:：]\\s*00$", "^00?\\s*[:：]\\s*([0-5][1-9]|[1-5]0)$"]
+    },
+    "寮宴会-尚可取餐": {
+        "recognition": "And",
+        "all_of": [
+            "寮宴会-会场标题",
+            {"recognition": "OCR", "roi": [500, 35, 280, 57],
+                "expected": ["^(0?[1-9]|1[0-4])\\s*[:：]\\s*[0-5][0-9]$", "^15\\s*[:：]\\s*00$", "^00?\\s*[:：]\\s*(1[5-9]|[2-5][0-9])$"]},
+            {"recognition": "OCR", "roi": [1055, 82, 220, 144], "expected": "(^|[:： ])\\s*[0-9]\\s*[/／]\\s*10$"}
+        ]
+    },
+    "寮宴会-在席": {
+        "recognition": "And", "all_of": ["寮宴会-会场标题", "寮宴会-有效倒计时"],
+        "next": [
+            "寮宴会-完席",
+            "[JumpBack]寮宴会-收下料理奖励",
+            "[JumpBack]寮宴会-取餐左桌"
+        ],
+        "rate_limit": 750, "timeout": 925000, "on_error": ["寮宴会-结束未确认"]
+    },
+    "寮宴会-取餐左桌": {
+        "recognition": "And", "all_of": ["寮宴会-尚可取餐"],
+        "action": "Click", "target": [32, 501, 20, 16], "max_hit": 60, "post_delay": 350,
+        "next": ["寮宴会-取餐右侧后桌", "寮宴会-餐桌间隔"], "timeout": 1200
+    },
+    "寮宴会-取餐右侧后桌": {
+        "recognition": "And", "all_of": ["寮宴会-尚可取餐"],
+        "action": "Click", "target": [1062, 439, 20, 16], "max_hit": 60, "post_delay": 350,
+        "next": ["寮宴会-取餐右侧前桌", "寮宴会-餐桌间隔"], "timeout": 1200
+    },
+    "寮宴会-取餐右侧前桌": {
+        "recognition": "And", "all_of": ["寮宴会-尚可取餐"],
+        "action": "Click", "target": [1180, 499, 20, 16], "max_hit": 60, "post_delay": 12000
+    },
+    "寮宴会-餐桌间隔": {
+        "post_delay": 4000
+    },
+    "寮宴会-收下料理奖励": {
+        "recognition": "OCR", "roi": [360, 15, 560, 180], "expected": "^料理奖励$",
+        "action": "Click", "target": [608, 633, 64, 32], "max_hit": 32, "post_delay": 700
+    },
+    "寮宴会-完席": {
+        "recognition": "Or",
+        "any_of": [
+            {"recognition": "OCR", "roi": [240, 85, 800, 380], "expected": ["^(本次)?(阴阳寮|寮)?宴会(已)?结束[！!。]?$", "^宴会经验(已达|已达到)上限[！!。]?$", "^本次宴会获得的经验已达上限[！!。]?$"]},
+            {"recognition": "And", "all_of": [
+                "寮宴会-会场标题",
+                {"recognition": "Or", "any_of": [
+                    {"recognition": "OCR", "roi": [500, 35, 280, 57], "expected": "^00?\\s*[:：]\\s*00$"},
+                    {"recognition": "OCR", "roi": [260, 115, 760, 330], "expected": "^经验(已达|已达到)上限[！!。]?$"},
+                    "寮宴会-三道料理已满"
+                ]}
+            ]}
+        ],
+        "next": [
+            "寮宴会-已回庭院完成", "[JumpBack]寮宴会-退出席位",
+            "[JumpBack]寮活动-退出阴阳寮"
+        ],
+        "timeout": 11000, "on_error": ["寮宴会-归庭失败"]
+    },
+    "寮宴会-三道料理已满": {
+        "recognition": "And",
+        "all_of": [
+            {"recognition": "OCR", "roi": [1055, 91, 220, 37], "expected": "(^|[:： ])\\s*10\\s*[/／]\\s*10$"},
+            {"recognition": "OCR", "roi": [1055, 138, 220, 38], "expected": "(^|[:： ])\\s*10\\s*[/／]\\s*10$"},
+            {"recognition": "OCR", "roi": [1055, 185, 220, 38], "expected": "(^|[:： ])\\s*10\\s*[/／]\\s*10$"}
+        ]
+    },
+    "寮宴会-退出席位": {
+        "recognition": "And", "all_of": ["寮宴会-会场标题", "寮活动-返回箭头"],
+        "box_index": 1, "action": "Click", "max_hit": 2, "post_delay": 1000
+    },
+    "寮宴会-已回庭院完成": {
+        "recognition": "And", "all_of": ["寮活动-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "completed", "reason": "banquet_finished_or_xp_capped"}
+    },
+    "寮宴会-已回庭院延后": {
+        "recognition": "And", "all_of": ["寮活动-庭院"],
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "deferred", "reason": "banquet_not_open"}
+    },
+    "寮宴会-入口未确认": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "banquet_entry_unconfirmed"}
+    },
+    "寮宴会-结束未确认": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "banquet_end_unconfirmed"}
+    },
+    "寮宴会-归庭失败": {
+        "max_hit": 1, "timeout": 1,
+        "action": "Custom", "custom_action": "TaskOutcome",
+        "custom_action_param": {"status": "failed", "reason": "banquet_courtyard_unconfirmed"}
+    }
+}

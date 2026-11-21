@@ -1,0 +1,69 @@
+{
+    "task": [
+        {
+            "name": "狭间暗域",
+            "label": "狭间暗域",
+            "entry": "狭间暗域",
+            "group": ["standalone"],
+            "description": "按首领、副将、精英顺序挑战。连续两次读到达标伤害才会请求退战；自然结束时正常结算。",
+            "option": ["狭间暗域伤害目标", "狭间暗域切换御魂", "狭间暗域切换出战队伍"]
+        }
+    ],
+    "option": {
+        "狭间暗域伤害目标": {
+            "type": "input",
+            "label": "伤害目标",
+            "description": "请输入完整伤害值，例如 30000000 表示 3000 万。",
+            "inputs": [
+                {"name": "boss_damage_target", "label": "首领", "default": "30000000", "pipeline_type": "int", "verify": "^[1-9][0-9]*$"},
+                {"name": "general_damage_target", "label": "副将", "default": "20000000", "pipeline_type": "int", "verify": "^[1-9][0-9]*$"},
+                {"name": "elite_damage_target", "label": "精英", "default": "10000000", "pipeline_type": "int", "verify": "^[1-9][0-9]*$"}
+            ],
+            "pipeline_override": {
+                "狭间暗域-首领限伤": {"custom_action_param": {"tier": "boss", "damage_target": "{boss_damage_target}"}},
+                "狭间暗域-副将限伤": {"custom_action_param": {"tier": "general", "damage_target": "{general_damage_target}"}},
+                "狭间暗域-精英限伤": {"custom_action_param": {"tier": "elite", "damage_target": "{elite_damage_target}"}}
+            }
+        },
+        "狭间暗域切换御魂": {
+            "type": "switch",
+            "label": "切换御魂",
+            "default_case": "No",
+            "cases": [
+                {"name": "Yes", "label": "是", "option": ["狭间暗域御魂预设"], "pipeline_override": {"狭间暗域-请求御魂切换": {"enabled": true}}},
+                {"name": "No", "label": "否", "pipeline_override": {"狭间暗域-请求御魂切换": {"enabled": false}}}
+            ]
+        },
+        "狭间暗域御魂预设": {
+            "type": "input",
+            "label": "御魂预设",
+            "inputs": [
+                {"name": "soul_group_name", "label": "分组名称", "default": "默认分组", "pipeline_type": "string"},
+                {"name": "soul_team_name", "label": "队伍名称", "default": "默认队伍", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {
+                "狭间暗域-装备御魂": {"custom_action_param": {"group_name": "{soul_group_name}", "team_name": "{soul_team_name}"}}
+            }
+        },
+        "狭间暗域切换出战队伍": {
+            "type": "switch",
+            "label": "切换出战队伍",
+            "default_case": "No",
+            "cases": [
+                {"name": "Yes", "label": "是", "option": ["狭间暗域出战预设"], "pipeline_override": {"狭间暗域-备战打开队伍预设": {"enabled": true}}},
+                {"name": "No", "label": "否", "pipeline_override": {"狭间暗域-备战打开队伍预设": {"enabled": false}}}
+            ]
+        },
+        "狭间暗域出战预设": {
+            "type": "input",
+            "label": "出战预设",
+            "inputs": [
+                {"name": "battle_group_name", "label": "分组名称", "default": "默认分组", "pipeline_type": "string"},
+                {"name": "battle_team_name", "label": "队伍名称", "default": "默认队伍", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {
+                "狭间暗域-切换出战": {"custom_action_param": {"position": "御魂", "group_name": "{battle_group_name}", "team_name": "{battle_team_name}"}}
+            }
+        }
+    }
+}

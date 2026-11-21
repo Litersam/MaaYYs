@@ -11,6 +11,62 @@ import (
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
 )
 
+func TestNativeGuildActivityOutcome(t *testing.T) {
+	withNativeBattleFixture(t, func(root string, _ *maa.Resource, tasker *maa.Tasker) {
+		t.Logf("native Pipeline runtime: MaaFramework %s", maa.Version())
+		_, tasks, err := loadTaskDefinitions(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range guildActivityTasks {
+			t.Run(name, func(t *testing.T) {
+				entry := tasks[name].Entry
+				const terminal = "Batch2OutcomeFixture"
+				for _, tc := range []struct {
+					name, raw     string
+					want          runstate.Status
+					nativeSuccess bool
+				}{
+					{"stop without business outcome", "", "", true},
+					{"verified work", `{"status":"completed"}`, runstate.Completed, true},
+					{"already done", `{"status":"skipped"}`, runstate.Skipped, true},
+					{"not yet open", `{"status":"deferred"}`, runstate.Deferred, true},
+					{"explicit failure", `{"status":"failed"}`, runstate.Failed, false},
+					{"invalid status", `{"status":"complete"}`, runstate.Failed, false},
+				} {
+					t.Run(tc.name, func(t *testing.T) {
+						start := map[string]any{
+							"recognition": "DirectHit", "action": "StopTask",
+							"next": []string{}, "on_error": []string{}, "timeout": 100, "pre_delay": 0, "post_delay": 0,
+						}
+						override := map[string]any{entry: start}
+						if tc.want != "" {
+							var params map[string]any
+							if err := json.Unmarshal([]byte(tc.raw), &params); err != nil {
+								t.Fatal(err)
+							}
+							start["action"], start["next"] = "DoNothing", []string{terminal}
+							override[terminal] = map[string]any{
+								"action": "Custom", "custom_action": "TaskOutcome",
+								"custom_action_param": params, "next": []string{}, "on_error": []string{}, "timeout": 100, "post_delay": 0,
+							}
+						}
+						collector, release := runstate.Bind(tasker)
+						defer release()
+						job := tasker.PostTask(entry, override).Wait()
+						out := collector.Outcome()
+						ok := validateStepCompletion(outcomeTaskName(tasks, entry), out, nil) == nil
+						if job.Success() != tc.nativeSuccess || out.Reported != (tc.want != "") ||
+							out.Reported && out.Status != tc.want || ok != (tc.nativeSuccess && tc.want != "") {
+							t.Fatalf("job=%v, outcome=%+v, validated=%v", job.Status(), out, ok)
+						}
+					})
+				}
+			})
+		}
+	})
+}
+
 func TestNativeGuildScansSamePageBeforeSwiping(t *testing.T) {
 	withNativeBattleFixture(t, func(_ string, _ *maa.Resource, tasker *maa.Tasker) {
 		const (

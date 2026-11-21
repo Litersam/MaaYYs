@@ -5,38 +5,68 @@
             "label": "道馆突破",
             "entry": "自动道馆",
             "group": ["standalone"],
+            "description": "仅接续已开启的道馆，不发起集结。未开馆时从首次确认起计时，每隔至少 15 秒经庭院重进，刷新耗时计入总等待窗口。到期后停止重进，确认返回庭院才报告跳过。",
             "option": [
-                "道馆阵容预设"
+                "道馆等待开馆",
+                "道馆馆主战换御魂",
+                "道馆切换备战队伍"
             ]
         }
     ],
     "option": {
-        "道馆阵容预设": {
+        "道馆等待开馆": {
             "type": "input",
-            "label": "道馆阵容预设",
-            "description": "填写道馆需要使用的分组和队伍预设名称",
+            "label": "未开馆等待设置",
             "inputs": [
-                {
-                    "name": "group_name",
-                    "label": "分组预设名称",
-                    "description": "填写分组预设名称",
-                    "default": "默认分组",
-                    "pipeline_type": "string"
-                },
-                {
-                    "name": "team_name",
-                    "label": "队伍预设名称",
-                    "description": "填写队伍预设名称",
-                    "default": "默认队伍",
-                    "pipeline_type": "string"
-                }
+                {"name": "wait_seconds", "label": "等待上限（秒）", "description": "0–300，默认 300。0 表示确认未开馆即退回庭院；收尾导航单独限时。", "default": "300", "pipeline_type": "int", "verify": "^(0|[1-9][0-9]?|[12][0-9]{2}|300)$"},
+                {"name": "refresh_attempts", "label": "重进次数上限", "description": "0–19，默认 19。不含初次进入；离开列表前扣一次，失败不补。耗尽后原地等至截止，不再重进。", "default": "19", "pipeline_type": "int", "verify": "^(0|[1-9]|1[0-9])$"}
             ],
             "pipeline_override": {
-                "自动道馆10": {
-                    "custom_action_param": {
-                        "group_name": "{group_name}",
-                        "team_name": "{team_name}"
-                    }
+                "自动道馆": {"custom_action_param": {"op": "init", "wait_seconds": "{wait_seconds}", "refresh_attempts": "{refresh_attempts}"}}
+            }
+        },
+        "道馆馆主战换御魂": {
+            "type": "switch",
+            "label": "馆主战前装备御魂",
+            "description": "仅在寮境发现馆主阶段时执行一次，精确匹配名称。直接从战斗接续时不会退出换装。",
+            "default_case": "No",
+            "cases": [
+                {"name": "Yes", "option": ["道馆阵容预设"], "pipeline_override": {"道馆-打开馆主预设": {"enabled": true}}},
+                {"name": "No", "pipeline_override": {"道馆-打开馆主预设": {"enabled": false}}}
+            ]
+        },
+        "道馆阵容预设": {
+            "type": "input",
+            "label": "馆主御魂预设名称",
+            "inputs": [
+                {"name": "group_name", "label": "分组预设名称", "default": "默认分组", "pipeline_type": "string"},
+                {"name": "team_name", "label": "队伍预设名称", "default": "默认队伍", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {
+                "道馆-装备馆主预设": {
+                    "custom_action_param": {"group_name": "{group_name}", "team_name": "{team_name}"}
+                }
+            }
+        },
+        "道馆切换备战队伍": {
+            "type": "switch",
+            "label": "备战时切换出战队伍",
+            "default_case": "No",
+            "cases": [
+                {"name": "Yes", "option": ["道馆备战队伍名称"], "pipeline_override": {"道馆-备战切队": {"enabled": true}}},
+                {"name": "No", "pipeline_override": {"道馆-备战切队": {"enabled": false}}}
+            ]
+        },
+        "道馆备战队伍名称": {
+            "type": "input",
+            "label": "备战队伍名称（普通和馆主战共用）",
+            "inputs": [
+                {"name": "battle_group_name", "label": "分组预设名称", "default": "默认分组", "pipeline_type": "string"},
+                {"name": "battle_team_name", "label": "出战队伍名称", "default": "默认队伍", "pipeline_type": "string"}
+            ],
+            "pipeline_override": {
+                "道馆-备战切队": {
+                    "custom_action_param": {"group_name": "{battle_group_name}", "team_name": "{battle_team_name}"}
                 }
             }
         }

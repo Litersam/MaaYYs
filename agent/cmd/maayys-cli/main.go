@@ -72,6 +72,10 @@ func runCheckResources(repoRoot string, paths []string) error {
 	if len(paths) == 0 {
 		paths = defaultResourcePaths(repoRoot)
 	}
+	_, tasks, err := loadTaskDefinitions(repoRoot)
+	if err != nil {
+		return err
+	}
 	if err := initMaaFramework(repoRoot); err != nil {
 		return err
 	}
@@ -81,10 +85,18 @@ func runCheckResources(repoRoot string, paths []string) error {
 		return err
 	}
 	defer res.Destroy()
-	for _, n := range []string{
+	nodes := []string{
 		"账号登录", "启动游戏", "关闭阴阳师", "契灵结契-开始", "组队刷本-开局", "开始逢魔-检查时间",
 		"好友寄养", "结界挂卡", "结界收菜", "自动结界", "寮突", "通用加成-归位", "装备御魂",
-	} {
+	}
+	for _, name := range guildActivityTasks {
+		task, ok := tasks[name]
+		if !ok {
+			return fmt.Errorf("missing catalog task %q", name)
+		}
+		nodes = append(nodes, task.Entry)
+	}
+	for _, n := range nodes {
 		if _, err := res.GetNodeJSON(n); err != nil {
 			return fmt.Errorf("missing node %q: %w", n, err)
 		}

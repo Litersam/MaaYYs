@@ -65,6 +65,9 @@ func TestCatalogLoadsTasksIncludingLogin(t *testing.T) {
 	got := make(map[string]CatalogTask, len(out.Tasks))
 	validCategories := map[string]bool{"daily": true, "standalone": true, "promotion": true}
 	for _, item := range out.Tasks {
+		if _, duplicate := got[item.Name]; duplicate {
+			t.Errorf("duplicate catalog task name %q", item.Name)
+		}
 		got[item.Name] = item
 		if !validCategories[item.Category] {
 			t.Errorf("task %q has unexpected category %q (file=%s)", item.Name, item.Category, item.File)
@@ -97,11 +100,9 @@ func TestCatalogLoadsTasksIncludingLogin(t *testing.T) {
 	if err := json.Unmarshal(ifaceRaw, &iface); err != nil {
 		t.Fatalf("parse interface.json: %v", err)
 	}
-	foundLoginImport := false
+	imports := make(map[string]bool)
 	for _, imp := range iface.Import {
-		if imp == "tasks/standalone/账号登录.json" {
-			foundLoginImport = true
-		}
+		imports[imp] = true
 		if strings.HasPrefix(imp, "tasks/") && strings.Count(imp, "/") < 2 {
 			t.Errorf("interface.json still imports root orphan task path %q", imp)
 		}
@@ -109,9 +110,69 @@ func TestCatalogLoadsTasksIncludingLogin(t *testing.T) {
 			t.Errorf("interface.json import %q missing on disk: %v", imp, err)
 		}
 	}
-	if !foundLoginImport {
-		t.Error("interface.json missing tasks/standalone/账号登录.json import")
+	for _, name := range []string{"账号登录", "狭间暗域", "寮宴会"} {
+		taskFile := "tasks/standalone/" + name + ".json"
+		if !imports[taskFile] {
+			t.Errorf("interface.json missing %s import", taskFile)
+		}
+		if task := got[name]; task.Category != "standalone" || task.File != taskFile {
+			t.Errorf("task %q missing or miscategorized: %+v", name, task)
+		}
 	}
+}
+
+func TestGuildActivitiesRequireVerifiedOutcome(t *testing.T) {
+	_, tasks, err := loadTaskDefinitions(testRepoRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range guildActivityTasks {
+		def, ok := tasks[name]
+		if !ok {
+			t.Errorf("missing guild activity %q", name)
+			continue
+		}
+		for _, query := range []string{name, def.Category + "/" + name, def.Entry} {
+			resolved := outcomeTaskName(tasks, query)
+			c := new(runstate.Collector)
+			if err := validateStepCompletion(resolved, c.Outcome(), nil); err == nil {
+				t.Errorf("%q: accepted a native success with no business terminal", query)
+			}
+			c.Record(runstate.Completed)
+			if err := validateStepCompletion(resolved, c.Outcome(), nil); err != nil {
+				t.Errorf("%q: rejected a verified business terminal: %v", query, err)
+			}
+		}
+	}
+}
+
+func TestGuildActivityNumericOptionsReachNativeActions(t *testing.T) {
+	_, tasks, err := loadTaskDefinitions(testRepoRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertParam := func(override map[string]any, node, key string, want int) {
+		t.Helper()
+		n, _ := override[node].(map[string]any)
+		params, _ := n["custom_action_param"].(map[string]any)
+		if got := params[key]; got != want {
+			t.Errorf("%s.%s = %#v (%T), want integer %d", node, key, got, got, want)
+		}
+	}
+	abyss := tasks["狭间暗域"]
+	defaults := resolveTaskOverride(abyss, nil)
+	assertParam(defaults, "狭间暗域-首领限伤", "damage_target", 30_000_000)
+	assertParam(defaults, "狭间暗域-副将限伤", "damage_target", 20_000_000)
+	assertParam(defaults, "狭间暗域-精英限伤", "damage_target", 10_000_000)
+	custom := resolveTaskOverride(abyss, map[string]any{
+		"boss_damage_target": 31_200_000, "general_damage_target": "21900000", "elite_damage_target": 11_600_000,
+	})
+	assertParam(custom, "狭间暗域-首领限伤", "damage_target", 31_200_000)
+	assertParam(custom, "狭间暗域-副将限伤", "damage_target", 21_900_000)
+	assertParam(custom, "狭间暗域-精英限伤", "damage_target", 11_600_000)
+	dokan := tasks["自动道馆突破"]
+	assertParam(resolveTaskOverride(dokan, nil), dokan.Entry, "wait_seconds", 300)
+	assertParam(resolveTaskOverride(dokan, map[string]any{"wait_seconds": 0}), dokan.Entry, "wait_seconds", 0)
 }
 
 func TestV413NestedOptionsAndBackwardCompatLookup(t *testing.T) {
