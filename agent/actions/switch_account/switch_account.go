@@ -36,9 +36,10 @@ const (
 )
 
 var (
-	errDisplaced  = errors.New("账号在其他设备登录，已中止换号以保护在线状态")
-	displacedExpr = regexp.MustCompile(`其他设备登录|在其他设备|被迫下线|已在其他设备`)
-	regexCache    sync.Map
+	errDisplaced      = errors.New("账号在其他设备登录，已中止换号以保护在线状态")
+	errSecurityVerify = errors.New("触发网易登录安全验证（需短信验证或固定设备登录）")
+	displacedExpr     = regexp.MustCompile(`其他设备登录|在其他设备|被迫下线|已在其他设备`)
+	regexCache        sync.Map
 )
 
 const (
@@ -355,6 +356,14 @@ func (a *SwitchAccount) ensureSurface(ctx *maa.Context, ctrl *maa.Controller, ho
 			return false, nil, coldStarted, cgTaps, err
 		}
 
+		// Clear any leftover full-screen security-verify WebView from a prior run before starting login.
+		if a.hasSecurityVerifyPage(ctx, f) {
+			ctrl.PostClick(1232, 65).Wait()
+			idleFrames = 0
+			time.Sleep(postClickSettle)
+			continue
+		}
+
 		// Always clear foreground blocking modals BEFORE checking background login surface,
 		// because bottom-left CADPA 8+ badge can still match >= 0.8 behind semi-transparent overlays.
 		if a.dismissStartupPopups(ctx, ctrl, f) || (!a.hasNeteaseAccountDialog(ctx, f) && a.acceptAgreementModal(ctx, ctrl, f)) {
@@ -478,6 +487,11 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 				return nil, err
 			}
 		}
+		if a.hasSecurityVerifyPage(ctx, f) {
+			ctrl.PostClick(1232, 65).Wait()
+			time.Sleep(postClickSettle)
+			continue
+		}
 		// Clear foreground engine-update / session-expired modals first.
 		if a.dismissStartupPopups(ctx, ctrl, f) {
 			time.Sleep(postClickSettle)
@@ -564,6 +578,9 @@ func (a *SwitchAccount) loginAndSelectPlatform(ctx *maa.Context, ctrl *maa.Contr
 			if err != nil {
 				return nil, err
 			}
+		}
+		if a.hasSecurityVerifyPage(ctx, f) {
+			return nil, errSecurityVerify
 		}
 		appleBox := a.matchTemplate(ctx, f.img, tplPlatformApple, maa.Rect{475, 320, 165, 165}, 0.8)
 		androidBox := a.matchTemplate(ctx, f.img, tplPlatformAndroid, maa.Rect{640, 320, 165, 165}, 0.8)
@@ -828,13 +845,16 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 		}
 		time.Sleep(postClickSettle)
 		nextF, _, wErr := a.waitUntil(ctx, ctrl, 1050*time.Millisecond, fastPollInterval, func(cf *Frame) bool {
-			return a.hasPlatformDialog(ctx, cf) || a.hasAgreementModal(ctx, cf) || !a.isPasswordPrompt(ctx, cf)
+			return a.hasSecurityVerifyPage(ctx, cf) || a.hasPlatformDialog(ctx, cf) || a.hasAgreementModal(ctx, cf) || !a.isPasswordPrompt(ctx, cf)
 		})
 		return nextF, wErr
 	}
 	postF, err := submitLogin(f)
 	if err != nil {
 		return nil, err
+	}
+	if a.hasSecurityVerifyPage(ctx, postF) {
+		return nil, errSecurityVerify
 	}
 	if a.hasPlatformDialog(ctx, postF) {
 		return postF, nil
@@ -852,6 +872,9 @@ func (a *SwitchAccount) passwordFallback(ctx *maa.Context, ctrl *maa.Controller,
 			ctrl.PostClick(464, 544).Wait()
 			time.Sleep(280 * time.Millisecond)
 			postF, _ = submitLogin(nil)
+		}
+		if a.hasSecurityVerifyPage(ctx, postF) {
+			return nil, errSecurityVerify
 		}
 		if postF != nil && a.acceptAgreementModal(ctx, ctrl, postF) {
 			return nil, nil
@@ -1105,6 +1128,14 @@ func (a *SwitchAccount) hasNeteaseAccountDialog(ctx *maa.Context, f *Frame) bool
 		a.isLoginMethodChooser(ctx, f) ||
 		a.isPasswordPrompt(ctx, f) ||
 		a.findTextBox(ctx, f, maa.Rect{400, 150, 480, 120}, "网易游戏|网易账号|邮箱账号|账号登录") != nil
+}
+
+func (a *SwitchAccount) hasSecurityVerifyPage(ctx *maa.Context, f *Frame) bool {
+	if f == nil {
+		return false
+	}
+	return a.findTextBox(ctx, f, maa.Rect{420, 15, 440, 95}, "登录安全验证|安全验证") != nil ||
+		a.findTextBox(ctx, f, maa.Rect{90, 260, 1100, 290}, "账号存在安全风险|发送.*进行验证|原固定设备登录") != nil
 }
 
 func (a *SwitchAccount) hasAgreementModal(ctx *maa.Context, f *Frame) bool {

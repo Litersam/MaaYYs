@@ -407,6 +407,37 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 		t.Logf("single-pass full-frame OCR latency on textless CG frame: %v (status=%v)", time.Since(tCG), cgFull.Status())
 	}
 
+	secShot := `D:\projs\game-desk-next\.data\screenshots\3adfdcf4-2301-461a-84ef-c06f7cb5e8dd.png`
+	if img, err := loadPNG(secShot); err == nil {
+		// Warm up once, then measure single-pass full-frame detection of 登录安全验证 / 账号存在安全风险.
+		_ = tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{ROI: maa.NewTargetRect(maa.Rect{0, 0, 1280, 720})}, img).Wait()
+		tSec := time.Now()
+		secReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI: maa.NewTargetRect(maa.Rect{0, 0, 1280, 720}),
+		}, img).Wait()
+		secDur := time.Since(tSec)
+		secDetail, _ := secReco.GetDetail()
+		hitTitle, hitBody := false, false
+		if secDetail != nil && len(secDetail.NodeDetails) > 0 && secDetail.NodeDetails[0].Recognition != nil && secDetail.NodeDetails[0].Recognition.Results != nil {
+			for _, item := range secDetail.NodeDetails[0].Recognition.Results.All {
+				if ocr, ok := item.AsOCR(); ok {
+					cx := ocr.Box.X() + ocr.Box.Width()/2
+					cy := ocr.Box.Y() + ocr.Box.Height()/2
+					if strings.Contains(ocr.Text, "安全验证") && cx >= 420 && cx <= 860 && cy >= 15 && cy <= 110 {
+						hitTitle = true
+					}
+					if strings.Contains(ocr.Text, "安全风险") && cx >= 90 && cx <= 1190 && cy >= 260 && cy <= 550 {
+						hitBody = true
+					}
+				}
+			}
+		}
+		if !hitTitle || !hitBody {
+			t.Fatalf("failed to detect security verify page via full-frame OCR (hitTitle=%v, hitBody=%v)", hitTitle, hitBody)
+		}
+		t.Logf("security-verify page full-frame OCR latency: %v (hitTitle=%v, hitBody=%v)", secDur, hitTitle, hitBody)
+	}
+
 	if dir := strings.TrimSpace(os.Getenv("MAAYYS_BENCH_IMAGES_DIR")); dir != "" {
 		entries, _ := os.ReadDir(dir)
 		for _, ent := range entries {
