@@ -68,8 +68,15 @@
         "next": ["组队管控-确认御魂层数"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-确认御魂层数": {
-        "recognition": "OCR", "roi": [896, 100, 269, 84], "expected": ["^(御魂[ ·・]*)?(拾层|十层)$", "^政大跑$"],
+        "recognition": "Or", "any_of": ["组队管控-御魂层文字", "组队管控-御魂层图样"],
         "next": ["组队管控-御魂组队按钮"], "timeout": 5000, "on_error": ["组队管控-失败归庭"]
+    },
+    "组队管控-御魂层文字": {
+        "recognition": "OCR", "roi": [896, 100, 269, 84], "expected": ["^(御魂[ ·・]*)?(拾层|十层)$", "^八岐大蛇$"]
+    },
+    "组队管控-御魂层图样": {
+        "recognition": "Custom", "custom_recognition": "PartyGlyph",
+        "custom_recognition_param": {"kind": "soul_10", "box": [896, 100, 269, 84]}
     },
     "组队管控-层数向下": {
         "action": "Swipe", "begin": [155, 593], "end": [155, 219], "duration": 450,
@@ -221,7 +228,8 @@
     },
     "组队管控-庭院等待": {
         "recognition": "And", "all_of": ["组队管控-庭院"],
-        "next": ["组队管控-加入房间", "组队管控-队员直接备战", "[JumpBack]组队管控-接邀判定", "[JumpBack]通用弹窗-寄养归来-稍后"],
+        "next": ["[JumpBack]组队管控-接邀判定", "组队管控-加入房间", "组队管控-队员直接备战",
+            "组队管控-拒绝陌生备战", "[JumpBack]通用弹窗-寄养归来-稍后"],
         "timeout": 90000, "rate_limit": 400, "on_error": ["组队管控-等邀超时"]
     },
     "组队管控-收到邀请": {
@@ -229,15 +237,15 @@
     },
     "组队管控-邀请普通接受": {
         "recognition": "Custom", "custom_recognition": "PartyGlyph",
-        "custom_recognition_param": {"kind": "invite_accept", "box": [106, 213, 80, 303]}
+        "custom_recognition_param": {"kind": "invite_accept", "box": [106, 213, 80, 311]}
     },
     "组队管控-邀请默认接受": {
         "recognition": "Custom", "custom_recognition": "PartyGlyph",
-        "custom_recognition_param": {"kind": "invite_accept_default", "box": [197, 208, 84, 312]}
+        "custom_recognition_param": {"kind": "invite_accept_default", "box": [197, 208, 84, 316]}
     },
     "组队管控-邀请拒绝": {
         "recognition": "TemplateMatch", "template": ["账号登录/gi_i_reject.png"],
-        "roi": [5, 208, 84, 312], "threshold": 0.83
+        "roi": [5, 208, 84, 316], "threshold": 0.83
     },
     "组队管控-接邀判定": {
         "recognition": "And", "all_of": ["组队管控-收到邀请"],
@@ -246,11 +254,23 @@
     },
     "组队管控-加入房间": {
         "recognition": "And", "all_of": ["组队管控-成员下一局", "组队管控-房间"],
-        "next": ["组队管控-开战记账"]
+        "next": ["组队管控-队员直接备战", "组队管控-队员房间解散", "组队管控-拒绝陌生备战"],
+        "timeout": 19000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-队员直接备战": {
-        "recognition": "And", "all_of": ["组队管控-成员下一局", "组队管控-准备战斗"],
+        "recognition": "And", "all_of": ["组队管控-成员下一局", "组队管控-本局已备战"],
         "next": ["组队管控-开战记账"]
+    },
+    "组队管控-本局已备战": {
+        "recognition": "Or", "any_of": ["组队管控-准备战斗", "狭间暗域-战斗中"]
+    },
+    "组队管控-拒绝陌生备战": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member_unauthorized"}},
+            "组队管控-本局已备战"
+        ],
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "unauthorized"},
+        "next": ["组队管控-归庭"]
     },
     "组队管控-开战记账": {
         "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "start"},
@@ -283,13 +303,15 @@
     },
     "组队管控-战后去向": {
         "next": [
-            "组队管控-预算达标", "组队管控-队员直接备战",
+            "组队管控-预算达标",
+            "[JumpBack]组队管控-队员再次接邀", "组队管控-队员房间解散",
+            "组队管控-默认同队续刷", "组队管控-加入房间", "组队管控-队员直接备战",
+            "组队管控-拒绝陌生备战",
             "[JumpBack]组队管控-默认邀请确定", "[JumpBack]组队管控-默认邀请勾选", "[JumpBack]组队管控-关胜利画面",
             "[JumpBack]组队刷本-房主-点击空白区域继续", "[JumpBack]组队刷本-房主-点击屏幕继续",
             "[JumpBack]组队刷本-房主-点击本次通关时间", "[JumpBack]组队刷本-房主-领取奖励",
             "[JumpBack]组队刷本-房主-获得宝藏", "[JumpBack]组队刷本-房主-点赞", "[JumpBack]组队刷本-识别分享",
-            "[JumpBack]组队管控-队员再次接邀", "组队管控-队员房间解散",
-            "组队管控-加入房间", "组队管控-房间续刷", "组队管控-单人续刷路由"
+            "组队管控-房间续刷", "组队管控-单人续刷路由"
         ], "timeout": 22000, "rate_limit": 350, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-关胜利画面": {
@@ -336,6 +358,16 @@
     },
     "组队管控-成员下一局": {
         "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member_authorized"}
+    },
+    "组队管控-默认同队续刷": {
+        "recognition": "And", "all_of": [
+            "组队管控-房间",
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "member_same_captain"}}
+        ],
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "renew"},
+        "next": ["组队管控-加入房间", "组队管控-队员直接备战", "组队管控-队员房间解散",
+            "组队管控-拒绝陌生备战"],
+        "timeout": 12000, "on_error": ["组队管控-失败归庭"]
     },
     "组队管控-单人续刷路由": {
         "recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "solo"},

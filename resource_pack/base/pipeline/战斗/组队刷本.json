@@ -174,10 +174,32 @@
     },
     "组队刷本-队友": {
         "enabled": false,
-        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "start"},
-        "next": ["组队刷本-手动结算", "组队管控-战败", "[JumpBack]组队管控-准备战斗", "[JumpBack]组队刷本-队友-点击空白区域继续", "[JumpBack]组队刷本-队友-点击屏幕继续", "[JumpBack]组队刷本-队友-领取奖励", "[JumpBack]组队刷本-队友-获得宝藏", "[JumpBack]组队刷本-队友-点击本次通关时间", "[JumpBack]组队刷本-队友-接受邀请", "[JumpBack]组队刷本-队友-点击确认", "[JumpBack]组队刷本-队友-特殊结算界面点击", "[JumpBack]组队刷本-识别分享", "[JumpBack]组队刷本-房主-点赞"],
+        "next": ["组队刷本-房客看到准备", "组队刷本-房客已在战斗",
+            "[JumpBack]组队管控-关胜利画面", "[JumpBack]组队刷本-队友-点击空白区域继续",
+            "[JumpBack]组队刷本-队友-点击屏幕继续", "[JumpBack]组队刷本-队友-领取奖励",
+            "[JumpBack]组队刷本-队友-获得宝藏", "[JumpBack]组队刷本-队友-点击本次通关时间",
+            "[JumpBack]组队刷本-队友-接受邀请", "[JumpBack]组队刷本-队友-点击确认",
+            "[JumpBack]组队刷本-队友-特殊结算界面点击", "[JumpBack]组队刷本-识别分享", "[JumpBack]组队刷本-房主-点赞"],
         "on_error": ["组队刷本-队友-结束"],
         "recognition": "DirectHit",
+        "timeout": 120000
+    },
+    "组队刷本-房客看到准备": {
+        "recognition": "And", "all_of": ["组队管控-准备战斗"],
+        "next": ["组队刷本-房客新一局"]
+    },
+    "组队刷本-房客已在战斗": {
+        "recognition": "And", "all_of": [
+            {"recognition": "Custom", "custom_recognition": "PartyState", "custom_recognition_param": {"is": "manual_guest_first"}},
+            "狭间暗域-战斗中"
+        ],
+        "next": ["组队刷本-房客新一局"]
+    },
+    "组队刷本-房客新一局": {
+        "action": "Custom", "custom_action": "PartyStateAction", "custom_action_param": {"op": "start"},
+        "next": ["组队刷本-手动结算", "组队管控-战败", "[JumpBack]组队管控-准备战斗",
+            "[JumpBack]通用弹窗-御魂溢出-知道了"],
+        "on_error": ["组队刷本-队友-结束"],
         "timeout": 120000
     },
     "组队刷本-队友-接受邀请": {

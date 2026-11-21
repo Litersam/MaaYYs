@@ -3,7 +3,9 @@
 package main
 
 import (
+	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"os"
 	"path/filepath"
@@ -76,6 +78,7 @@ func TestNativePartyHistoricalInviteColumns(t *testing.T) {
 			{"historical no invitation", dir, []partyHistoryCrop{{"native-invite-no-invitation.png", 90, 200}}, hits{}},
 			{"same card with all buttons", dir, []partyHistoryCrop{normal, def, reject}, hits{true, true, true}},
 			{"ordinary accept in next row", dir, []partyHistoryCrop{{"gi_i_accept.png", 113, 335}}, hits{normal: true}},
+			{"ordinary accept at y445", dir, []partyHistoryCrop{{"gi_i_accept.png", 113, 445}}, hits{normal: true}},
 			{"default accept in next row", dir, []partyHistoryCrop{{def.file, def.x, def.y + 110}}, hits{def: true}},
 			{"existing default button", filepath.Dir(current), []partyHistoryCrop{{filepath.Base(current), 201, 221}}, hits{def: true}},
 			{"reject alone cannot enter accept routing", dir, []partyHistoryCrop{reject}, hits{reject: true}},
@@ -111,15 +114,25 @@ func TestNativePartyHistoricalInviteColumns(t *testing.T) {
 func TestNativePartyHistoricalSoulTitles(t *testing.T) {
 	dir := partyHistoryDir(t)
 	const guard = "组队管控-确认御魂层数"
-	// Native v5.14.2 reads the ornate 10/11/12 crops as 政大跑, 巫女大地
-	// and 神別. The original labels and these exact alternatives must remain
-	// disjoint; 虚无大蛇 (13) must never be accepted by any configuration.
-	frames := map[string]image.Image{
-		"soul_10": partyHistoryFrame(t, dir, partyHistoryCrop{"o_orochi_check_10.png", 929, 123}),
-		"soul_11": partyHistoryFrame(t, dir, partyHistoryCrop{"o_orochi_check_11.png", 929, 123}),
-		"soul_12": partyHistoryFrame(t, dir, partyHistoryCrop{"o_orochi_check_12.png", 929, 116}),
-		"soul_13": partyHistoryFrame(t, dir, partyHistoryCrop{"o_orochi_check_13.png", 929, 121}),
-		"empty":   partyHistoryFrame(t, dir),
+	type titleFrame struct {
+		name, floor string
+		image.Image
+	}
+	frames := []titleFrame{{"empty", "", blankPartyFrame()}}
+	for n, y := range []int{123, 123, 116, 121} {
+		floor := fmt.Sprintf("soul_%d", n+10)
+		crop, err := loadPNG(filepath.Join(dir, fmt.Sprintf("o_orochi_check_%d.png", n+10)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, off := range []image.Point{{}, {-2, -2}, {2, 2}, {-4, -4}, {-4, 4}, {4, -4}, {4, 4}} {
+			for _, shade := range []uint8{0, 169} {
+				f := blankPartyFrame()
+				draw.Draw(f, f.Bounds(), image.NewUniform(color.Gray{Y: shade}), image.Point{}, draw.Src)
+				pastePartyCrop(f, crop, 929+off.X, y+off.Y)
+				frames = append(frames, titleFrame{fmt.Sprintf("%s %v bg=%d", floor, off, shade), floor, f})
+			}
+		}
 	}
 	withNativeBattleFixture(t, func(root string, res *maa.Resource, tasker *maa.Tasker) {
 		_, tasks, err := loadTaskDefinitions(root)
@@ -138,10 +151,10 @@ func TestNativePartyHistoricalSoulTitles(t *testing.T) {
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				runPartyHistoryProbe(t, res, tasker, func(ctx *maa.Context) {
-					for title, frame := range frames {
-						d, err := ctx.RunRecognition(guard, frame, tc.overrides)
-						if hit := d != nil && d.Hit; err != nil || hit != (title == tc.want) {
-							t.Errorf("title %s: hit=%v want=%v detail=%+v err=%v", title, hit, title == tc.want, d, err)
+					for _, frame := range frames {
+						d, err := ctx.RunRecognition(guard, frame.Image, tc.overrides)
+						if hit := d != nil && d.Hit; err != nil || hit != (frame.floor == tc.want) {
+							t.Errorf("title %s: hit=%v want=%v detail=%+v err=%v", frame.name, hit, frame.floor == tc.want, d, err)
 						}
 					}
 				})

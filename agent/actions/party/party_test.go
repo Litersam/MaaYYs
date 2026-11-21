@@ -47,24 +47,18 @@ func TestInviteMatchesEntireName(t *testing.T) {
 	}
 }
 
-func TestRoomMustHaveEveryExpectedSlot(t *testing.T) {
+func TestRoomRejectsUnprovenSeats(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
-	avatar := image.NewUniform(color.RGBA{175, 54, 90, 255})
-	draw.Draw(img, image.Rect(990, 205, 1085, 313), avatar, image.Point{}, draw.Src)
-	draw.Draw(img, image.Rect(590, 220, 705, 328), avatar, image.Point{}, draw.Src)
-	white := image.NewUniform(color.White)
-	draw.Draw(img, image.Rect(622, 257, 681, 265), white, image.Point{}, draw.Src)
-	draw.Draw(img, image.Rect(648, 231, 655, 291), white, image.Point{}, draw.Src)
-	if seatsOccupied(img, middleRoomSlot, rightRoomSlot) {
-		t.Fatal("a three-player room with a middle-slot plus is not full")
-	}
-	draw.Draw(img, image.Rect(590, 220, 705, 328), avatar, image.Point{}, draw.Src)
-	if !seatsOccupied(img, middleRoomSlot, rightRoomSlot) {
-		t.Fatal("both occupied slots should be recognized")
-	}
-	draw.Draw(img, image.Rect(590, 220, 705, 328), image.NewUniform(color.Gray{87}), image.Point{}, draw.Src)
-	if seatsOccupied(img, middleRoomSlot, rightRoomSlot) {
-		t.Fatal("unknown slot without a plus isn't proof of occupancy")
+	paint := image.NewUniform(color.RGBA{175, 54, 90, 255})
+	for _, slot := range []roomSeat{middleRoomSlot, rightRoomSlot, seaRoomSlot} {
+		r := image.Rect(slot.portrait.X(), slot.portrait.Y(), slot.portrait.X()+slot.portrait.Width(), slot.portrait.Y()+slot.portrait.Height())
+		if seatsOccupied(img, slot) {
+			t.Errorf("%v: unknown slot without a plus must not count", r)
+		}
+		draw.Draw(img, r, paint, image.Point{}, draw.Src)
+		if seatsOccupied(img, slot) {
+			t.Errorf("%v: a flat color block is not a portrait", r)
+		}
 	}
 }
 

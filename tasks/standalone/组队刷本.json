@@ -52,12 +52,14 @@
         {"name": "soul_11", "label": "巫女大蛇·悲鸣", "pipeline_override": {
           "组队管控-初始化": {"custom_action_param": {"dungeon": "soul_11"}},
           "组队管控-选择御魂层数": {"expected": ["^悲鸣$"]},
-          "组队管控-确认御魂层数": {"expected": ["^(巫女大蛇[·・])?悲鸣$", "^巫女大蛇$", "^巫女大地$"]}
+          "组队管控-御魂层文字": {"expected": ["^(巫女大蛇[·・])?悲鸣$", "^巫女大蛇$"]},
+          "组队管控-御魂层图样": {"custom_recognition_param": {"kind": "soul_11", "box": [896, 100, 269, 84]}}
         }},
         {"name": "soul_12", "label": "大蛇神·神罚", "pipeline_override": {
           "组队管控-初始化": {"custom_action_param": {"dungeon": "soul_12"}},
           "组队管控-选择御魂层数": {"expected": ["^神罚$"]},
-          "组队管控-确认御魂层数": {"expected": ["^(大蛇神[·・])?神罚$", "^神別$"]}
+          "组队管控-御魂层文字": {"expected": ["^(大蛇神[·・])?神罚$"]},
+          "组队管控-御魂层图样": {"custom_recognition_param": {"kind": "soul_12", "box": [896, 100, 269, 84]}}
         }},
         {"name": "eternity_sea", "label": "永生之海", "option": ["组队刷本-dungeon_layer"], "pipeline_override": {
           "组队管控-初始化": {"custom_action_param": {"dungeon": "eternity_sea"}},

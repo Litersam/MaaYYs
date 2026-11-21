@@ -11,6 +11,7 @@ type replay struct {
 	memory, discs, stones       int
 	tier                        discTier
 	emptyMap, emptyRefill       bool
+	allRefillDiscsZero          bool
 	warn                        bool
 	board                       bool
 	quantity, debit             int
@@ -91,6 +92,9 @@ func (r *replay) counters(page string, _ ...counter) ([]int, bool) {
 	switch page {
 	case "在契忆商店":
 		if r.emptyRefill && r.shops > 1 {
+			if r.allRefillDiscsZero {
+				return []int{r.memory, 0, 0, 0}, true
+			}
 			return []int{r.memory, 0, 52, 35}, true
 		}
 		return []int{r.memory, r.discs, 52, 35}, true
@@ -134,8 +138,9 @@ func TestBondlingVerifiedOutcome(t *testing.T) {
 		{"zero stones returns home", func(r *replay) { r.stones = 0 }, 2, 0, 0, 0, runstate.Skipped, "no_eligible_board"},
 		{"skip requires courtyard proof", func(r *replay) { r.courtyard = false }, 0, 0, 0, 0, runstate.Failed, "courtyard_unconfirmed"},
 		{"memory limit blocks spending", func(r *replay) { r.memory = 2000 }, 2, 0, 0, 0, runstate.Skipped, "memory_limit"},
-		{"selected tier zero blocks spending despite other balances", func(r *replay) { r.discs = 0 }, 2, 0, 0, 0, runstate.Failed, "selected_discs_insufficient"},
+		{"known zero on entry skips despite other balances", func(r *replay) { r.discs = 0 }, 2, 0, 0, 0, runstate.Skipped, "no_discs"},
 		{"rechecked tier zero blocks spending", func(r *replay) { r.emptyRefill = true }, 2, 0, 0, 0, runstate.Failed, "selected_discs_insufficient"},
+		{"all zero at purchase recheck still fails authorization", func(r *replay) { r.emptyRefill, r.allRefillDiscsZero = true, true }, 2, 0, 0, 0, runstate.Failed, "selected_discs_insufficient"},
 		{"no evidence for active tier blocks spending", func(r *replay) { r.emptyMap = true }, 2, 0, 0, 0, runstate.Failed, "selected_tier_unconfirmed"},
 		{"unknown inventory is not empty", func(r *replay) { r.readable = false }, 2, 0, 0, 0, runstate.Failed, "inventory_unconfirmed"},
 		{"verified single debits reach run cap", func(r *replay) { r.quantity = 3 }, 2, 2, 2, 2, runstate.Completed, "bonds_verified"},

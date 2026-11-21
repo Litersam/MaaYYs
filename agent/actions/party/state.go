@@ -3,11 +3,13 @@ package party
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"maa-yys-agent/actions/bonus_toggle"
 	"maa-yys-agent/internal/runstate"
+	"maa-yys-agent/internal/vision"
 
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
 	"github.com/rs/zerolog/log"
@@ -27,24 +29,51 @@ type Config struct {
 
 type state struct {
 	Config
-	Names         []string
-	Selected      []string
-	Fights        int
-	End           string
-	InRound       bool
-	AcceptedPeer  string
-	AcceptedUntil time.Time
-	MemberJoined  bool
+	Names          []string
+	Selected       []string
+	Fights         int
+	End            string
+	InRound        bool
+	AcceptedPeer   string
+	AcceptedUntil  time.Time
+	ContinuityPeer string
 }
 
 func (s state) authorized(now time.Time) bool {
-	return s.Role == "member" && s.AcceptedPeer != "" && (s.MemberJoined || now.Before(s.AcceptedUntil))
+	return s.Role == "member" && s.AcceptedPeer != "" && now.Before(s.AcceptedUntil)
+}
+
+func (s *state) acceptInvitation(sender string, now time.Time) {
+	s.clearInvitation()
+	s.AcceptedPeer = sender
+	s.AcceptedUntil = now.Add(12 * time.Second)
 }
 
 func (s *state) clearInvitation() {
 	s.AcceptedPeer = ""
 	s.AcceptedUntil = time.Time{}
-	s.MemberJoined = false
+	s.ContinuityPeer = ""
+	if s.Role == "member" {
+		s.InRound = false
+	}
+}
+
+func (s *state) startRound(now time.Time) bool {
+	if s.InRound || s.Fights >= s.LimitCount {
+		return false
+	}
+	if s.Role == "member" {
+		if !s.authorized(now) {
+			return false
+		}
+		if s.AutoAccept {
+			s.ContinuityPeer = s.AcceptedPeer
+		}
+		s.AcceptedPeer = ""
+		s.AcceptedUntil = time.Time{}
+	}
+	s.InRound = true
+	return true
 }
 
 func clearHits(ctx *maa.Context, nodes ...string) bool {
@@ -163,13 +192,16 @@ func (*StateAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	}
 	switch p.Op {
 	case "start":
-		if s.Fights >= s.LimitCount || s.Role == "member" && !s.authorized(time.Now()) {
+		if !s.startRound(time.Now()) {
 			return false
 		}
-		if s.Role == "member" {
-			s.MemberJoined = true
+	case "renew":
+		if s.Role != "member" || !s.AutoAccept || s.InRound ||
+			!slices.Contains(s.Names, s.ContinuityPeer) {
+			return false
 		}
-		s.InRound = true
+		s.AcceptedPeer = s.ContinuityPeer
+		s.AcceptedUntil = time.Now().Add(12 * time.Second)
 	case "settled":
 		if s.recordFight() {
 			runstate.SetMetric(ctx, "party_battles", s.Fights)
@@ -182,6 +214,9 @@ func (*StateAction) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 		s.End = "party_invitation_timeout"
 	case "lost":
 		s.End = "party_room_disbanded"
+		s.clearInvitation()
+	case "unauthorized":
+		s.End = "party_member_entry_unverified"
 		s.clearInvitation()
 	case "manual_idle":
 		s.End = "party_manual_member_idle"
@@ -245,9 +280,21 @@ func (*StateRecognition) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*
 	case "done":
 		match = s.LimitCount > 0 && s.Fights == s.LimitCount
 	case "member_authorized":
-		match = s.authorized(time.Now())
+		match = s.authorized(time.Now()) && !s.InRound
+	case "member_unauthorized":
+		match = s.Role == "member" && !s.authorized(time.Now()) && !s.InRound
+	case "member_same_captain":
+		// Only the captain seat may renew a default invitation. A ready
+		// screen with no roster (or a courtyard with an invite over it)
+		// cannot establish continuity on its own.
+		if s.Role == "member" && s.AutoAccept && !s.InRound && s.ContinuityPeer != "" && arg.Img != nil {
+			rows := vision.OCRItems(ctx, arg.Img, maa.Rect{132, 356, 278, 116})
+			match = len(rows) == 1 && strings.TrimSpace(rows[0].Text) == s.ContinuityPeer
+		}
 	case "can_settle":
 		match = s.InRound && s.Fights < s.LimitCount
+	case "manual_guest_first":
+		match = s.Role == "manual" && !s.InRound && s.Fights == 0
 	case "has_bonus":
 		match = bonus_toggle.OwnsAny(ctx)
 	case "bond_done":

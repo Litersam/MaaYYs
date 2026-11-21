@@ -92,6 +92,10 @@ func TestNativeBondlingReview(t *testing.T) {
 	prepare := bondlingClick{"prepare", r(1080, 544, 200, 108), "result"}
 	result := func(page string) bondlingClick { return bondlingClick{"bond receipt", r(257, 509, 275, 167), page} }
 	continueWarning := bondlingClick{"continue warning", r(668, 410, 168, 59), "prepare"}
+	home := []bondlingClick{back("map15"), back("exploration"), back("courtyard")}
+	tierCheck := func(board string) []bondlingClick {
+		return []bondlingClick{openSettings("settings"), closeSettings(board)}
+	}
 	run := func(t *testing.T, start string, attempts int, clicks []bondlingClick, want runstate.Status, reason string, spent, bonds int) {
 		t.Helper()
 		runBondlingReview(t, root, res, frames, start, attempts, clicks, want, reason, spent, bonds)
@@ -106,11 +110,13 @@ func TestNativeBondlingReview(t *testing.T) {
 		slot(694, 526, "depleted"), openSettings("settings"), closeSettings("depleted"), back("map15"),
 		slot(950, 516, "quantity"), closeQty,
 	}
-	paid := append(append([]bondlingClick{}, scan...), shop("shop"), back("map15"),
+	summoned := append(append([]bondlingClick{}, scan...), shop("shop"), back("map15"),
 		slot(235, 525, "quantity"), bondlingClick{"open one-stone confirmation", r(598, 613, 161, 67), "confirm"},
-		confirm, slot(235, 525, "board"), openSettings("settings"), closeSettings("board"), trial, prepare, result("board"),
-		openSettings("settings"), closeSettings("board"), trial, prepare, result("map14"))
+		confirm)
 	t.Run("two shop visits, consecutive vacant closes, and two battles", func(t *testing.T) {
+		paid := append(append([]bondlingClick{}, summoned...),
+			slot(235, 525, "board"), openSettings("settings"), closeSettings("board"), trial, prepare, result("board"),
+			openSettings("settings"), closeSettings("board"), trial, prepare, result("map14"))
 		run(t, "map15", 2, paid, runstate.Completed, "bonds_verified", 1, 2)
 	})
 	t.Run("second shop shows zero in the selected tier", func(t *testing.T) {
@@ -129,11 +135,75 @@ func TestNativeBondlingReview(t *testing.T) {
 			[]bondlingClick{openSettings("settings"), closeSettings("board"), trial, prepare, result("map14")},
 			runstate.Completed, "bonds_verified", 0, 1)
 	})
+	t.Run("known zero on entry skips and returns home", func(t *testing.T) {
+		t.Run("managed", func(t *testing.T) {
+			run(t, "map15", 3, []bondlingClick{shop("shopAllZero"), back("map15"), back("exploration"), back("courtyard")},
+				runstate.Skipped, "no_discs", 0, 0)
+		})
+		t.Run("manual", func(t *testing.T) {
+			run(t, "boardZero", 3, append(tierCheck("boardZero"), home...), runstate.Skipped, "no_discs", 0, 0)
+		})
+	})
+	t.Run("last disc completes only after verified return home", func(t *testing.T) {
+		for _, entry := range []struct {
+			name, start string
+			clicks      []bondlingClick
+			spent       int
+		}{
+			{"manual", "boardLast", nil, 0},
+			{"managed", "map15", []bondlingClick{shop("shopLast"), back("map15"), slot(235, 525, "boardLast")}, 0},
+			{"managed after purchase", "map15", append(append([]bondlingClick{}, summoned...), slot(235, 525, "boardLast")), 1},
+		} {
+			t.Run(entry.name, func(t *testing.T) {
+				clicks := append(append([]bondlingClick{}, entry.clicks...), tierCheck("boardLast")...)
+				clicks = append(clicks, trial, prepare, result("boardZero"))
+				clicks = append(clicks, tierCheck("boardZero")...)
+				run(t, entry.start, 3, append(clicks, home...), runstate.Completed, "bonds_verified", entry.spent, 1)
+			})
+		}
+		t.Run("unconfirmed courtyard preserves receipt but fails", func(t *testing.T) {
+			clicks := append(tierCheck("boardLast"), trial, prepare, result("boardZero"))
+			clicks = append(clicks, tierCheck("boardZero")...)
+			clicks = append(clicks, back("map15"), back("exploration"), back("prepare"))
+			run(t, "boardLast", 3, clicks, runstate.Failed, "courtyard_unconfirmed", 0, 1)
+		})
+	})
+	t.Run("unknown stock never counts as exhausted", func(t *testing.T) {
+		t.Run("managed unreadable shop stock", func(t *testing.T) {
+			run(t, "map15", 3, []bondlingClick{shop("shopUnknown")}, runstate.Failed, "inventory_unconfirmed", 0, 0)
+		})
+		t.Run("manual unreadable board on entry", func(t *testing.T) {
+			run(t, "boardUnknown", 3, tierCheck("boardUnknown"), runstate.Failed, "board_stock_unconfirmed", 0, 0)
+		})
+		t.Run("manual unreadable board after receipt", func(t *testing.T) {
+			clicks := append(tierCheck("boardLast"), trial, prepare, result("boardUnknown"))
+			clicks = append(clicks, tierCheck("boardUnknown")...)
+			run(t, "boardLast", 3, clicks, runstate.Failed, "board_stock_unconfirmed", 0, 1)
+		})
+	})
 	t.Run("zero battle budget does not touch any page", func(t *testing.T) {
 		run(t, "map15", 0, nil, runstate.Skipped, "budget_zero", 0, 0)
 	})
-	t.Run("warning cannot use a different tier's positive stock", func(t *testing.T) {
-		run(t, "warningZero", 1, nil, runstate.Failed, "low_disc_continuation_unconfirmed", 0, 0)
+	t.Run("warning stock must come from its own column", func(t *testing.T) {
+		for i, name := range []string{"百物", "千咒", "万象"} {
+			t.Run(name, func(t *testing.T) {
+				t.Run("own zero other columns positive", func(t *testing.T) {
+					run(t, fmt.Sprintf("warning%dZero", i+1), 1, nil, runstate.Failed, "low_disc_continuation_unconfirmed", 0, 0)
+				})
+				t.Run("own positive other columns zero", func(t *testing.T) {
+					run(t, fmt.Sprintf("warning%dPositive", i+1), 1, []bondlingClick{continueWarning, prepare, result("map14")},
+						runstate.Completed, "bonds_verified", 0, 1)
+				})
+			})
+		}
+		t.Run("unknown warning name", func(t *testing.T) {
+			run(t, "warningUnknown", 1, nil, runstate.Failed, "low_disc_continuation_unconfirmed", 0, 0)
+		})
+		t.Run("warning names a different tier than settings", func(t *testing.T) {
+			challenge := trial
+			challenge.next = "warning2Positive"
+			run(t, "board", 1, append(tierCheck("board"), challenge), runstate.Failed, "low_disc_continuation_unconfirmed", 0, 0)
+		})
 	})
 	t.Run("historical warning and balances authorize exactly one continue", func(t *testing.T) {
 		dir := os.Getenv("MAAYYS_BONDLING_REFERENCE_FIXTURES")
@@ -242,9 +312,11 @@ func runBondlingReviewTask(t *testing.T, res *maa.Resource, tasker *maa.Tasker, 
 	// remain production definitions, including on the second visit.
 	for _, node := range []string{"执行子图", "入口导航", "查看契忆", "退出商店", "检查契灵盘", "寻找可挑战", "返回地图",
 		"打开结契设置", "关闭结契设置", "复核手选目标", "试一场", "挑战可点击", "点击挑战", "结契成功",
-		"继续低式盘挑战", "唤起单次确认", "确认只用一石", "战斗中点准备", "点契忆商店", "关闭召唤窗", "退出挑战"} {
+		"继续低式盘挑战", "唤起单次确认", "确认只用一石", "战斗中点准备", "点契忆商店", "关闭召唤窗", "退出挑战",
+		"退出地图", "退出探索"} {
 		override[contract+node] = map[string]any{"timeout": 1500, "post_delay": 25}
 	}
+	override[contract+"回庭院"] = map[string]any{"timeout": 3000}
 
 	probe := t.Name() + "/probe"
 	if err := res.RegisterCustomAction(probe, offlineAction(func(ctx *maa.Context, _ *maa.CustomActionArg) bool {
@@ -322,9 +394,14 @@ function out-frame($name, $labels) {
 $map=@( @(148,12,'契灵之境'), @(227,654,'契忆商店') )
 out-frame map15 ($map+@(,@(852,16,'15/30')))
 out-frame map14 ($map+@(,@(852,16,'14/30')))
+out-frame exploration @(,@(118,648,'觉醒材料'))
 $shop=@( @(1137,12,'12/4000'), @(558,12,'52/200'), @(761,12,'35/200') )
 out-frame shop ($shop+@(,@(373,12,'9/200')))
 out-frame shopZero ($shop+@(,@(373,12,'0/200')))
+$shopEntry=@( @(1137,12,'12/4000'), @(558,12,'0/200'), @(761,12,'0/200') )
+out-frame shopAllZero ($shopEntry+@(,@(373,12,'0/200')))
+out-frame shopLast ($shopEntry+@(,@(373,12,'1/200')))
+out-frame shopUnknown @( @(1137,12,'12/4000'), @(373,12,'0/200'), @(761,12,'0/200') )
 $qty=@( @(490,59,'请选择鸣契的契灵数量'), @(1137,10,'15/30'), @(585,546,'1'), @(638,621,'1鸣契') )
 out-frame quantity $qty
 out-frame confirm ($qty+@( @(437,297,'是否消耗1个鸣契石召唤镇墓兽'), @(706,421,'确定') ))
@@ -335,10 +412,29 @@ $singleTier=@( @(150,14,'契灵结契'), @(54,438,'结契设置'), @(1153,573,'�
 out-frame singleTier1 ($singleTier+@( @(535,12,'9/200'), @(735,12,'0/200'), @(931,12,'0/200') ))
 out-frame singleTier2 ($singleTier+@( @(535,12,'0/200'), @(735,12,'9/200'), @(931,12,'0/200') ))
 out-frame singleTier3 ($singleTier+@( @(535,12,'0/200'), @(735,12,'0/200'), @(931,12,'9/200') ))
+$lastDisc=@( @(735,12,'0/200'), @(931,12,'0/200') )
+out-frame boardLast ($singleTier+$lastDisc+@(,@(535,12,'1/200')))
+out-frame boardZero ($singleTier+$lastDisc+@(,@(535,12,'0/200')))
+out-frame boardUnknown ($singleTier+$lastDisc)
 out-frame prepare @(,@(1153,573,'准备'))
 out-frame result @(,@(869,566,'升至10级解锁'))
 out-frame panelText @( @(480,187,'自动结契'), @(696,616,'确定') )
-out-frame warningZero @( @(150,14,'契灵结契'), @(535,12,'0/200'), @(735,12,'52/200'), @(931,12,'35/200'), @(1153,573,'挑战'), @(1146,663,'剩余4/99'), @(425,251,'自动结契所需百物式盘较少'), @(686,414,'继续挑战') )
+$tiers=@('百物','千咒','万象')
+$columns=@(535,735,931)
+function warning-labels($name) {
+  @(150,14,'契灵结契'), @(1153,573,'挑战'), @(1146,663,'剩余4/99'), @(425,251,('自动结契所需'+$name+'式盘较少')), @(686,414,'继续挑战')
+}
+for ($i=0; $i -lt $tiers.Count; $i++) {
+  foreach ($own in @('Zero','Positive')) {
+    $labels = @(warning-labels $tiers[$i])
+    for ($j=0; $j -lt $columns.Count; $j++) {
+      $value = if (($i -eq $j) -eq ($own -eq 'Positive')) { '9/200' } else { '0/200' }
+      $labels += ,@($columns[$j],12,$value)
+    }
+    out-frame ('warning'+($i+1)+$own) $labels
+  }
+}
+out-frame warningUnknown (@(warning-labels '陌生')+@( @(535,12,'9/200'), @(735,12,'9/200'), @(931,12,'9/200') ))
 `
 	var script bytes.Buffer
 	for _, v := range utf16.Encode([]rune(render)) {
@@ -366,9 +462,14 @@ out-frame warningZero @( @(150,14,'契灵结契'), @(535,12,'0/200'), @(735,12,'
 		frames[key] = img
 	}
 	arrow := decodeBondlingPNG(t, filepath.Join(root, "resource_pack", "base", "image", "通用图标", "返回_黄色.png"))
-	for _, page := range []string{"map15", "map14", "shop", "shopZero", "board", "depleted"} {
+	for _, page := range []string{"map15", "map14", "exploration", "shop", "shopZero", "shopAllZero", "shopLast",
+		"board", "depleted", "boardLast", "boardZero", "boardUnknown"} {
 		pasteBondlingCrop(frames[page].(draw.Image), arrow, image.Pt(10, 12))
 	}
+	courtyard := image.NewRGBA(image.Rect(0, 0, 1280, 720))
+	courtyardCrop := decodeBondlingPNG(t, filepath.Join(root, "resource_pack", "base", "image", "导航", "导航-庭院-识别是否位于庭院-模板匹配_1.png"))
+	pasteBondlingCrop(courtyard, courtyardCrop, image.Pt(10, 550))
+	frames["courtyard"] = courtyard
 	for _, panel := range []string{"settings", "ambiguous"} {
 		img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
 		draw.Draw(img, img.Bounds(), frames["panelText"], image.Point{}, draw.Src)

@@ -44,7 +44,7 @@ For new daily plans, use `好友寄养`, `结界挂卡`, and `结界收菜` sepa
 
 `组队刷本`, `觉醒`, `同心之兰`, and `契灵结契` require explicit outcomes as well. For automatic parties, pass `party_role: "captain"` with `teammate_names`, or `"member"` with `captain_names`. Both name fields are comma-separated strings of exact in-game nicknames, not JSON arrays. The captain provides one or two nicknames (one for 永生之海 and 同心之兰). `组队刷本` defaults to `manual` and keeps its legacy 房主/房客 options; `觉醒` defaults to `solo`. `limit_count` sets the managed battle budget. `契灵结契` defaults to `max_summon_stones: 0` and reports `bondling_stones_spent` and `bondling_verified_bonds`. Native offline replays do not establish end-to-end compatibility with a current game client's visual layout.
 
-The legacy `组队刷本` option `挑战次数` counts confirmed wins, not attempts to click 挑战. For `契灵结契`, the CLI accepts both `limit_count` and the legacy `挑战次数`; when both are valid, the lower explicit cap wins. A stone purchase requires a positive disc balance for the actual active tier, not a sum across tiers.
+The legacy `组队刷本` option `挑战次数` counts confirmed wins, not attempts to click 挑战. A manual guest must see a new round before crediting its result. A managed guest's ordinary invitation authorizes one round; default acceptance continues without a new invitation only after confirming the same captain in the room. For `契灵结契`, the CLI accepts both `limit_count` and the legacy `挑战次数`; when both are valid, the lower explicit cap wins. A stone purchase requires a positive disc balance for the actual active tier, not a sum across tiers.
 
 ## `maayys-cli.exe` Headless Subprocess Protocol
 Build and verify offline from `agent/`:

@@ -20,6 +20,7 @@ const (
 	mapPage       = "在地图"
 	quantityModal = "在召唤数量窗"
 	lowDiscs      = "低式盘提示"
+	noDiscs       = "no_discs"
 )
 
 type discTier int
@@ -129,7 +130,7 @@ func (f *flow) run() outcome {
 		case ready:
 			usable, selected, reason := f.canChallenge()
 			tier = selected
-			if reason == "no_discs" {
+			if reason == noDiscs {
 				return f.returnHome(reason)
 			}
 			if reason != "" {
@@ -170,17 +171,17 @@ func (f *flow) runManual(page string) outcome {
 		case ready:
 			usable, selected, reason := f.canChallenge()
 			tier = selected
-			if reason == "no_discs" || (!usable && reason == "") {
-				if !f.battled {
-					if reason == "" {
-						reason = "no_eligible_board"
-					}
-					return f.result(runstate.Skipped, reason)
-				}
-				return f.finish()
+			if reason == noDiscs {
+				return f.returnHome(reason)
 			}
 			if reason != "" {
 				return f.fail(reason)
+			}
+			if !usable {
+				if !f.battled {
+					return f.result(runstate.Skipped, "no_eligible_board")
+				}
+				return f.finish()
 			}
 		case lowDiscs:
 			// The warning names the active tier; verify its balance in place.
@@ -236,14 +237,16 @@ func (f *flow) inventory(tier discTier) (reason string, failed bool) {
 	if page == "" {
 		return "shop_exit_unconfirmed", true
 	}
+	if tier != unknownTier && stock[tier] == 0 {
+		// This is a failed authorization for a planned purchase, not an
+		// empty starting inventory or exhaustion observed on the board.
+		return "selected_discs_insufficient", true
+	}
 	if stock[0] >= memoryLimit {
 		return "memory_limit", false
 	}
 	if stock[1]+stock[2]+stock[3] == 0 {
-		return "no_discs", false
-	}
-	if tier != unknownTier && stock[tier] == 0 {
-		return "selected_discs_insufficient", true
+		return noDiscs, false
 	}
 	if page != mapPage && f.ui.step("前置导航").last != mapPage {
 		return "entry_unconfirmed", true
@@ -263,7 +266,7 @@ func (f *flow) canChallenge() (bool, discTier, string) {
 	case !ok:
 		return false, tier, "board_stock_unconfirmed"
 	case count[1] == 0:
-		return false, tier, "selected_discs_insufficient"
+		return false, tier, noDiscs
 	}
 	return count[0] > 0, tier, ""
 }
@@ -275,7 +278,7 @@ func (f *flow) selectBoard(tier discTier) (discTier, string, bool) {
 		case ready:
 			usable, selected, reason := f.canChallenge()
 			if usable || reason != "" {
-				return selected, reason, reason != "" && reason != "no_discs"
+				return selected, reason, reason != "" && reason != noDiscs
 			}
 			if tier != unknownTier && tier != selected {
 				return unknownTier, "selected_tier_unconfirmed", true
@@ -323,8 +326,11 @@ func (f *flow) selectBoard(tier discTier) (discTier, string, bool) {
 		return tier, "summoned_board_unconfirmed", true
 	}
 	if ok, selected, reason := f.canChallenge(); !ok || selected != tier {
-		if reason == "" {
+		switch reason {
+		case "":
 			reason = "summoned_board_unconfirmed"
+		case noDiscs:
+			reason = "selected_discs_insufficient"
 		}
 		return selected, reason, true
 	}

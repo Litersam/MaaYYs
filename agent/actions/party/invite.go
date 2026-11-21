@@ -180,23 +180,20 @@ func (*CreateAndInvite) Run(ctx *maa.Context, _ *maa.CustomActionArg) bool {
 }
 
 func invitationSender(items []maa.OCRResult, allow []string) string {
-	var sender string
-	for _, item := range items {
-		text := strings.TrimSpace(item.Text)
-		for _, suffix := range []string{"邀请你加入队伍", "邀请您加入队伍", "邀请你组队", "邀请您组队", "邀请你", "邀请您"} {
-			if name, ok := strings.CutSuffix(text, suffix); ok {
-				text = strings.TrimSpace(strings.Trim(name, "「」“”"))
-				break
-			}
-		}
-		if slices.Contains(allow, text) {
-			if sender != "" && sender != text {
-				return ""
-			}
-			sender = text
+	if len(items) != 1 {
+		return ""
+	}
+	text := strings.TrimSpace(items[0].Text)
+	for _, suffix := range []string{"邀请你加入队伍", "邀请您加入队伍", "邀请你组队", "邀请您组队", "邀请你", "邀请您"} {
+		if name, ok := strings.CutSuffix(text, suffix); ok {
+			text = strings.TrimSpace(strings.Trim(name, "「」“”"))
+			break
 		}
 	}
-	return sender
+	if slices.Contains(allow, text) {
+		return text
+	}
+	return ""
 }
 
 func (*WaitAndAccept) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
@@ -206,32 +203,28 @@ func (*WaitAndAccept) Run(ctx *maa.Context, arg *maa.CustomActionArg) bool {
 	}
 	u := inviteUI{ctx}
 	img := u.frame()
-	box := u.hit("组队管控-收到邀请", img)
-	if box == nil {
+	card := u.invitationCard(img)
+	if card == nil {
 		return true // The card may have been withdrawn between callbacks.
 	}
-	items := vision.OCRItems(ctx, img, maa.Rect{10, max(0, box.Y()-105), 302, 105})
-	sender := invitationSender(items, s.Names)
-	button := "组队管控-邀请拒绝"
-	if sender != "" {
-		button = "组队管控-邀请普通接受"
-		if s.AutoAccept {
-			button = "组队管控-邀请默认接受"
-		}
+	sender := invitationSender(u.invitationTexts(img, card), s.Names)
+	if sender == "" {
+		// A new, untrusted invitation invalidates the old authority even when
+		// its reject button is absent, ambiguous, or the click fails.
+		s.clearInvitation()
+		return save(ctx, s) && (card.ambiguous || card.reject == nil || u.click(*card.reject))
 	}
-	target := u.hit(button, img)
-	if target == nil || target.Y() < box.Y()-18 || target.Y() > box.Y()+18 {
-		return true // Never click an unverified column or an adjacent card.
+	target := card.ordinary
+	if s.AutoAccept {
+		target = card.defaultAccept
+	}
+	if target == nil {
+		return true // The requested accept button isn't on this card.
 	}
 	if !u.click(*target) {
 		return false
 	}
-	if sender == "" {
-		return true
-	}
-	s.AcceptedPeer = sender
-	s.AcceptedUntil = time.Now().Add(12 * time.Second)
-	s.MemberJoined = false
+	s.acceptInvitation(sender, time.Now())
 	return save(ctx, s)
 }
 
@@ -248,6 +241,8 @@ func (*GlyphRecognition) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*
 	box := p.ROI
 	var match bool
 	switch p.Kind {
+	case "soul_10", "soul_11", "soul_12":
+		match = soulTitle(arg.Img, box) == p.Kind
 	case "private_checked":
 		match = colorFraction(arg.Img, box, func(r, g, b int) bool { return b > 145 && b > r+60 && b > g+60 }) > .075
 	case "private_unchecked":
@@ -261,7 +256,7 @@ func (*GlyphRecognition) Run(ctx *maa.Context, arg *maa.CustomRecognitionArg) (*
 			return r > 155 && r > g+15 && g > b+14 && r > b+45
 		}) > .025
 	case "invite_accept", "invite_accept_default":
-		box, match = findInviteAccept(arg.Img, box, p.Kind == "invite_accept_default")
+		return recognizeInviteAccept(arg.Img, box, p.Kind == "invite_accept_default")
 	case "empty":
 		box, match = findPlus(arg.Img, box)
 	case "full":
@@ -303,39 +298,4 @@ func colorFraction(img image.Image, roi maa.Rect, pred func(r, g, b int) bool) f
 		}
 	}
 	return float64(n) / float64(b.Dx()*b.Dy())
-}
-
-var rightRoomSlot = maa.Rect{970, 151, 193, 220}
-var middleRoomSlot = maa.Rect{569, 196, 186, 161}
-var seaRoomSlot = maa.Rect{836, 231, 100, 100}
-
-func findPlus(img image.Image, roi maa.Rect) (maa.Rect, bool) {
-	r := vision.ImageRect(roi).Intersect(img.Bounds())
-	bright := func(x, y int) bool {
-		r, g, b, _ := img.At(x, y).RGBA()
-		return r >= 210<<8 && g >= 205<<8 && b >= 201<<8 && max(r, g, b)-min(r, g, b) < 28<<8
-	}
-	for y := r.Min.Y + 22; y < r.Max.Y-22; y += 2 {
-		for x := r.Min.X + 22; x < r.Max.X-22; x += 2 {
-			if !bright(x, y) || !bright(x-17, y) || !bright(x+17, y) || !bright(x, y-17) || !bright(x, y+17) ||
-				bright(x-12, y-12) || bright(x+12, y+12) {
-				continue
-			}
-			return maa.Rect{x - 20, y - 20, 40, 40}, true
-		}
-	}
-	return maa.Rect{}, false
-}
-
-func seatsOccupied(img image.Image, slots ...maa.Rect) bool {
-	for _, slot := range slots {
-		if _, empty := findPlus(img, slot); empty {
-			return false
-		}
-		// Failure to see a plus is not proof that the avatar loaded.
-		if colorFraction(img, slot, func(r, g, b int) bool { return max(r, g, b)-min(r, g, b) > 67 && max(r, g, b) > 110 }) < .018 {
-			return false
-		}
-	}
-	return len(slots) > 0
 }

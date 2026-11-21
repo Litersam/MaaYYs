@@ -22,6 +22,83 @@ import (
 
 const bondVisualEntry = "同心之兰"
 
+func TestNativeBatch3BondPanelClaim(t *testing.T) {
+	frames := newBondVisualFrames(t, testRepoRoot(t))
+	gift := image.Rect(1080, 108, 1128, 153)
+	close := image.Rect(1135, 75, 1219, 154)
+	dismiss := image.Rect(604, 59, 675, 84)
+	type transition struct {
+		target image.Rectangle
+		page   string
+	}
+	for _, tc := range []struct {
+		name, initial string
+		steps         []transition
+		status        runstate.Status
+		reason        string
+		nodes         []string
+	}{
+		{"panel", "panel", []transition{{close, "friends"}, {gift, "newly claimed"}, {close, "friends"}, {close, "courtyard"}},
+			runstate.Completed, "bond_growth_reward_claimed", []string{"检查面板", "关闭二档满成长面板", "面板后领二档", "二档点击后已领", "归庭领奖完成"}},
+		{"unripe", "unripe", []transition{{gift, "panel"}, {close, "friends"}, {gift, "popup"}, {dismiss, "friends"}, {close, "courtyard"}},
+			runstate.Completed, "bond_growth_reward_claimed", []string{"打开礼袋", "检查面板", "关闭二档满成长面板", "面板后领二档", "二档入账", "归庭领奖完成"}},
+		{"recheck after tier-one reward with unreadable friend growth", "first ready", []transition{
+			{gift, "popup"}, {dismiss, "unripe"}, {gift, "panel"}, {close, "unripe"}, {gift, "popup"}, {dismiss, "friends"}, {close, "courtyard"},
+		}, runstate.Completed, "bond_growth_reward_claimed", []string{
+			"一档入账", "再次打开礼袋", "复核回赠面板", "关闭二档满成长面板", "面板后领二档", "二档入账", "归庭领奖完成",
+		}},
+		{"preclaimed panel", "newly claimed", []transition{{close, "friends"}, {close, "courtyard"}},
+			runstate.Skipped, "bond_rewards_already_claimed", []string{"今日已领", "归庭已领"}},
+		{"full but cooling", "full cooldown", []transition{{close, "friends"}, {close, "courtyard"}},
+			runstate.Skipped, "bond_cooldown", []string{"冷却", "归庭冷却"}},
+		{"partner changed after close", "panel", []transition{{close, "different friend"}},
+			runstate.Failed, "bond_partner_unconfirmed", []string{"检查面板", "关闭二档满成长面板"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &partyFrameController{frame: frames[tc.initial]}
+			c.step = func(p image.Point) image.Image {
+				i := len(c.clicks) - 1
+				if i >= len(tc.steps) || !p.In(tc.steps[i].target) {
+					return nil
+				}
+				return frames[tc.steps[i].page]
+			}
+			withPartyFrameReplay(t, c, func(_ string, _ *maa.Resource, tasker *maa.Tasker) {
+				collector, release := runstate.Bind(tasker)
+				defer release()
+				// Supply only task parameters and frames. Maa runs all
+				// recognizers, actions, edges and limits from the resource.
+				job := tasker.PostTask(bondVisualEntry, map[string]any{
+					bondVisualEntry: map[string]any{"custom_action_param": map[string]any{
+						"role": "captain", "teammate_names": "测试搭档",
+					}},
+				}).Wait()
+				out, clicks := collector.Outcome(), c.recorded()
+				t.Logf("%s: clicks=%v status=%s reason=%s", maa.Version(), clicks, out.Status, out.Metrics["task_reason"])
+				if job.Success() != (tc.status != runstate.Failed) || !out.Reported || out.Status != tc.status ||
+					!partyMetricEquals(out, "task_reason", `"`+tc.reason+`"`) {
+					t.Errorf("job=%v outcome=%+v; want %s / %s", job.Status(), out, tc.status, tc.reason)
+				}
+				if len(clicks) != len(tc.steps) {
+					t.Errorf("got %d clicks; want %d", len(clicks), len(tc.steps))
+				}
+				for i := 0; i < min(len(clicks), len(tc.steps)); i++ {
+					if !clicks[i].In(tc.steps[i].target) {
+						t.Errorf("click %d: %v outside %v", i, clicks[i], tc.steps[i].target)
+					}
+				}
+				detail, err := job.GetDetail()
+				nodes := completedFixtureNodes(t, detail, err)
+				for _, suffix := range tc.nodes {
+					if nodes[bondVisualEntry+"-"+suffix] != 1 {
+						t.Errorf("expected exactly one completed %s node, got %v", suffix, nodes)
+					}
+				}
+			})
+		})
+	}
+}
+
 func TestNativeBatch3BondVisualEvidence(t *testing.T) {
 	withNativeBattleFixture(t, func(root string, res *maa.Resource, tasker *maa.Tasker) {
 		t.Logf("native runtime: %s", maa.Version())
@@ -167,6 +244,8 @@ func newBondVisualFrames(t *testing.T, root string) map[string]image.Image {
 		"unknown": "", "courtyard": "home", "friends": "home friend ready", "panel": "home friend panel ready",
 		"unripe": "home friend", "already claimed": "home friend ready claimed", "popup": "popup",
 		"cooldown": "home friend panel cooling", "newly claimed": "home friend panel ready claimed cooling",
+		"full cooldown": "home friend panel ready cooling", "different friend": "home wrong-friend ready",
+		"first ready": "home friend first",
 	} {
 		img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
 		draw.Draw(img, img.Bounds(), image.White, image.Point{}, draw.Src)
@@ -177,12 +256,18 @@ func newBondVisualFrames(t *testing.T, root string) map[string]image.Image {
 				// positive template evidence alone cannot authorize navigation.
 				bondDrawVisual(img, templates["courtyard"], 100, 572)
 				bondDrawVisual(img, templates["friends"], 880, 620)
-			case "friend":
+			case "friend", "wrong-friend":
 				bondDrawVisual(img, templates["close"], 1150, 85)
 				bondDrawGlyph(t, img, "好友", 600, 45)
-				bondDrawGlyph(t, img, "测试搭档", 620, 96)
+				if flag == "friend" {
+					bondDrawGlyph(t, img, "测试搭档", 620, 96)
+				} else {
+					bondDrawGlyph(t, img, "同心之兰", 620, 96)
+				}
 			case "panel":
 				bondDrawGlyph(t, img, "同心之兰", 825, 150)
+			case "first":
+				bondDrawGlyph(t, img, "10/10", 1068, 137)
 			case "ready":
 				bondDrawGlyph(t, img, "20/20", 1068, 137)
 				bondDrawGlyph(t, img, "20/20", 715, 610)
@@ -232,6 +317,7 @@ var bondVisualGlyphs = map[string]struct {
 	"好友":          {8, "ndAxDsIwDAXQX1lKGKykY5EqwREyduAwOUJHBiRyA64UToKPkLEDUnAKSIgNPPhJXx5sA/+VaS1+6Gtp8lugQJqd1FrlLJSf2oQMbKJHc4gO3apOpi9rRX+rC6mhGQkhMyiaVTsbbFUTGD4x3KSZyuMAUkcXYIUx2AhTGBNl8JExk2DsVV8w6YZyOmh2765ll/a04JKpvG6UX//yAA=="},
 	"测试搭档":        {15, "vdKxSgNBEADQWRP2IqxJu4ET0tnOaXEJHMlVfkeqsz1II1i4UUhsxB/wI1JarihqcXA/YLFVUhorLQ7H3ewlf6DDMsyDYWZhF+D/At3RiExx6Nk6heOazXMyaCBWjle8ndASc4j0ExGbc9HWGfYBleP1LGxahvWo6UxCkeE+0UeFOKpe0JE5xpbLPLXc7O0opk57ZstD5a6RF1m0dhzohmW/5ltuGnOqQtuMlt8mD1ZUtSwjWsCnDgMDAjyDV6Jg4YkSO+Xl1+0DiNaGUjwDO7gHITxBA3RvQITvno9UDewiKTlGnpFjyPHEUQmmQMghYCxlWhNjhUMpxltONCbdYkdjMBntONE5XvzwsZ3M7qg6U0frieJlzT0ITA8a5dQ3+2ey1SaJv/sJvw=="},
 	"同心之兰":        {15, "vdGxbsJADAbg/zDiOqDAyBCRPkIkFoZK8ChBeQHGDh0s8VodTuJBGokXyJgB4dp3FygrQ0/O8Em2z74A/3mWz9zqt7fgnUiHUtlpuBA5Vx41iGugQZEKtpk+tSs9jEQgkRveikw2LkSuG7k15CaavR7ZxuIPm8CSW1C6KfEC4jhH4hmO4UKkDMYAzw8iYBGXqcPqcLbC9Z0nG/TTJuszj+j/cPruujG5JcxyY+t8MFYY2Ri/MoMuqK8zPJFG2vpc0veDTgZfMSp9kRpVB+kLL/KTaJtNIcIv/9QXzi8="},
+	"10/10":       {9, "Y2CgDAiwH2BjYvjBwFDA/4CHj/EPA+MHmQIeO+Y+BuYNEgY8ZcxsDEwGFhYSbuzsDAwGBhISbGzMqAwD3IwEXAwJgwNsQJMZDGQKgIw+IIP/wQE2oO0MBuwHG9hA7mFgYGyAuhHOYKbQs1QFAA=="},
 	"20/20":       {8, "rc9BCsIwEIXhGQK6GZptFoV6hLfMzqtM6QVygEIjAc8VUOw14g1cuijFCOoBiv/m275HtC0bR+ofNh7zSvOzy7jPdGt9OfSJrgKlIZ2ihEADVxU/L5zIKfitV+xNtSgaw2fOirZqogLVHSkCJ2kIqjyLkC9TWcUuXZ7K6OxiY53iPpO+YuOlv/QC"},
 	"同心之兰奖励已全部领取": {42, "7dS/b9NAFAfw7/WiuINld7yqVlz+AiyxBDVS+6cYlZEh3TJUyplIsESwFgkBfwJ/QIdnRQoMCFYYoEZITAi8YYkqx7s7uw3twg6nJEqcj/N+3LsA/9dfrq3Lt5TzS3bxUV+RQ34e2IcGVZeygiCg36J9Yyok7jIqQbtEMKtMGnMOYS+lTZSaH2y8DFmO+SH1pDR1J2XtZGylMTZQjshnMJR6tDA1ueghgiH/zona0Zkonrcy8FUlAaJXyDoZJVZm28RyLp2UEhxuhc0IvbfISdi0QiQxej2VZZSvSW1lbJP7qKtOTgIdRirPKi9vmVUuxQaHGzj5uqKz8+yzZlkL6ocqvzs1pZn3nTx0iY5s0yQd6VZKQt1Xir7fZPmg76IfQvo2ATHtYQEnY42RZLkMURat/AKpXeuBYxp0csBN3Mi2i1mYXcgFhHYbB9Q0cpJT3jTm69R80PedDJGZxkpC4IbhoKytLG1xIEzNe97BdckXYz8H7wiLJitt7bBR1Nh84xtnLEndWdgkB14ucUUOvUycnNkdndh9sqGxUFailQr3OPpMdXKM2kv5h0yNCvGGZXHSyt6ucE3iEkyzUGOWQvA8XsqXVh5KnmtfeitzKwuWSqrwxpylrm3td6xM2zPAdyy95JMCK4/meVnUleuSlcetjIhltS73wjEfhMrOLcsQTSuTXCwVsZTwUqVoYlPUnZSdnAzFo3W500T4FIvZiZ9knchTD0U1EPNtKskOopN1JB5DPEycFKYJUs3N47mnoHy6U1B7BLhLCIKZFs8ilmkFU0eBMWf89QrCPPm1r6fmvJMyEiROA83SbloPxmg/znu3f3YtsxWBE6tEIwnXltjawLqEwoF4ce0f6p9avwE="},
 	"同心之兰冷却中":     {26, "1dLNSsNAEAfw/3ZLohDSHnOoaR8h4qWHWvVNUvoC8ZaD4BbBpyp0IVfBRzDi1UOOKajj7G5W24p3HdKv/cHsfBT4tzH8eZS7jym/Ls2jgAyBkwuiGiP+WvMjNFDsSQRzgkKqCUoEgjRLZjh2GadSlXjdk9BVMQoxEw8syouUkEQfOIqRynvQVlX804kyMiB6C0Pp5Yw+cil6nC410otXirNVyAMjS3vRzLZ2rutOTLYlpCubo6yLHXmBVLZVQNT5bEcqCAXTP4cuEi/UGtEIlZ/hnkBj4Ocu6N2JThaVuSS1532+akfuzIRKM4cmuKU6Em4GTgo0VqJD6U+ELZr3IXRy5bMtJS+rKy3i1pJnX9vCyNhVlgxDZAu3Ba7ayE0n8xTF9coKv0lO0nZ9DtbITzfqW2QnmWzwuN3A71SN5LoTtII350VQG44VxtxEgTmak07GNaiJQ6InlomZ37EXbedF5DrixQv19e89iN/lr8Qn"},

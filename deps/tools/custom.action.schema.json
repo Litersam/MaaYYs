@@ -145,7 +145,7 @@
         "custom_action_param": {
           "type": "object",
           "properties": {
-            "op": { "enum": ["init", "start", "settled", "failed", "invite_timeout", "lost", "terminal", "cleanup_failure"] },
+            "op": { "enum": ["init", "start", "renew", "settled", "failed", "invite_timeout", "lost", "unauthorized", "manual_idle", "cleanup", "terminal", "cleanup_failure"] },
             "role": { "enum": ["manual", "solo", "captain", "member"] },
             "flow": { "enum": ["party", "awake", "bond"] },
             "dungeon": { "enum": ["soul_10", "soul_11", "soul_12", "eternity_sea"] },

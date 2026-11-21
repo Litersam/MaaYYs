@@ -173,7 +173,7 @@ func (m maaUI) resumeWarning(expected discTier) stepResult {
 	for _, candidate := range []struct {
 		tier discTier
 		name string
-	}{{firstTier, "百物式盘"}, {thirdTier, "千咒式盘"}} {
+	}{{firstTier, "百物式盘"}, {secondTier, "千咒式盘"}, {thirdTier, "万象式盘"}} {
 		for _, text := range texts {
 			if strings.Contains(text, candidate.name) {
 				if tier != unknownTier && tier != candidate.tier {

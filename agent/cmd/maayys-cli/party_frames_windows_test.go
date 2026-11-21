@@ -61,16 +61,22 @@ func blankPartyFrame() *image.RGBA {
 // The native task runs its production recognizers and click actions against
 // images in memory. The controller never sends any OS input.
 type partyFrameController struct {
-	mu     sync.Mutex
-	frame  image.Image
-	clicks []image.Point
-	step   func(image.Point) image.Image
+	mu           sync.Mutex
+	frame        image.Image
+	clicks       []image.Point
+	step         func(image.Point) image.Image
+	afterCapture []image.Image
 }
 
 func (c *partyFrameController) screencap() image.Image {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.frame
+	frame := c.frame
+	if len(c.afterCapture) > 0 {
+		c.frame = c.afterCapture[0]
+		c.afterCapture = c.afterCapture[1:]
+	}
+	return frame
 }
 
 func (c *partyFrameController) Click(x, y int32) bool {
@@ -282,11 +288,46 @@ func TestNativePartyMissingTeammateNeverSends(t *testing.T) {
 func TestNativePartyRoomLayoutAndMemberGates(t *testing.T) {
 	const gi = "tasks/Component/GeneralInvite/gi/"
 	roomTitle := historicalPartyCrop(t, gi+"gi_gi_in_room.png")
-	rightPlus := historicalPartyCrop(t, gi+"gi_add_2.png")
+	plus := historicalPartyCrop(t, gi+"gi_add_2.png")
+	legacy := historicalPartyCrop(t, gi+"gi_add_1.png")
+	seaPlus := historicalPartyCrop(t, gi+"gi_add_sea.png")
 	challenge := historicalPartyCrop(t, gi+"gi_fire.png")
+	seaChallenge := historicalPartyCrop(t, gi+"gi_fire_sea.png")
 	prepare := historicalPartyCrop(t, "tasks/Component/GeneralBattle/gb/gb_prepare_highlight.png")
+	// Tracked Kagura character artwork, composed into a seat for replay.
+	// This is not an archived occupied-room screenshot.
+	root := testRepoRoot(t)
+	readPNG := func(path string) image.Image {
+		t.Helper()
+		f, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		img, err := png.Decode(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return img
+	}
+	kagura := readPNG(filepath.Join(root, "resource_pack", "base", "image", "非战斗", "式神委派", "式神委派-识别神乐_1.png"))
+	portrait := image.NewRGBA(image.Rect(0, 0, 108, 108))
+	for y := range 108 {
+		for x := range 108 {
+			portrait.Set(x, y, kagura.At(7+x*145/108, y*145/108))
+		}
+	}
+	put := func(frame draw.Image, crop image.Image, at image.Point) {
+		if crop != nil {
+			pastePartyCrop(frame, crop, at.X, at.Y)
+		}
+	}
+	stripe := func(frame draw.Image) {
+		draw.Draw(frame, image.Rect(604, 226, 710, 240), image.NewUniform(color.RGBA{158, 103, 78, 255}), image.Point{}, draw.Src)
+	}
 	c := &partyFrameController{frame: blankPartyFrame()}
 	withPartyFrameReplay(t, c, func(_ string, res *maa.Resource, tasker *maa.Tasker) {
+		t.Logf("seat replay MaaFramework=%s", maa.Version())
 		const probe = "Batch3RoomLayoutAndMemberGates"
 		registerPartyProbe(t, res, probe, func(ctx *maa.Context, _ *maa.CustomActionArg) bool {
 			config := map[string]any{"flow": "party", "role": "captain", "teammate_names": "甲", "limit_count": 1}
@@ -299,34 +340,125 @@ func TestNativePartyRoomLayoutAndMemberGates(t *testing.T) {
 			if !init() {
 				return false
 			}
+			assertStart := func(t *testing.T, frame image.Image, full bool) {
+				t.Helper()
+				const wait, start = "组队管控-等待满员", "组队管控-队长开战"
+				buttonRegion := image.Rect(1131, 565, 1280, 708)
+				if full {
+					hit, err := ctx.RunRecognition(start, frame)
+					if err != nil || hit == nil || !hit.Hit {
+						t.Fatalf("expected a recognized challenge target: detail=%+v err=%v", hit, err)
+					}
+					box := hit.Box
+					button := image.Rect(box.X(), box.Y(), box.X()+box.Width(), box.Y()+box.Height())
+					if button.Empty() || !button.In(buttonRegion) {
+						t.Fatalf("challenge target outside lower-right button region: %v", button)
+					}
+				}
+				c.set(frame)
+				before := len(c.recorded())
+				d, err := ctx.RunTask(wait, map[string]any{
+					wait:  map[string]any{"timeout": 450, "rate_limit": 50, "on_error": []string{}},
+					start: map[string]any{"next": []string{}, "post_delay": 0, "on_error": []string{}},
+				})
+				clicks := c.recorded()[before:]
+				t.Logf("native wait-for-full start=%t clicks=%v", d != nil && d.Status.Success(), clicks)
+				if full {
+					if err != nil || d == nil || !d.Status.Success() || len(clicks) != 1 || !clicks[0].In(buttonRegion) {
+						t.Errorf("expected exactly one challenge click in %v: task=%+v err=%v clicks=%v", buttonRegion, d, err, clicks)
+					}
+				} else if d == nil || d.Status.Success() || len(clicks) != 0 {
+					t.Errorf("expected wait timeout and zero clicks: task=%+v err=%v clicks=%v", d, err, clicks)
+				}
+			}
 			for _, tc := range []struct {
-				name      string
-				empty     image.Image
-				placement image.Point
-				room      bool
-				full      bool
+				name    string
+				middle  image.Image
+				midAt   image.Point
+				right   image.Image
+				rightAt image.Point
+				paint   func(draw.Image)
+				title   bool
+				full    bool
 			}{
-				{"middle empty", rightPlus, image.Pt(600, 217), true, false},
-				{"right empty", rightPlus, image.Pt(1013, 203), true, false},
-				{"both occupied", nil, image.Point{}, true, true},
-				{"unknown layout", nil, image.Point{}, false, false},
+				{"middle_plus", plus, image.Pt(600, 217), portrait, image.Pt(1000, 220), nil, true, false},
+				{"right_plus", portrait, image.Pt(598, 230), plus, image.Pt(1013, 203), nil, true, false},
+				{"legacy_middle_reviewer_106x14", legacy, image.Pt(596, 241), portrait, image.Pt(1000, 220), stripe, true, false},
+				{"legacy_middle_shifted", legacy, image.Pt(602, 244), portrait, image.Pt(1000, 220), stripe, true, false},
+				{"legacy_right", portrait, image.Pt(598, 230), legacy, image.Pt(1009, 229), nil, true, false},
+				{"middle_unknown_without_glyph", nil, image.Point{}, portrait, image.Pt(1000, 220), stripe, true, false},
+				{"portrait_outside_middle", portrait, image.Pt(475, 230), portrait, image.Pt(1000, 220), nil, true, false},
+				{"both_standard_seats_with_artwork", portrait, image.Pt(597, 228), portrait, image.Pt(1003, 223), nil, true, true},
+				{"unknown_layout_with_artwork", portrait, image.Pt(598, 230), portrait, image.Pt(1000, 220), nil, false, false},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					frame := blankPartyFrame()
-					if tc.room {
-						pastePartyCrop(frame, roomTitle, 92, 17)
+					if tc.title {
+						put(frame, roomTitle, image.Pt(92, 17))
 					}
-					for _, seat := range []image.Rectangle{image.Rect(594, 225, 704, 324), image.Rect(1000, 228, 1100, 326)} {
-						draw.Draw(frame, seat, image.NewUniform(color.RGBA{175, 54, 90, 255}), image.Point{}, draw.Src)
+					if tc.paint != nil {
+						tc.paint(frame)
 					}
-					if tc.empty != nil {
-						pastePartyCrop(frame, tc.empty, tc.placement.X, tc.placement.Y)
+					put(frame, tc.middle, tc.midAt)
+					put(frame, tc.right, tc.rightAt)
+					put(frame, challenge, image.Pt(1179, 602))
+					// A plus in the sea-only slot does not invalidate a standard room.
+					if tc.full {
+						put(frame, seaPlus, image.Pt(836, 231))
 					}
-					pastePartyCrop(frame, challenge, 1179, 602)
+					partyProbeHit(t, ctx, "组队管控-标准房间", frame, tc.title)
+					partyProbeHit(t, ctx, "组队管控-挑战可用", frame, true)
 					partyProbeHit(t, ctx, "组队管控-满员证据", frame, tc.full)
 					partyProbeHit(t, ctx, "组队管控-队长开战", frame, tc.full)
+					if tc.full || tc.name == "legacy_middle_reviewer_106x14" {
+						assertStart(t, frame, tc.full)
+					}
 				})
 			}
+			t.Run("sea_layout", func(t *testing.T) {
+				captions := os.Getenv("MAAYYS_PARTY_REVIEW_CAPTIONS")
+				if captions == "" {
+					t.Skip("set MAAYYS_PARTY_REVIEW_CAPTIONS to the reviewer directory with synthetic 永生之海 and 发言 OCR crops")
+				}
+				title := readPNG(filepath.Join(captions, "永生之海.png"))
+				speech := readPNG(filepath.Join(captions, "发言.png"))
+				for _, tc := range []struct {
+					name, dungeon string
+					seat          image.Image
+					at            image.Point
+					footer        bool
+					full          bool
+				}{
+					{"one_partner", "eternity_sea", portrait, image.Pt(833, 229), true, true},
+					{"empty_plus", "eternity_sea", seaPlus, image.Pt(836, 231), true, false},
+					{"unknown_seat", "eternity_sea", nil, image.Point{}, true, false},
+					{"wrong_dungeon", "soul_10", portrait, image.Pt(833, 229), true, false},
+					{"missing_layout_footer", "eternity_sea", portrait, image.Pt(833, 229), false, false},
+				} {
+					t.Run(tc.name, func(t *testing.T) {
+						config["dungeon"] = tc.dungeon
+						if !init() {
+							t.Fatal("init sea layout probe")
+						}
+						frame := blankPartyFrame()
+						put(frame, title, image.Pt(89, 12))
+						if tc.footer {
+							put(frame, speech, image.Pt(25, 510))
+						}
+						put(frame, legacy, image.Pt(596, 241))
+						put(frame, plus, image.Pt(1013, 203))
+						put(frame, tc.seat, tc.at)
+						put(frame, seaChallenge, image.Pt(1160, 586))
+						partyProbeHit(t, ctx, "组队管控-永生房间", frame, tc.footer)
+						partyProbeHit(t, ctx, "组队管控-挑战可用", frame, true)
+						partyProbeHit(t, ctx, "组队管控-满员证据", frame, tc.full)
+						partyProbeHit(t, ctx, "组队管控-队长开战", frame, tc.full)
+						if tc.full || tc.name == "empty_plus" {
+							assertStart(t, frame, tc.full)
+						}
+					})
+				}
+			})
 			config = map[string]any{"flow": "party", "role": "member", "captain_names": "涂壁", "limit_count": 1}
 			if !init() {
 				return false
@@ -606,12 +738,13 @@ func drawPartyLabel(t *testing.T, frame draw.Image, text string, x, y int, selec
 		stride int
 		mask   string
 	}{
-		"好友":     {10, "vc47CgIxEAbgPwlsCgPbbrdXiJ2dHiVH2FJwkRSWHsDOq0TsPUOOYLlFYMyMrgi24lTfME/gJ5EAFUUXmr6U4N/KRFRhi0qzTDRSVAeDl476Q5YmlptlWio2rlgLKi56Vqfh0sA6VW0CT9w1upB4zVC1FG01fC/PjFWtHLlphP75gUbecZ9Bo66ZrzXYq3NcS+MIV/N/xwM="},
-		"跨区":     {10, "pdAxCsJAEAXQj4JGSGFpIWoQrGzsLNR4lK8R7ETIAbJHm4NYbG6QMoW47s5qZWemejD7Z4YFulT6o36bonKvoGTy1ci1jF2vMxba3Zgr7ipKYaxmhSeRoMw1rE2ILKsHSw2vkPAQ0PMDOFVlfvJMtffKVTuCpdF3R7AWlbOF2I/iXj+FN2yD1uAF47D3CcZLhw0Yrx8glyhgbjp915/1Bg=="},
-		"最近":     {10, "Y2CgDDjAWQ8YeEBU/f8DCcx/oCyD+g8QRQckahigYgIJMBZDAtQIGAshVv//4If6/xCDGSEs9v///xgkJKCwGBobGKCs/0CWA4S1/4PBAYgsnPV/hgGclWDYAJHtOQBjPW8ohlj8/3HDTwaIHf0P74GtZ2f8U9v+H+wWxg0SjP//kRtUZAMA"},
-		"默认邀请队友": {23, "5dIxaxRBFAfw/947syu83C3YDHjcBgtbXxRiBJNbSGvpB1i59C5YiHiQOaawSaPVVfoV/AbZOGCa1NYr9wUUmwjCc3YuLIJfQHCYYvjx+PPezAD//CLshG0MIECGxEZUV9YEyc0QQr/+4GqfYDQfzXTd8yB3Mgm8lDQw9/zO5SMCL2feCgVW1Y6/ODMkZDo7L3Rten7qumawnGPDhE322VXkdWiQxFwz6dnPb+GoR8WJ/pBJzy4JvHh755pTvdo0CEmxMHdDGfWMnDrmbI/G6k1gu78JCWy39X3HPAVbifzGyg3LFRPD8x64qWNIaoUjd9X3wWXV8a3PVk4bPplGfgFTNUFTvWx2VyUf3Y4hc5jdyN+5eWgq9g86Xny1UsQrvLmqDkW23TN3T/2r80bGcconq/pxLZOidc/VJ7apisjHH0Vaczgt6RKebNW+7rIHx7VJmtFLCzqFH+ORb7vht3baCdl0rnrBhRvh4IOdBR6izBIMwqN8CpwhY2z9/WX+r/Ub"},
-		"取消":     {9, "Y2CgGDgwAwn2/w0MD5lZQIz/P4qb+RgYGJvrf1gclgExDAQEki0gDAZlASDjv4BBA0gXkGF48P8fkJSEwUMoQ6GQgQXMSFCEMDgSGMGM/zwOjGA1/3kOKEIUsx2AKmZvSIQwmGGMxwyJEMXPG8AMdqCugyApdmaJBDCDgbnA4iADD4jxQOYg4x8Qw4HjIOMPysOECAAA"},
-		"本次通关时间": {23, "1dIxTsMwFAbg341JQAptRyNFLUfwmAHRHsUSF+gGQ6VYqtSJQz1kqWLgAGyNxAUYO0R92I7bwMwCXmx/kd57/hXgz67btBOgMfUHK8NNf+e6YVAZboqPia2G8myqrPPfzkwGJcao68BA7rFgPpjmmJc1pjqTIDqzbo6yIH9yF9z1DNFC+WYNJ3a8jfwJ7AIjQyiSOHuH2FYw7sQicv7qWa0TL09cvuEqV+u+SGfOvEOVoxy4r60c1ASlcXPmD6lPrJ3VP7gvYl5IX9tYxGZSJRZErbmJXHieJs4sPRn/TD9gTsPcxYLvSEcuzfDK0YIvyZjAahWCTZOAhG11ZfZYxbxdn6APfkP1PWaiHQ95By7s7NF3oWIj5994jMkD8z5kPLckusQSIzA/A8vY6vDrf+2fry8="},
+		"好友":       {10, "vc47CgIxEAbgPwlsCgPbbrdXiJ2dHiVH2FJwkRSWHsDOq0TsPUOOYLlFYMyMrgi24lTfME/gJ5EAFUUXmr6U4N/KRFRhi0qzTDRSVAeDl476Q5YmlptlWio2rlgLKi56Vqfh0sA6VW0CT9w1upB4zVC1FG01fC/PjFWtHLlphP75gUbecZ9Bo66ZrzXYq3NcS+MIV/N/xwM="},
+		"跨区":       {10, "pdAxCsJAEAXQj4JGSGFpIWoQrGzsLNR4lK8R7ETIAbJHm4NYbG6QMoW47s5qZWemejD7Z4YFulT6o36bonKvoGTy1ci1jF2vMxba3Zgr7ipKYaxmhSeRoMw1rE2ILKsHSw2vkPAQ0PMDOFVlfvJMtffKVTuCpdF3R7AWlbOF2I/iXj+FN2yD1uAF47D3CcZLhw0Yrx8glyhgbjp915/1Bg=="},
+		"最近":       {10, "Y2CgDDjAWQ8YeEBU/f8DCcx/oCyD+g8QRQckahigYgIJMBZDAtQIGAshVv//4If6/xCDGSEs9v///xgkJKCwGBobGKCs/0CWA4S1/4PBAYgsnPV/hgGclWDYAJHtOQBjPW8ohlj8/3HDTwaIHf0P74GtZ2f8U9v+H+wWxg0SjP//kRtUZAMA"},
+		"默认邀请队友":   {23, "5dIxaxRBFAfw/947syu83C3YDHjcBgtbXxRiBJNbSGvpB1i59C5YiHiQOaawSaPVVfoV/AbZOGCa1NYr9wUUmwjCc3YuLIJfQHCYYvjx+PPezAD//CLshG0MIECGxEZUV9YEyc0QQr/+4GqfYDQfzXTd8yB3Mgm8lDQw9/zO5SMCL2feCgVW1Y6/ODMkZDo7L3Rten7qumawnGPDhE322VXkdWiQxFwz6dnPb+GoR8WJ/pBJzy4JvHh755pTvdo0CEmxMHdDGfWMnDrmbI/G6k1gu78JCWy39X3HPAVbifzGyg3LFRPD8x64qWNIaoUjd9X3wWXV8a3PVk4bPplGfgFTNUFTvWx2VyUf3Y4hc5jdyN+5eWgq9g86Xny1UsQrvLmqDkW23TN3T/2r80bGcconq/pxLZOidc/VJ7apisjHH0Vaczgt6RKebNW+7rIHx7VJmtFLCzqFH+ORb7vht3baCdl0rnrBhRvh4IOdBR6izBIMwqN8CpwhY2z9/WX+r/Ub"},
+		"取消":       {9, "Y2CgGDgwAwn2/w0MD5lZQIz/P4qb+RgYGJvrf1gclgExDAQEki0gDAZlASDjv4BBA0gXkGF48P8fkJSEwUMoQ6GQgQXMSFCEMDgSGMGM/zwOjGA1/3kOKEIUsx2AKmZvSIQwmGGMxwyJEMXPG8AMdqCugyApdmaJBDCDgbnA4iADD4jxQOYg4x8Qw4HjIOMPysOECAAA"},
+		"陌生人邀请你组队": {30, "7dMxaxsxFADgd35G54B8vmwKTeML7Q+42wwN1dgMha4dL+QPuGTx1BMYmg6F5CcJrjSGGtLRkCEHHbLKZHGp4fVJlyYOdOla+gYJ8cF7Tw8J4J8M5ZeeEAASuikIf8z8gj9pLVkFyK6IWBMFYkAD90gTEPozntFK5iAfVEnYVT6lyF5Hl6yaej2U+b2qoJi9cQ0fKlKzTdW0Zu3oS/eKVsp2ctay1VzdKWRvbUyr3Ir9j/dakBuHzJBNLG/FVFSstgy6T65h3QPQ3y6uaT1GWQ1I2nHQI1PYoMPnh6etikdqWJ/AUGwZC+AQunyjOy1M7if5ArDTNzUtz5+lkrVsdafVArC6CXqilJ/G5Lf6GxUGFUINRXqstJ/GolVyXo9aJZceS31GMp8F3SLnMzcWhxfGay1H3HMxD9pv69oS0y+2hjytBXDd4tOGRnaM+dzr9tRr//bDRs9oRlguyq/ktqcYzbB/Ewf9ETSG3TheZVes2BlyzwKDvguaQDI4PYdbrovwnusmkfEa0ZKIDiB+2gB8D5pVND+A5kEngAuiZR03qQZgHYELypn9+4yMJjdlfekLyqx9sn8O+Re/4X+E+AU="},
+		"本次通关时间":   {23, "1dIxTsMwFAbg341JQAptRyNFLUfwmAHRHsUSF+gGQ6VYqtSJQz1kqWLgAGyNxAUYO0R92I7bwMwCXmx/kd57/hXgz67btBOgMfUHK8NNf+e6YVAZboqPia2G8myqrPPfzkwGJcao68BA7rFgPpjmmJc1pjqTIDqzbo6yIH9yF9z1DNFC+WYNJ3a8jfwJ7AIjQyiSOHuH2FYw7sQicv7qWa0TL09cvuEqV+u+SGfOvEOVoxy4r60c1ASlcXPmD6lPrJ3VP7gvYl5IX9tYxGZSJRZErbmJXHieJs4sPRn/TD9gTsPcxYLvSEcuzfDK0YIvyZjAahWCTZOAhG11ZfZYxbxdn6APfkP1PWaiHQ95By7s7NF3oWIj5994jMkD8z5kPLckusQSIzA/A8vY6vDrf+2fry8="},
 		"八岐大蛇掉落额外的御魂材料": {36, "7dJBaxNBFAfw2Z3pZopb96URmZBqdkGiN3eNQsXWJFV6KiierIKMCD25YI89SCcEmi0pNhUEPfkVBL/AYkE85OBR6CWCFA+CGzwYJM36dlOxVI8ePPR/nPnx3mPmEfLfxuWHTyiB0Y0yNaIpShQasHVCBNdUyEJCJBqhKULsXyZ0re9xXLcGwDVNmfWIVP8w1bROJcJ6md6Q72W/xQ0CL5zUTKz20VjDAaeTtuuiYVk974Duvfw63PHQyNBP6hQ/G178cY1c9FQlYJN6OTEN4t499dsUzhmekjeGptWXATupy5F5dGds39A43rEJmilmfeHVgJ0wTAcoznPznnagTol48acLXCy8qz1hWePYXu6H01TvRTJztepXopFRD5xXM52g3mLZNeHAnNOU7Xg5MdIHl6KZuqTuq+7ZjWBrvBm9RfPG2fRA5NGEaGwaFkruZSVpRDfW8/w6zE878DpuURDjibF9IfVqcTfsxd3jp82H6xY/A0srDjyttXS4ijNryvV5aMhChniBdGl7JjA4g9LibLZ9K8fgCo1Sw5Rp03mGf7E5ON9JjZF3suJZjsPiY4XfL/wMES5dMlyuBYwvBOa+WdmiAB+01KxmiCtoySjHPc54LeQjU24Vt214jsYgpjYRSpPuYi+aGClSMxsZcG20Gyaq6eWQFktodGvA5wB3I2KFHjFhGxug4dhNFvAJyv0ux2mtDg+xTl9oBIoN2k137FD47TGV7DWaNH8zRznKv85P"},
 		"觉醒副本掉落额外的觉醒材料": {36, "7dLPaxNBFAfwNzvT5LUO7qQRmWCtKYjedNcfoFhsK+KpYk/FHyAjBQ/FQ8WLCJKJkWRLg23x0lKw/4J/Qkqh9JCDJ2nwkBQ8Cm7owQphx5lt9eBd8NB3WZj98H0zvAfwnxaHAP8+oyDch2D6h+jUiKIHIJHoBo6Pp0YSDZTLUnvPbDjj/zCm7PcEEqKl2kxM5cBANRiQAgq/c8ZiHWC2m7BQTzWsWR2x5k1x4EwMhXXT6yEdLAaBNSznsRxMmfXvyZdQg28Sm2NW9RCEZrcKV0I9FrFBr2RilxM8Oq3tc7zSjiiv6mEItbqXcH9fReykpyCfWDP3sC81s+3YmgvODDH/G45H7ETGmml756nH5MA0XK+7ttfXSygntyfesVxqoKY/SXtnYuLZFticpg71zMjH0WZUXmC5qm8q09tZtWSeW6PFqxZAoVxvXNVPdOd8PVrur8VbHCqft/1QyII1b8WLtn17havrWtGY1ucLeFvc4cXKB7NAhexPzVyXmFaVF7umc3yYP5v38ax4ak0tOuaJmyQ1apfIVp3LMFIBXRqNMsjEOWuymGfiBo2B1ESp3ZWtFc7tLBZ7F5upyfBrlcS8R/Hgtc1ZzKsN22vZbAVIIoaTEU/Ny7UMUiF2XK81Z6Sb+2XTRYYTDUzNjjNFseLmnqelQxMgdUZJZ2DlVIKH+wMznjI/D/YHPb+Ht4TdjZhRmc+aTQicIeVENQi07VA6aG/rN7Fhc/a5v5cBSjsyndeffU4L7/dpt73q8DjtdVRH9Y/rFw=="},
 	}
