@@ -157,11 +157,11 @@ func screenshot(ctx *maa.Context) (image.Image, error) {
 	if tasker.Stopping() {
 		return nil, errors.New("加成操作已停止")
 	}
-	ctrl := tasker.GetController()
-	if ctrl == nil || !ctrl.PostScreencap().Wait().Success() {
+	img := vision.Screencap(tasker, 0)
+	if img == nil {
 		return nil, errors.New("无法获取加成面板截图")
 	}
-	return ctrl.CacheImage()
+	return img, nil
 }
 
 func locate(ctx *maa.Context, img image.Image, name string) (switchState, *maa.Rect) {

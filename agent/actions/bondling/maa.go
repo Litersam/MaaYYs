@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"maa-yys-agent/internal/vision"
 	"maa-yys-agent/ocrtext"
 
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
@@ -77,16 +78,7 @@ func visitHits(entry string) []string {
 }
 
 func (m maaUI) capture() image.Image {
-	t := m.ctx.GetTasker()
-	if t.Stopping() {
-		return nil
-	}
-	c := t.GetController()
-	if !c.PostScreencap().Wait().Success() {
-		return nil
-	}
-	img, _ := c.CacheImage()
-	return img
+	return vision.Screencap(m.ctx.GetTasker(), 0)
 }
 
 func (m maaUI) recognize(frame image.Image, node string) *maa.RecognitionDetail {

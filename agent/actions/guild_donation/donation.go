@@ -177,15 +177,7 @@ type session struct {
 }
 
 func (s session) capture(settle time.Duration) image.Image {
-	time.Sleep(settle)
-	if s.tasker.Stopping() || !s.ctrl.PostScreencap().Wait().Success() {
-		return nil
-	}
-	img, err := s.ctrl.CacheImage()
-	if err != nil {
-		return nil
-	}
-	return img
+	return vision.Screencap(s.tasker, settle)
 }
 
 func (s session) recognize(frame image.Image, node string, roi maa.Rect, expected string) *maa.RecognitionDetail {

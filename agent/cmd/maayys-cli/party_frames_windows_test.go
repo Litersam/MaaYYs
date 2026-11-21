@@ -47,11 +47,6 @@ func historicalPartyCrop(t *testing.T, path string) image.Image {
 	return crop
 }
 
-func pastePartyCrop(frame draw.Image, crop image.Image, x, y int) {
-	p := image.Pt(x, y)
-	draw.Draw(frame, image.Rectangle{Min: p, Max: p.Add(crop.Bounds().Size())}, crop, crop.Bounds().Min, draw.Over)
-}
-
 func blankPartyFrame() *image.RGBA {
 	frame := image.NewRGBA(image.Rect(0, 0, 1280, 720))
 	draw.Draw(frame, frame.Bounds(), image.NewUniform(color.RGBA{64, 60, 56, 255}), image.Point{}, draw.Src)
@@ -225,7 +220,7 @@ func TestNativePartyMissingTeammateNeverSends(t *testing.T) {
 	frames := make([]*image.RGBA, len(tabNames)+1)
 	for i := range frames {
 		frame := blankPartyFrame()
-		pastePartyCrop(frame, ensure, 517, 553)
+		pasteCrop(frame, ensure, image.Pt(517, 553))
 		for j, name := range tabNames {
 			x := 353 + j*118
 			drawPartyLabel(t, frame, name, x, 101, i == j+1)
@@ -297,20 +292,10 @@ func TestNativePartyRoomLayoutAndMemberGates(t *testing.T) {
 	// Tracked Kagura character artwork, composed into a seat for replay.
 	// This is not an archived occupied-room screenshot.
 	root := testRepoRoot(t)
-	readPNG := func(path string) image.Image {
-		t.Helper()
-		f, err := os.Open(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer f.Close()
-		img, err := png.Decode(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return img
+	kagura, err := loadPNG(filepath.Join(root, "resource_pack", "base", "image", "非战斗", "式神委派", "式神委派-识别神乐_1.png"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	kagura := readPNG(filepath.Join(root, "resource_pack", "base", "image", "非战斗", "式神委派", "式神委派-识别神乐_1.png"))
 	portrait := image.NewRGBA(image.Rect(0, 0, 108, 108))
 	for y := range 108 {
 		for x := range 108 {
@@ -319,7 +304,7 @@ func TestNativePartyRoomLayoutAndMemberGates(t *testing.T) {
 	}
 	put := func(frame draw.Image, crop image.Image, at image.Point) {
 		if crop != nil {
-			pastePartyCrop(frame, crop, at.X, at.Y)
+			pasteCrop(frame, crop, at)
 		}
 	}
 	stripe := func(frame draw.Image) {
@@ -420,8 +405,14 @@ func TestNativePartyRoomLayoutAndMemberGates(t *testing.T) {
 				if captions == "" {
 					t.Skip("set MAAYYS_PARTY_REVIEW_CAPTIONS to the reviewer directory with synthetic 永生之海 and 发言 OCR crops")
 				}
-				title := readPNG(filepath.Join(captions, "永生之海.png"))
-				speech := readPNG(filepath.Join(captions, "发言.png"))
+				title, err := loadPNG(filepath.Join(captions, "永生之海.png"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				speech, err := loadPNG(filepath.Join(captions, "发言.png"))
+				if err != nil {
+					t.Fatal(err)
+				}
 				for _, tc := range []struct {
 					name, dungeon string
 					seat          image.Image
@@ -518,8 +509,8 @@ func TestNativePartyAcceptedInvitationDisbandsAndRestoresOwnedBonus(t *testing.T
 		frame := blankPartyFrame()
 		drawPartyCaption(t, frame, "觉醒副本掉落额外的觉醒材料", 430, 133)
 		drawPartyCaption(t, frame, "八岐大蛇掉落额外的御魂材料", 430, 201)
-		pastePartyCrop(frame, bonusOn, 725, 143)
-		pastePartyCrop(frame, soul, 725, 211)
+		pasteCrop(frame, bonusOn, image.Pt(725, 143))
+		pasteCrop(frame, soul, image.Pt(725, 211))
 		return frame
 	}
 	onPanel, offPanel := panel(bonusOn), panel(bonusOff)
@@ -536,10 +527,10 @@ func TestNativePartyAcceptedInvitationDisbandsAndRestoresOwnedBonus(t *testing.T
 			t.Fatal(err)
 		}
 		home := drawReviewCrop(court, image.Pt(1200, 640))
-		pastePartyCrop(home, bonusButton, 349, 32)
+		pasteCrop(home, bonusButton, image.Pt(349, 32))
 		invite := drawReviewCrop(court, image.Pt(1200, 640))
-		pastePartyCrop(invite, accept, 90, 200)
-		pastePartyCrop(invite, reject, 12, 226)
+		pasteCrop(invite, accept, image.Pt(90, 200))
+		pasteCrop(invite, reject, image.Pt(12, 226))
 		draw.Draw(invite, image.Rect(12, 158, 300, 198), image.White, image.Point{}, draw.Src)
 		draw.Draw(invite, image.Rect(30, 162, 110, 192), syntheticGhostFrame(t), image.Pt(145, 52), draw.Src)
 		prepare := drawReviewCrop(prepareCrop, image.Pt(1128, 536))
@@ -676,10 +667,10 @@ func TestNativePartyFinalSettlementCancelsReinvite(t *testing.T) {
 	prompt := blankPartyFrame()
 	drawPartyCaption(t, prompt, "默认邀请队友", 440, 246)
 	drawPartyCaption(t, prompt, "取消", 500, 420)
-	pastePartyCrop(prompt, toggle, 564, 341)
-	pastePartyCrop(prompt, confirm, 664, 407)
+	pasteCrop(prompt, toggle, image.Pt(564, 341))
+	pasteCrop(prompt, confirm, image.Pt(664, 407))
 	// The settlement and popup can overlap on the first post-fight frame.
-	pastePartyCrop(victory, prompt.SubImage(image.Rect(408, 232, 900, 490)), 408, 232)
+	pasteCrop(victory, prompt.SubImage(image.Rect(408, 232, 900, 490)), image.Pt(408, 232))
 	c := &partyFrameController{frame: victory}
 	withPartyFrameReplay(t, c, func(root string, _ *maa.Resource, tasker *maa.Tasker) {
 		court, err := loadPNG(filepath.Join(root, "resource_pack", "base", "image", "导航",

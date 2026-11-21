@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/draw"
 	_ "image/png"
 	"os"
 	"path/filepath"
@@ -940,4 +941,8 @@ func loadPNG(path string) (image.Image, error) {
 	defer f.Close()
 	img, _, err := image.Decode(f)
 	return img, err
+}
+
+func pasteCrop(dst draw.Image, src image.Image, at image.Point) {
+	draw.Draw(dst, image.Rectangle{Min: at, Max: at.Add(src.Bounds().Size())}, src, src.Bounds().Min, draw.Over)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"maa-yys-agent/internal/runstate"
+	"maa-yys-agent/internal/vision"
 	"maa-yys-agent/ocrtext"
 
 	maa "github.com/MaaXYZ/maa-framework-go/v4"
@@ -75,14 +76,7 @@ func runBattle(ctx *maa.Context, arg *maa.CustomActionArg, timeout, interval tim
 		return false
 	}
 	fresh := func() image.Image {
-		if tasker.Stopping() || !ctrl.PostScreencap().Wait().Success() {
-			return nil
-		}
-		img, err := ctrl.CacheImage()
-		if err != nil {
-			return nil
-		}
-		return img
+		return vision.Screencap(tasker, 0)
 	}
 	match := func(node string, img image.Image) *maa.RecognitionDetail {
 		if img != nil {

@@ -216,7 +216,11 @@ func TestNativeBondlingReview(t *testing.T) {
 		if dir == "" {
 			t.Skip("set MAAYYS_BONDLING_REFERENCE_FIXTURES to the offline historical fixtures")
 		}
-		frames["historicalWarning"] = decodeBondlingPNG(t, filepath.Join(dir, "bondling_low_discs_notice_A_20261011.png"))
+		historicalWarning, err := loadPNG(filepath.Join(dir, "bondling_low_discs_notice_A_20261011.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		frames["historicalWarning"] = historicalWarning
 		run(t, "historicalWarning", 3, []bondlingClick{continueWarning, prepare, result("map14")},
 			runstate.Completed, "bonds_verified", 0, 1)
 		t.Run("no repeat if the warning remains", func(t *testing.T) {
@@ -233,7 +237,11 @@ func TestNativeBondlingReview(t *testing.T) {
 		for i, name := range []string{"low", "midum", "high"} {
 			panel := image.NewRGBA(image.Rect(0, 0, 1280, 720))
 			draw.Draw(panel, panel.Bounds(), frames["panelText"], image.Point{}, draw.Src)
-			pasteBondlingCrop(panel, decodeBondlingPNG(t, filepath.Join(dir, "capture_c_auto_true.png")), image.Pt(765, 200))
+			autoTrue, err := loadPNG(filepath.Join(dir, "capture_c_auto_true.png"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			pasteCrop(panel, autoTrue, image.Pt(765, 200))
 			for j, disc := range []struct {
 				name    string
 				on, off image.Point
@@ -246,7 +254,11 @@ func TestNativeBondlingReview(t *testing.T) {
 				if i == j {
 					suffix, point = "_true.png", disc.on
 				}
-				pasteBondlingCrop(panel, decodeBondlingPNG(t, filepath.Join(dir, "capture_c_"+disc.name+suffix)), point)
+				crop, err := loadPNG(filepath.Join(dir, "capture_c_"+disc.name+suffix))
+				if err != nil {
+					t.Fatal(err)
+				}
+				pasteCrop(panel, crop, point)
 			}
 			frames[name] = panel
 			board := fmt.Sprintf("singleTier%d", i+1)
@@ -357,24 +369,6 @@ func runBondlingReviewTask(t *testing.T, res *maa.Resource, tasker *maa.Tasker, 
 	}
 }
 
-func decodeBondlingPNG(t *testing.T, path string) image.Image {
-	t.Helper()
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	img, err := png.Decode(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return img
-}
-
-func pasteBondlingCrop(dst draw.Image, crop image.Image, p image.Point) {
-	draw.Draw(dst, image.Rectangle{Min: p, Max: p.Add(crop.Bounds().Size())}, crop, crop.Bounds().Min, draw.Over)
-}
-
 func bondlingReviewFrames(t *testing.T, root string) map[string]image.Image {
 	t.Helper()
 	// Render original synthetic frames with Windows' regular CJK font; no
@@ -467,14 +461,20 @@ out-frame warningUnknown (@(warning-labels '陌生')+@( @(535,12,'9/200'), @(735
 		}
 		frames[key] = img
 	}
-	arrow := decodeBondlingPNG(t, filepath.Join(root, "resource_pack", "base", "image", "通用图标", "返回_黄色.png"))
+	arrow, err := loadPNG(filepath.Join(root, "resource_pack", "base", "image", "通用图标", "返回_黄色.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, page := range []string{"map15", "map14", "exploration", "shop", "shopZero", "shopAllZero", "shopLast",
 		"board", "depleted", "boardLast", "boardZero", "boardUnknown"} {
-		pasteBondlingCrop(frames[page].(draw.Image), arrow, image.Pt(10, 12))
+		pasteCrop(frames[page].(draw.Image), arrow, image.Pt(10, 12))
 	}
 	courtyard := image.NewRGBA(image.Rect(0, 0, 1280, 720))
-	courtyardCrop := decodeBondlingPNG(t, filepath.Join(root, "resource_pack", "base", "image", "导航", "导航-庭院-识别是否位于庭院-模板匹配_1.png"))
-	pasteBondlingCrop(courtyard, courtyardCrop, image.Pt(10, 550))
+	courtyardCrop, err := loadPNG(filepath.Join(root, "resource_pack", "base", "image", "导航", "导航-庭院-识别是否位于庭院-模板匹配_1.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pasteCrop(courtyard, courtyardCrop, image.Pt(10, 550))
 	frames["courtyard"] = courtyard
 	for _, panel := range []string{"settings", "ambiguous"} {
 		img := image.NewRGBA(image.Rect(0, 0, 1280, 720))

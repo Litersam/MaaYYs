@@ -72,11 +72,7 @@ type fosterScan struct {
 }
 
 func (s fosterScan) frame() image.Image {
-	if s.ctx.GetTasker().Stopping() || !s.controller.PostScreencap().Wait().Success() {
-		return nil
-	}
-	img, _ := s.controller.CacheImage()
-	return img
+	return vision.Screencap(s.ctx.GetTasker(), 0)
 }
 
 func (s fosterScan) task(node string, overrides ...any) (string, bool) {

@@ -129,7 +129,7 @@ func TestNativePartyHistoricalSoulTitles(t *testing.T) {
 			for _, shade := range []uint8{0, 169} {
 				f := blankPartyFrame()
 				draw.Draw(f, f.Bounds(), image.NewUniform(color.Gray{Y: shade}), image.Point{}, draw.Src)
-				pastePartyCrop(f, crop, 929+off.X, y+off.Y)
+				pasteCrop(f, crop, image.Pt(929+off.X, y+off.Y))
 				frames = append(frames, titleFrame{fmt.Sprintf("%s %v bg=%d", floor, off, shade), floor, f})
 			}
 		}

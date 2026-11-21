@@ -254,10 +254,10 @@ func newBondVisualFrames(t *testing.T, root string) map[string]image.Image {
 			case "home":
 				// Keep both actual courtyard templates behind Friends to prove
 				// positive template evidence alone cannot authorize navigation.
-				bondDrawVisual(img, templates["courtyard"], 100, 572)
-				bondDrawVisual(img, templates["friends"], 880, 620)
+				pasteCrop(img, templates["courtyard"], image.Pt(100, 572))
+				pasteCrop(img, templates["friends"], image.Pt(880, 620))
 			case "friend", "wrong-friend":
-				bondDrawVisual(img, templates["close"], 1150, 85)
+				pasteCrop(img, templates["close"], image.Pt(1150, 85))
 				bondDrawGlyph(t, img, "好友", 600, 45)
 				if flag == "friend" {
 					bondDrawGlyph(t, img, "测试搭档", 620, 96)
@@ -282,11 +282,6 @@ func newBondVisualFrames(t *testing.T, root string) map[string]image.Image {
 		frames[page] = img
 	}
 	return frames
-}
-
-func bondDrawVisual(dst draw.Image, src image.Image, x, y int) {
-	at := image.Pt(x, y)
-	draw.Draw(dst, src.Bounds().Sub(src.Bounds().Min).Add(at), src, src.Bounds().Min, draw.Over)
 }
 
 func bondDrawGlyph(t *testing.T, dst draw.Image, text string, x, y int) {

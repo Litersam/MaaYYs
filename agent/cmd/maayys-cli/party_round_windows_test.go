@@ -36,9 +36,9 @@ func TestNativePartyCannotReuseInvitationAfterSettlement(t *testing.T) {
 		invite := func(allowed bool) *image.RGBA {
 			f := blankPartyFrame()
 			draw.Draw(f, f.Bounds(), court, image.Point{}, draw.Src)
-			pastePartyCrop(f, accept, 113, 225)
-			pastePartyCrop(f, defaultAccept, 205, 223)
-			pastePartyCrop(f, reject, 12, 226)
+			pasteCrop(f, accept, image.Pt(113, 225))
+			pasteCrop(f, defaultAccept, image.Pt(205, 223))
+			pasteCrop(f, reject, image.Pt(12, 226))
 			if allowed {
 				draw.Draw(f, image.Rect(12, 158, 300, 198), image.White, image.Point{}, draw.Src)
 				draw.Draw(f, image.Rect(30, 162, 110, 192), nickname, image.Pt(145, 52), draw.Src)
@@ -53,9 +53,9 @@ func TestNativePartyCannotReuseInvitationAfterSettlement(t *testing.T) {
 		}
 		firstReady := drawReviewCrop(prepare, image.Pt(1128, 536))
 		strangerReady := drawReviewCrop(prepare, image.Pt(1128, 536))
-		pastePartyCrop(strangerReady, back, 21, 19)
+		pasteCrop(strangerReady, back, image.Pt(21, 19))
 		sameRoom := drawReviewCrop(prepare, image.Pt(1128, 536))
-		pastePartyCrop(sameRoom, roomTitle, 92, 17)
+		pasteCrop(sameRoom, roomTitle, image.Pt(92, 17))
 		draw.Draw(sameRoom, image.Rect(195, 366, 275, 396), nickname, image.Pt(145, 52), draw.Src)
 		victory := blankPartyFrame()
 		drawPartyCaption(t, victory, "本次通关时间", 530, 575)

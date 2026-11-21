@@ -18,13 +18,7 @@ type WaitAndAccept struct{}
 type inviteUI struct{ ctx *maa.Context }
 
 func (u inviteUI) frame() image.Image {
-	tasker := u.ctx.GetTasker()
-	c := tasker.GetController()
-	if tasker.Stopping() || c == nil || !c.PostScreencap().Wait().Success() {
-		return nil
-	}
-	img, _ := c.CacheImage()
-	return img
+	return vision.Screencap(u.ctx.GetTasker(), 0)
 }
 
 func (u inviteUI) click(box maa.Rect) bool {

@@ -56,7 +56,7 @@ func TestNativePartyInviteCardBinding(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pastePartyCrop(frame, crop, piece.x, piece.y)
+			pasteCrop(frame, crop, image.Pt(piece.x, piece.y))
 		}
 		return frame
 	}
