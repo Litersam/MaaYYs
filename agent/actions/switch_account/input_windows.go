@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode/utf16"
@@ -31,6 +32,13 @@ var (
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 )
 
+type cachedHWNDs struct {
+	mainWnd   uintptr
+	renderWnd uintptr
+}
+
+var mumuHWNDCache sync.Map
+
 func sendMuMuText(mumuIndex *int, adbPath, adbAddress, text string) error {
 	mainWnd, renderWnd, err := resolveMuMuInputWindows(mumuIndex, adbPath, adbAddress)
 	if err != nil {
@@ -49,13 +57,29 @@ func sendMuMuText(mumuIndex *int, adbPath, adbAddress, text string) error {
 		if i == 0 {
 			time.Sleep(80 * time.Millisecond)
 		} else {
-			time.Sleep(45 * time.Millisecond)
+			time.Sleep(38 * time.Millisecond)
 		}
 	}
 	return nil
 }
 
 func resolveMuMuInputWindows(mumuIndex *int, adbPath, adbAddress string) (uintptr, uintptr, error) {
+	cacheKey := ""
+	if mumuIndex != nil {
+		cacheKey = fmt.Sprintf("idx:%d|%s", *mumuIndex, strings.TrimSpace(adbAddress))
+	} else if strings.TrimSpace(adbAddress) != "" {
+		cacheKey = "addr:" + strings.TrimSpace(adbAddress)
+	}
+	if cacheKey != "" {
+		if v, ok := mumuHWNDCache.Load(cacheKey); ok {
+			c := v.(cachedHWNDs)
+			if r := validWnd(c.renderWnd); r != 0 {
+				return validWnd(c.mainWnd), r, nil
+			}
+			mumuHWNDCache.Delete(cacheKey)
+		}
+	}
+
 	mgr := ResolveMuMuManagerPath(adbPath)
 	if _, err := os.Stat(mgr); err != nil {
 		return 0, 0, fmt.Errorf("MuMuManager.exe missing: %w", err)
@@ -95,6 +119,9 @@ func resolveMuMuInputWindows(mumuIndex *int, adbPath, adbAddress string) (uintpt
 	}
 	if renderWnd == 0 {
 		return 0, 0, fmt.Errorf("unable to locate render window for MuMu #%d", idx)
+	}
+	if cacheKey != "" {
+		mumuHWNDCache.Store(cacheKey, cachedHWNDs{mainWnd: mainWnd, renderWnd: renderWnd})
 	}
 	return mainWnd, renderWnd, nil
 }

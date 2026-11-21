@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"image"
 	_ "image/png"
 	"os"
@@ -374,13 +375,62 @@ func TestOfflineResourceLoadingWithBaseAndOfficial(t *testing.T) {
 			t.Fatal("expected check_login_form.png to match on after_cg_tap_4.png")
 		}
 
-		skipReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
-			ROI:      maa.NewTargetRect(maa.Rect{360, 340, 560, 170}),
-			Expected: []string{"暂不更新|以后再说|暂不升级"},
+		tFull := time.Now()
+		fullReco := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI: maa.NewTargetRect(maa.Rect{0, 0, 1280, 720}),
 		}, img).Wait()
-		skipDetail, _ := skipReco.GetDetail()
-		if skipDetail == nil || len(skipDetail.NodeDetails) == 0 || skipDetail.NodeDetails[0].Recognition == nil || !skipDetail.NodeDetails[0].Recognition.Hit {
-			t.Fatal("failed to recognize 暂不更新 after CG skip tap on after_cg_tap_4.png")
+		fullDur := time.Since(tFull)
+		fullDetail, _ := fullReco.GetDetail()
+		hitSkipInFull := false
+		if fullDetail != nil && len(fullDetail.NodeDetails) > 0 && fullDetail.NodeDetails[0].Recognition != nil && fullDetail.NodeDetails[0].Recognition.Results != nil {
+			for _, item := range fullDetail.NodeDetails[0].Recognition.Results.All {
+				if ocr, ok := item.AsOCR(); ok && strings.Contains(ocr.Text, "暂不更新") {
+					cx := ocr.Box.X() + ocr.Box.Width()/2
+					if cx < 640 {
+						hitSkipInFull = true
+						break
+					}
+				}
+			}
+		}
+		if !hitSkipInFull {
+			t.Fatal("single-pass full-frame OCR {0,0,1280,720} failed to isolate left 暂不更新 button on after_cg_tap_4.png")
+		}
+		t.Logf("single-pass full-frame OCR latency on login modal frame: %v", fullDur)
+	}
+
+	if img, err := loadPNG(cgShot); err == nil {
+		tCG := time.Now()
+		cgFull := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+			ROI: maa.NewTargetRect(maa.Rect{0, 0, 1280, 720}),
+		}, img).Wait()
+		t.Logf("single-pass full-frame OCR latency on textless CG frame: %v (status=%v)", time.Since(tCG), cgFull.Status())
+	}
+
+	if dir := strings.TrimSpace(os.Getenv("MAAYYS_BENCH_IMAGES_DIR")); dir != "" {
+		entries, _ := os.ReadDir(dir)
+		for _, ent := range entries {
+			if !strings.HasSuffix(strings.ToLower(ent.Name()), ".png") {
+				continue
+			}
+			img, err := loadPNG(filepath.Join(dir, ent.Name()))
+			if err != nil {
+				continue
+			}
+			t0 := time.Now()
+			r := tasker.PostRecognition(maa.RecognitionTypeOCR, &maa.OCRParam{
+				ROI: maa.NewTargetRect(maa.Rect{0, 0, 1280, 720}),
+			}, img).Wait()
+			d1 := time.Since(t0)
+			var texts []string
+			if det, _ := r.GetDetail(); det != nil && len(det.NodeDetails) > 0 && det.NodeDetails[0].Recognition != nil && det.NodeDetails[0].Recognition.Results != nil {
+				for _, item := range det.NodeDetails[0].Recognition.Results.All {
+					if ocr, ok := item.AsOCR(); ok {
+						texts = append(texts, fmt.Sprintf("%s@(%d,%d)", ocr.Text, ocr.Box.X()+ocr.Box.Width()/2, ocr.Box.Y()+ocr.Box.Height()/2))
+					}
+				}
+			}
+			t.Logf("bench %s -> 1x full OCR=%v (%d boxes): %s", ent.Name()[:12], d1, len(texts), strings.Join(texts, " | "))
 		}
 	}
 }

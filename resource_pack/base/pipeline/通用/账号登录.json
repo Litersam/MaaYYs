@@ -10,6 +10,8 @@
         },
         "max_hit": 1,
         "on_error": [],
+        "post_delay": 0,
+        "rate_limit": 0,
         "recognition": "DirectHit",
         "timeout": 200000
     }

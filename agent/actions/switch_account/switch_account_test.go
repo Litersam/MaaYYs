@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	maa "github.com/MaaXYZ/maa-framework-go/v4"
 )
 
 func TestNormalizeParamsAndRedaction(t *testing.T) {
@@ -75,6 +77,9 @@ func TestMatchEmailAndServer(t *testing.T) {
 	if !MatchServer("永远的平安京 切换", "永远的平安京") {
 		t.Fatal("expected 6-char server name with trailing 切换 to match")
 	}
+	if !MatchServer("永远的平安京👀切换", "永远的平安京") {
+		t.Fatal("expected full-frame OCR server name with icon glyph before 切换 to match")
+	}
 	if !MatchServer("携手同心切换", "携手同心") {
 		t.Fatal("expected server name with adjacent 切换 to match")
 	}
@@ -110,5 +115,22 @@ func TestParseMuMuInfoJSON(t *testing.T) {
 	idx, err := FindMuMuIndexByAddress(nested, "127.0.0.1:16512")
 	if err != nil || idx != 4 {
 		t.Fatalf("FindMuMuIndexByAddress got (%d, %v), want 4", idx, err)
+	}
+}
+
+func TestBoxInROIAndCachedRegexp(t *testing.T) {
+	if !boxInROI(maa.Rect{490, 420, 84, 30}, maa.Rect{360, 340, 560, 170}) {
+		t.Fatal("expected left button box inside modal ROI")
+	}
+	if boxInROI(maa.Rect{250, 135, 20, 20}, maa.Rect{360, 340, 560, 170}) {
+		t.Fatal("safe CG tap area (260, 140) must not intersect central modal ROI")
+	}
+	if boxInROI(maa.Rect{250, 135, 20, 20}, maa.Rect{1, 547, 241, 105}) {
+		t.Fatal("safe CG tap area (260, 140) must not intersect bottom-left 8+ badge")
+	}
+	re1 := cachedRegexp(`^(同意|同意并继续|同意并登录)$`)
+	re2 := cachedRegexp(`^(同意|同意并继续|同意并登录)$`)
+	if re1 == nil || re1 != re2 || !re1.MatchString("同意并登录") {
+		t.Fatal("expected cachedRegexp to return identical compiled regexp matching 同意并登录")
 	}
 }

@@ -29,10 +29,10 @@
 - Registered as `SwitchAccount`, exposed via `resource_pack/base/pipeline/通用/账号登录.json` and `tasks/账号登录.json`.
 - Parameters: `{"email": "...", "password": "...", "platform": "ios"|"android", "server": "...", "character": "..."}`.
 - Flow:
-  1. Checks foreground focus and runs `StartApp` using the merged `启动游戏` package (`com.netease.onmyoji.wyzymnqsd_cps` on `official`) while dismissing startup popups without prematurely entering the previous account.
+  1. Checks foreground focus and runs `StartApp` using the merged `启动游戏` package (`com.netease.onmyoji.wyzymnqsd_cps` on `official`), fast-skipping opening CG animations via safe blank taps `(260, 140)` while dismissing startup popups without prematurely entering the previous account.
   2. Exits courtyard (`[35, 35, 55, 55]` -> `用户中心` -> `切换账号`) when already logged in.
-  3. Opens the NetEase stored-account selector, strictly matches `email` via OCR, and falls back to Win32 `WM_CHAR` UTF-16 messages sent directly to the target MuMu render window (`mumu_index`) when password login is required.
-  4. Explicitly selects `"ios"` or `"android"` platform icon, verifies/switches bottom `server`, clicks `进入游戏`, and requires 2 consecutive courtyard detections >= 1s apart.
+  3. Opens the NetEase stored-account selector, strictly matches `email` via OCR, and falls back to Win32 `WM_CHAR` UTF-16 messages sent directly to the target MuMu render window (`mumu_index`, with cached HWNDs) when password login is required.
+  4. Explicitly selects `"ios"` or `"android"` platform icon, verifies/switches bottom `server`, clicks `进入游戏`, and requires 2 consecutive courtyard detections >= 1s apart (using single-pass full-frame OCR caching, ~260ms reactive polling, and `[阶段耗时]` / `[登录耗时汇总]` JSONL telemetry).
   5. **Displaced-login guard**: Immediately aborts with `displaced: true` without reconnecting if `账号在其他设备登录` appears at any stage.
 
 ## `maayys-cli.exe` Subprocess Protocol

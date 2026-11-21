@@ -202,6 +202,7 @@ func runStepsFromStdin(repoRoot string, in io.Reader, jsonlOut io.Writer) int {
 		return 1
 	}
 
+	tInitStart := time.Now()
 	_, tasksByName, err := loadTaskDefinitions(repoRoot)
 	if err != nil {
 		return failRun(nil, false, fmt.Sprintf("加载任务目录失败: %v", err))
@@ -217,7 +218,9 @@ func runStepsFromStdin(repoRoot string, in io.Reader, jsonlOut io.Writer) int {
 		return failRun(nil, false, err.Error())
 	}
 	defer res.Destroy()
+	resLoadDur := time.Since(tInitStart)
 
+	tAdbStart := time.Now()
 	agentBinDir := filepath.Join(resolveMaaLibDir(repoRoot), "MaaAgentBinary")
 	writer.Log("info", fmt.Sprintf("正在连接设备 %s...", req.AdbAddress))
 	ctrl, err := maa.NewAdbController(req.AdbPath, req.AdbAddress, adb.ScreencapDefault, adb.InputDefault, "{}", agentBinDir)
@@ -230,6 +233,8 @@ func runStepsFromStdin(repoRoot string, in io.Reader, jsonlOut io.Writer) int {
 	if !ctrl.PostConnect().Wait().Success() {
 		return failRun(ctrl, false, fmt.Sprintf("ADB 连接设备失败: %s", req.AdbAddress))
 	}
+	adbConnDur := time.Since(tAdbStart)
+	writer.Log("info", fmt.Sprintf("[CLI耗时] 资源加载=%.2fs, ADB连接=%.2fs", resLoadDur.Seconds(), adbConnDur.Seconds()))
 
 	tasker, err := maa.NewTasker()
 	if err != nil {
